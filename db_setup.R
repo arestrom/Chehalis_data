@@ -43,6 +43,9 @@
 # Load libraries
 library(DBI)
 library(RSQLite)
+library(readwritesqlite)
+library(tibble)
+library(sf)
 
 # # Must add at least one table for spatialite gui to not give error
 # mydb <- dbConnect(RSQLite::SQLite(), "my_db.sqlite")
@@ -77,8 +80,6 @@ dbListFields(con, name = 'adipose_clip_status_lut')
 # Disconnect
 dbDisconnect(con)
 
-
-
 # Load the spatialite extension....spatialite dlls must be in the root directory
 qry = "SELECT load_extension('mod_spatialite')"
 rs = dbGetQuery(con, qry)
@@ -107,12 +108,6 @@ dbDisconnect(con)
 # Check using readwritesqlite
 #===============================================================================
 
-# Libraries
-library(readwritesqlite)
-library(tibble)
-library(sf)
-#> Linking to GEOS 3.7.2, GDAL 2.4.2, PROJ 5.2.0
-
 # Opens connection to sqlite db in memory....does not exist yet
 conn <- rws_connect()
 
@@ -136,9 +131,27 @@ rws_write(rws_db, exists = FALSE, conn = db_con)
 rws_disconnect(conn)
 rws_disconnect(db_con)
 
+#===============================================================================
+# Playing with hex and binary
+#===============================================================================
 
+# Create point as wkt
+(stpt = st_point(c(-122.1234,47.3487)))
 
+# See wkt printed
+st_as_text(stpt)
 
+# Convert to binary
+(st_bin = st_as_binary(stpt))
+
+# Convert to hex
+(st_hex = rawToHex(st_bin))
+
+# Convert back to binary
+(st_bin_two = wkb::hex2raw(st_hex))
+
+# Convert back to sfc
+(x = st_as_sfc(st_bin_two))
 
 
 

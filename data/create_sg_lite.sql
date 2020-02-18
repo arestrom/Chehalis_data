@@ -6,13 +6,24 @@
 -- Notes:
 -- 1. Only five datatypes supported: Null, Integer, Real, Text, Blob
 ---   Convert booleans to integer, uuids and datetime to text
--- 2. Spatialite requires an integer primary key and ROWID to work properly....may just want to work with BLOBs instead.
+-- 2. Spatialite requires an integer primary key and ROWID for geometry 
+--    columns to work properly... will try first with BLOBs instead.
+--    See example in db_setup.R for examples of converting to and from
+--    hex and binary. 
 -- 3. Design notes: https://www.gaia-gis.it/gaia-sins/spatialite-cookbook-5/cookbook_topics.03.html#topic_Creating_a_well_designed_DB
 
 -- ToDo:
 -- 1.
 
+-- Spatial examples:
+--SELECT AddGeometryColumn('fish_biologist_district', 'geom', 2927, 'POLYGON', 'XY');
+--SELECT CreateSpatialIndex("geonames", "Geometry");
+
 -- Current date 2020-02-12
+
+-- Enable spatialite extension so invokation of CreateUUID() function does not throw error
+SELECT load_extension('mod_spatialite')
+
 
 -- Create tables ------------------------------------------------------
 
@@ -21,7 +32,7 @@ CREATE TABLE adipose_clip_status_lut (
     adipose_clip_status_code text NOT NULL,
     adipose_clip_status_description text NOT NULL,
     obsolete_flag text NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE age_code_lut (
@@ -41,28 +52,28 @@ CREATE TABLE area_surveyed_lut (
     area_surveyed_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     area_surveyed text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE barrier_measurement_type_lut (
     barrier_measurement_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     measurement_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE barrier_type_lut (
     barrier_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     barrier_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE coordinate_capture_method_lut (
     coordinate_capture_method_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     capture_method_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE count_type_lut (
@@ -70,21 +81,21 @@ CREATE TABLE count_type_lut (
     count_type_code text NOT NULL,
     count_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE cwt_detection_method_lut (
     cwt_detection_method_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     detection_method_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE cwt_detection_status_lut (
     cwt_detection_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     detection_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE cwt_result_type_lut (
@@ -93,14 +104,14 @@ CREATE TABLE cwt_result_type_lut (
     cwt_result_type_short_description text NOT NULL,
     cwt_result_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE data_review_status_lut (
     data_review_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     data_review_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE data_source_lut (
@@ -108,14 +119,14 @@ CREATE TABLE data_source_lut (
     data_source_name text NOT NULL,
     data_source_code text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE data_source_unit_lut (
     data_source_unit_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     data_source_unit_name text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE disposition_lut (
@@ -124,7 +135,7 @@ CREATE TABLE disposition_lut (
     fish_books_code text,
     disposition_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE disposition_type_lut (
@@ -132,14 +143,14 @@ CREATE TABLE disposition_type_lut (
     disposition_type_code text NOT NULL,
     disposition_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_abundance_condition_lut (
     fish_abundance_condition_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     fish_abundance_condition text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_barrier (
@@ -164,23 +175,8 @@ CREATE TABLE fish_behavior_type_lut (
     behavior_short_description text NOT NULL,
     behavior_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
-
---- Since no geometries will be manipulated create geom as BLOB....can test with location point data later
-CREATE TABLE fish_biologist_district (
-    fish_biologist_district_id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-    fish_biologist_district_code integer NOT NULL,
-    district_description text NOT NULL,
-    wdfw_region_code integer NOT NULL,
-    created_datetime text DEFAULT (datetime('now')) NOT NULL,
-    created_by text NOT NULL,
-    modified_datetime text,
-    modified_by text
-);
-
---SELECT AddGeometryColumn('fish_biologist_district', 'geom', 2927, 'POLYGON', 'XY');
---SELECT CreateSpatialIndex("geonames", "Geometry");
 
 CREATE TABLE fish_capture (
     fish_capture_id text DEFAULT (CreateUUID()) PRIMARY KEY,
@@ -212,7 +208,7 @@ CREATE TABLE fish_capture_status_lut (
     fish_capture_status_code text NOT NULL,
     fish_capture_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_condition_type_lut (
@@ -220,7 +216,7 @@ CREATE TABLE fish_condition_type_lut (
     fish_condition_short_description text NOT NULL,
     fish_condition_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_encounter (
@@ -260,7 +256,7 @@ CREATE TABLE fish_length_measurement_type_lut (
     length_type_code text NOT NULL,
     length_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_mark (
@@ -284,7 +280,7 @@ CREATE TABLE fish_presence_type_lut (
     fish_presence_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     fish_presence_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_species_presence (
@@ -303,7 +299,7 @@ CREATE TABLE fish_status_lut (
     fish_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     fish_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_trauma_type_lut (
@@ -311,7 +307,7 @@ CREATE TABLE fish_trauma_type_lut (
     trauma_type_short_description text NOT NULL,
     trauma_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE gear_performance_type_lut (
@@ -319,40 +315,21 @@ CREATE TABLE gear_performance_type_lut (
     performance_short_description text NOT NULL,
     performance_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE gill_condition_type_lut (
     gill_condition_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     gill_condition_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
-
-CREATE TABLE hydrologic_unit (
-    hydrologic_unit_id integer NOT NULL PRIMARY KEY,
-    hydrologic_unit_code text NOT NULL,
-    hydrologic_unit_name text,
-    marine_terminus text,
-    reach_description text,
-    tributary_one text,
-    tributary_two text,
-    tributary_three text,
-    tributary_four text,
-    tributary_five text,
-    created_datetime text DEFAULT (datetime('now')) NOT NULL,
-    created_by text NOT NULL,
-    modified_datetime text,
-    modified_by text
-);
-
-SELECT AddGeometryColumn('hydrologic_unit', 'geom', 2927, 'MULTIPOLYGON', 'XY');
 
 CREATE TABLE incomplete_survey_type_lut (
     incomplete_survey_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     incomplete_survey_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE individual_fish (
@@ -401,17 +378,6 @@ CREATE TABLE individual_redd (
     modified_by text
 ) WITHOUT ROWID;
 
-CREATE TABLE lake (
-    lake_id text DEFAULT (CreateUUID()) PRIMARY KEY,
-    waterbody_id text NOT NULL,
-    gid serial unique,
-    geom geometry(multipolygonz, 2927) NOT NULL,
-    created_datetime text DEFAULT (datetime('now')) NOT NULL,
-    created_by text NOT NULL,
-    modified_datetime text,
-    modified_by text
-) WITHOUT ROWID;
-
 CREATE TABLE location (
     location_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     waterbody_id text NOT NULL,
@@ -435,8 +401,7 @@ CREATE TABLE location_coordinates (
     location_id text NOT NULL,
     horizontal_accuracy decimal(8,2),
     comment_text text,
-    gid serial unique,
-    geom geometry(point, 2927) NOT NULL,
+    geom BLOB NOT NULL,
     created_datetime text DEFAULT (datetime('now')) NOT NULL,
     created_by text NOT NULL,
     modified_datetime text,
@@ -448,7 +413,7 @@ CREATE TABLE location_error_correction_type_lut (
     correction_type_short_description text NOT NULL,
     correction_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE location_error_type_lut (
@@ -456,14 +421,14 @@ CREATE TABLE location_error_type_lut (
     location_error_type_code text NOT NULL,
     location_error_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE location_orientation_type_lut (
     location_orientation_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     orientation_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE location_source (
@@ -489,7 +454,7 @@ CREATE TABLE location_type_lut (
     location_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     location_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_color_lut (
@@ -497,7 +462,7 @@ CREATE TABLE mark_color_lut (
     mark_color_code text NOT NULL,
     mark_color_name text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_orientation_lut (
@@ -505,7 +470,7 @@ CREATE TABLE mark_orientation_lut (
     mark_orientation_code text NOT NULL,
     mark_orientation_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_placement_lut (
@@ -513,7 +478,7 @@ CREATE TABLE mark_placement_lut (
     mark_placement_code text NOT NULL,
     mark_placement_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_shape_lut (
@@ -521,7 +486,7 @@ CREATE TABLE mark_shape_lut (
     mark_shape_code text NOT NULL,
     mark_shape_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_size_lut (
@@ -529,21 +494,21 @@ CREATE TABLE mark_size_lut (
     mark_size_code text NOT NULL,
     mark_size_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_status_lut (
     mark_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     mark_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_type_category_lut (
     mark_type_category_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     mark_type_category_name text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_type_lut (
@@ -552,7 +517,7 @@ CREATE TABLE mark_type_lut (
     mark_type_code text NOT NULL,
     mark_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE maturity_lut (
@@ -560,7 +525,7 @@ CREATE TABLE maturity_lut (
     maturity_short_description text NOT NULL,
     maturity_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE media_location (
@@ -579,7 +544,7 @@ CREATE TABLE media_type_lut (
     media_type_code text NOT NULL,
     media_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mobile_device (
@@ -600,7 +565,7 @@ CREATE TABLE mobile_device_type_lut (
     mobile_device_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     mobile_device_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mobile_survey_form (
@@ -621,7 +586,7 @@ CREATE TABLE mortality_type_lut (
     mortality_type_short_description text NOT NULL,
     mortality_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE observation_type_lut (
@@ -629,14 +594,14 @@ CREATE TABLE observation_type_lut (
     observation_type_name text NOT NULL,
     observation_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE origin_lut (
     origin_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     origin_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE other_observation (
@@ -669,7 +634,7 @@ CREATE TABLE redd_confidence_review_status_lut (
     redd_confidence_review_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     review_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_confidence_type_lut (
@@ -677,14 +642,14 @@ CREATE TABLE redd_confidence_type_lut (
     confidence_type_short_description text NOT NULL,
     confidence_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_dewatered_type_lut (
     redd_dewatered_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     dewatered_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_encounter (
@@ -705,7 +670,7 @@ CREATE TABLE redd_shape_lut (
     redd_shape_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     redd_shape_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_status_lut (
@@ -714,7 +679,7 @@ CREATE TABLE redd_status_lut (
     redd_status_short_description text NOT NULL,
     redd_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_substrate (
@@ -734,14 +699,14 @@ CREATE TABLE run_lut (
     run_short_description text NOT NULL,
     run_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE sex_lut (
     sex_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     sex_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE spawn_condition_type_lut (
@@ -749,7 +714,7 @@ CREATE TABLE spawn_condition_type_lut (
     spawn_condition_short_description text NOT NULL,
     spawn_condition_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE species_lut (
@@ -760,7 +725,7 @@ CREATE TABLE species_lut (
     species text,
     sub_species text,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE stock_lut (
@@ -773,21 +738,21 @@ CREATE TABLE stock_lut (
     status_code text,
     esa_code text,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE stream_channel_type_lut (
     stream_channel_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     channel_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE stream_condition_lut (
     stream_condition_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     stream_condition text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE stream_flow_type_lut (
@@ -795,25 +760,13 @@ CREATE TABLE stream_flow_type_lut (
     flow_type_short_description text NOT NULL,
     flow_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE stream (
     stream_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     waterbody_id text NOT NULL,
-    gid serial unique,
-    geom geometry(multilinestring, 2927) NOT NULL,
-    created_datetime text DEFAULT (datetime('now')) NOT NULL,
-    created_by text NOT NULL,
-    modified_datetime text,
-    modified_by text
-) WITHOUT ROWID;
-
-CREATE TABLE stream_section (
-    stream_section_id text DEFAULT (CreateUUID()) PRIMARY KEY,
-    location_id text NOT NULL,
-    gid serial unique,
-    geom geometry(multilinestring, 2927) NOT NULL,
+    geom BLOB NOT NULL,
     created_datetime text DEFAULT (datetime('now')) NOT NULL,
     created_by text NOT NULL,
     modified_datetime text,
@@ -825,14 +778,14 @@ CREATE TABLE substrate_level_lut (
     substrate_level_short_description text NOT NULL,
     substrate_level_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE substrate_type_lut (
     substrate_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     substrate_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey (
@@ -880,14 +833,14 @@ CREATE TABLE survey_completion_status_lut (
     survey_completion_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     completion_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_count_condition_lut (
     survey_count_condition_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     survey_count_condition text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_design_type_lut (
@@ -895,14 +848,14 @@ CREATE TABLE survey_design_type_lut (
     survey_design_type_code text NOT NULL,
     survey_design_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_direction_lut (
     survey_direction_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     survey_direction_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_event (
@@ -937,7 +890,7 @@ CREATE TABLE survey_method_lut (
     survey_method_code text NOT NULL,
     survey_method_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_mobile_device (
@@ -950,14 +903,14 @@ CREATE TABLE survey_timing_lut (
     survey_timing_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     survey_timing text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE visibility_condition_lut (
     visibility_condition_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     visibility_condition text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE visibility_type_lut (
@@ -965,7 +918,7 @@ CREATE TABLE visibility_type_lut (
     visibility_type_short_description text NOT NULL,
     visibility_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE waterbody_lut (
@@ -976,7 +929,7 @@ CREATE TABLE waterbody_lut (
     stream_catalog_code text,
     tributary_to_name text,
     obsolete_flag integer NOT NULL DEFAULT false,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE waterbody_measurement (
@@ -1001,24 +954,23 @@ CREATE TABLE water_clarity_type_lut (
     clarity_type_short_description text NOT NULL,
     clarity_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE weather_type_lut (
     weather_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     weather_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE wria_lut (
     wria_id text DEFAULT (CreateUUID()) PRIMARY KEY,
     wria_code character varying(2) NOT NULL,
     wria_description text NOT NULL,
-    gid serial unique,
-    geom geometry(polygon, 2927) NOT NULL,
+    geom BLOB NOT NULL,
     obsolete_flag integer NOT NULL,
-    obsolete_datetime text DEFAULT (datetime('now'))
+    obsolete_datetime text
 ) WITHOUT ROWID;
 
 -- Set primary keys ------------------------------------------------------
@@ -1074,9 +1026,6 @@ ALTER TABLE ONLY fish_abundance_condition_lut
 ALTER TABLE ONLY fish_barrier
     ADD CONSTRAINT pk_fish_barrier PRIMARY KEY (fish_barrier_id);
 
-ALTER TABLE ONLY fish_biologist_district
-    ADD CONSTRAINT pk_fish_biologist_district_id PRIMARY KEY (fish_biologist_district_id);
-
 ALTER TABLE ONLY fish_capture
     ADD CONSTRAINT pk_fish_capture PRIMARY KEY (fish_capture_id);
 
@@ -1122,9 +1071,6 @@ ALTER TABLE ONLY gear_performance_type_lut
 ALTER TABLE ONLY gill_condition_type_lut
     ADD CONSTRAINT pk_gill_condition_type_lut PRIMARY KEY (gill_condition_type_id);
 
-ALTER TABLE ONLY hydrologic_unit
-    ADD CONSTRAINT pk_hydrologic_unit PRIMARY KEY (hydrologic_unit_id);
-
 ALTER TABLE ONLY incomplete_survey_type_lut
     ADD CONSTRAINT pk_incomplete_survey_type_lut PRIMARY KEY (incomplete_survey_type_id);
 
@@ -1133,9 +1079,6 @@ ALTER TABLE ONLY individual_fish
 
 ALTER TABLE ONLY individual_redd
     ADD CONSTRAINT pk_individual_redd PRIMARY KEY (individual_redd_id);
-
-ALTER TABLE ONLY lake
-    ADD CONSTRAINT pk_lake PRIMARY KEY (lake_id);
 
 ALTER TABLE ONLY location
     ADD CONSTRAINT pk_location PRIMARY KEY (location_id);
@@ -1256,9 +1199,6 @@ ALTER TABLE ONLY stream_flow_type_lut
 
 ALTER TABLE ONLY stream
     ADD CONSTRAINT pk_stream PRIMARY KEY (stream_id);
-
-ALTER TABLE ONLY stream_section
-    ADD CONSTRAINT pk_stream_section PRIMARY KEY (stream_section_id);
 
 ALTER TABLE ONLY substrate_level_lut
     ADD CONSTRAINT pk_substrate_level_lut PRIMARY KEY (substrate_level_id);
@@ -1470,11 +1410,7 @@ ALTER TABLE ONLY individual_redd
 
 ALTER TABLE ONLY individual_redd
     ADD CONSTRAINT fk_redd_dewatered_type_lut__individual_redd FOREIGN KEY (redd_dewatered_type_id) REFERENCES redd_dewatered_type_lut(redd_dewatered_type_id);
-
--------------------------
-ALTER TABLE ONLY lake
-    ADD CONSTRAINT fk_waterbody_lut__lake FOREIGN KEY (waterbody_id) REFERENCES waterbody_lut(waterbody_id);
-
+    
 -------------------------
 ALTER TABLE ONLY location_coordinates
     ADD CONSTRAINT fk_location__location_coordinates FOREIGN KEY (location_id) REFERENCES location(location_id);
@@ -1583,10 +1519,6 @@ ALTER TABLE ONLY stream
     ADD CONSTRAINT fk_waterbody_lut__stream FOREIGN KEY (waterbody_id) REFERENCES waterbody_lut(waterbody_id);
 
 -------------------------
-ALTER TABLE ONLY stream_section
-    ADD CONSTRAINT fk_location__stream_section FOREIGN KEY (location_id) REFERENCES location(location_id);
-
--------------------------
 ALTER TABLE ONLY survey
     ADD CONSTRAINT fk_data_source_lut__survey FOREIGN KEY (data_source_id) REFERENCES data_source_lut(data_source_id);
 
@@ -1687,32 +1619,9 @@ ALTER TABLE ONLY waterbody_measurement
 
 -- Add normal indexes
 
-CREATE INDEX survey_date_idx ON survey ( date(timezone('UTC', survey_datetime)) );
+--CREATE INDEX survey_date_idx ON survey ( date(timezone('UTC', survey_datetime)) );
 
 -- Add geometry indexes
-
-CREATE INDEX fish_biologist_district_gix ON fish_biologist_district USING GIST (geom);
-
-CREATE INDEX hydrologic_unit_gix ON hydrologic_unit USING GIST (geom);
-
-CREATE INDEX lake_gix ON lake USING GIST (geom);
-
-CREATE INDEX location_coordinates_gix ON location_coordinates USING GIST (geom);
-
-CREATE INDEX stream_gix ON stream USING GIST (geom);
-
-CREATE INDEX stream_section_gix ON stream_section USING GIST (geom);
-
-CREATE INDEX wria_gix ON wria_lut USING GIST (geom);
-
--- Cluster on gix, only run periodically after much data has been loaded ---
-
--- CLUSTER lake_geometry_gix ON lake_geometry;
-
--- CLUSTER location_coordinates_gix ON location_coordinates;
-
--- CLUSTER stream_geometry_gix ON stream_geometry;
-
 
 -- Grant permissions ------------------------------------------------------
 
@@ -1723,8 +1632,3 @@ CREATE INDEX wria_gix ON wria_lut USING GIST (geom);
 --GRANT CONNECT ON DATABASE spawning_ground TO dwarren;
 
 --GRANT CONNECT ON DATABASE spawning_ground TO read_only_global;
-
--- Drop fish_biologist_district --------------
-
--- drop table public.fish_biologist_district cascade
-
