@@ -46,6 +46,7 @@ library(RSQLite)
 library(readwritesqlite)
 library(tibble)
 library(sf)
+library(glue)
 
 # # Must add at least one table for spatialite gui to not give error
 # mydb <- dbConnect(RSQLite::SQLite(), "my_db.sqlite")
