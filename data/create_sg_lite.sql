@@ -975,7 +975,7 @@ CREATE TABLE wria_lut (
 
 -- Set foreign keys ------------------------------------------------------
 
---  Need to learn how to set foreign key constraints in sqlite
+--Foreign keys must be defined when table is defined....go back and do it. 
 
 ALTER TABLE ONLY fish_barrier
     ADD CONSTRAINT fk_survey__fish_barrier FOREIGN KEY (survey_id) REFERENCES survey(survey_id);
