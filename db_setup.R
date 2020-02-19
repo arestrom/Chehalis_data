@@ -20,6 +20,9 @@
 #     I should probably always just write as binary object...avoids select into queries.
 #     He also stored dates as REAL not TEXT...what are benefits of real vs text? Faster?
 #     Any chances of rounding? Truncation.
+#  7. See: https://www.sqlitetutorial.net/sqlite-foreign-key/
+#     Need to use: PRAGMA foreign_keys = ON; to make sure constraints are used.
+#     I tested to verify foreign key constraints are possible for current DB
 #
 #
 # Notes on R procedure:
@@ -56,7 +59,7 @@ library(glue)
 # dbDisconnect(mydb)
 
 # Create database connection
-con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite', loadable.extensions = TRUE)
+con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
 # load extension...needed for at least the uuid function
 qry = "SELECT load_extension('mod_spatialite')"
 rs = dbGetQuery(con, qry)
@@ -81,15 +84,15 @@ dbListFields(con, name = 'adipose_clip_status_lut')
 # Disconnect
 dbDisconnect(con)
 
-# Load the spatialite extension....spatialite dlls must be in the root directory
-qry = "SELECT load_extension('mod_spatialite')"
-rs = dbGetQuery(con, qry)
-
-# Test....works !!
-dbGetQuery(con, "SELECT CreateUUID() as uuid")
-
-# Disconnect
-dbDisconnect(con)
+# # Load the spatialite extension....spatialite dlls must be in the root directory
+# qry = "SELECT load_extension('mod_spatialite')"
+# rs = dbGetQuery(con, qry)
+#
+# # Test....works !!
+# dbGetQuery(con, "SELECT CreateUUID() as uuid")
+#
+# # Disconnect
+# dbDisconnect(con)
 
 #===============================================================================
 # Inspect the meuse.sqlite database to see structure. How are geometries stored?
@@ -154,7 +157,20 @@ st_as_text(stpt)
 # Convert back to sfc
 (x = st_as_sfc(st_bin_two))
 
+#===============================================================================
+# Test to see if built-in SQLite uuid() function works (new in latest version)
+# Not yet
+#===============================================================================
 
+# Create new in memory database
+con <- dbConnect(RSQLite::SQLite(), "my-db.sqlite")
+
+# Test...no go yet
+dbGetQuery(con, "SELECT uuid() as uuid")
+
+# Disconnect
+dbDisconnect(con)
+unlink("my-db.sqlite")
 
 
 

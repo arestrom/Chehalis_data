@@ -6,10 +6,10 @@
 -- Notes:
 -- 1. Only five datatypes supported: Null, Integer, Real, Text, Blob
 ---   Convert booleans to integer, uuids and datetime to text
--- 2. Spatialite requires an integer primary key and ROWID for geometry 
+-- 2. Spatialite requires an integer primary key and ROWID for geometry
 --    columns to work properly... will try first with BLOBs instead.
 --    See example in db_setup.R for examples of converting to and from
---    hex and binary. 
+--    hex and binary.
 -- 3. Design notes: https://www.gaia-gis.it/gaia-sins/spatialite-cookbook-5/cookbook_topics.03.html#topic_Creating_a_well_designed_DB
 
 -- ToDo:
@@ -22,7 +22,8 @@
 -- Current date 2020-02-12
 
 -- Enable spatialite extension so invokation of CreateUUID() function does not throw error
-SELECT load_extension('mod_spatialite')
+-- Not needed if using spatialite gui
+-- SELECT load_extension('mod_spatialite')
 
 
 -- Create tables ------------------------------------------------------
@@ -975,7 +976,7 @@ CREATE TABLE wria_lut (
 
 -- Set foreign keys ------------------------------------------------------
 
---Foreign keys must be defined when table is defined....go back and do it. 
+--Foreign keys must be defined when table is defined....go back and do it.
 
 ALTER TABLE ONLY fish_barrier
     ADD CONSTRAINT fk_survey__fish_barrier FOREIGN KEY (survey_id) REFERENCES survey(survey_id);
@@ -1119,7 +1120,7 @@ ALTER TABLE ONLY individual_redd
 
 ALTER TABLE ONLY individual_redd
     ADD CONSTRAINT fk_redd_dewatered_type_lut__individual_redd FOREIGN KEY (redd_dewatered_type_id) REFERENCES redd_dewatered_type_lut(redd_dewatered_type_id);
-    
+
 -------------------------
 ALTER TABLE ONLY location_coordinates
     ADD CONSTRAINT fk_location__location_coordinates FOREIGN KEY (location_id) REFERENCES location(location_id);
