@@ -13,7 +13,7 @@
 -- 3. Design notes: https://www.gaia-gis.it/gaia-sins/spatialite-cookbook-5/cookbook_topics.03.html#topic_Creating_a_well_designed_DB
 
 -- ToDo:
--- 1.
+-- 1. Load sqlite with WRIA 22 and 23 data. Nick has not loaded anything since July of 2019.
 
 -- Spatial examples:
 --SELECT AddGeometryColumn('fish_biologist_district', 'geom', 2927, 'POLYGON', 'XY');
