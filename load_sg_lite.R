@@ -48,6 +48,7 @@ library(lubridate)
 library(sf)
 library(glue)
 library(wkb)
+library(rmapshaper)
 
 # Keep connections pane from opening
 options("connectionObserver" = NULL)
@@ -1488,42 +1489,55 @@ dbDisconnect(db_con)
 # Clean up
 rm(list = c("dat"))
 
-# Test reading in as binary ========================
-
-# Query to get wria data
-qry = glue("select wria_code, wria_description as wria_name, geom as geometry ",
-           "from wria_lut")
-
-# Run the query
-db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-wria_st = st_read(db_con, query = qry)
-dbDisconnect(db_con)
-
-# Check size of object
-object.size(wria_st)
-
-# Create wa_beaches with tide corrections and stations
-wria_polys = wria_st %>%
-  st_transform(4326) %>%
-  ms_simplify() %>%
-  mutate(wria_name = paste0(wria_code, " ", wria_name)) %>%
-  select(wria_name, geometry)
-
-# Check size of object
-object.size(wria_polys)
-
-
+# # Test reading in as binary....WORKS PERFECT !!!!!  ========================
+#
+# # Query to get wria data
+# qry = glue("select wria_code, wria_description as wria_name, geom as geometry ",
+#            "from wria_lut")
+#
+# # Run the query
+# db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+# wria_st = st_read(db_con, query = qry)
+# dbDisconnect(db_con)
+#
+# # Check size of object
+# object.size(wria_st)
+#
+# # Create wa_beaches with tide corrections and stations
+# wria_polys = wria_st %>%
+#   st_transform(4326) %>%
+#   ms_simplify() %>%
+#   mutate(wria_name = paste0(wria_code, " ", wria_name)) %>%
+#   select(wria_name, geometry)
+#
+# # Check size of object
+# object.size(wria_polys)
+#
+# plot(wria_polys)
 
 #=================================================================================================
 #=================================================================================================
+
+# Get waterbody and stream data relevant to WRIAs 22 and 23
+qry = glue("select wb.waterbody_id, wb.waterbody_name, wb.waterbody_display_name, ",
+           "wb.latitude_longitude_id, wb.stream_catalog_code, wb.tributary_to_name, ",
+           "wb.obsolete_flag, wb.obsolete_datetime, st.stream_id, st.geom as geometry, ",
+           "st.created_datetime, st.created_by, st.modified_datetime, st.modified_by ",
+           "from waterbody_lut as wb ",
+           "inner join stream as st on wb.waterbody_id = st.waterbody_id ",
+           "inner join wria_lut as wr on st_intersects(st.geom, wr.geom) ",
+           "where wr.wria_code in ('22', '23') ",
+           "order by wb.waterbody_name")
 
 # Get values from source
 pg_con = pg_con_local(dbname = "spawning_ground")
-dat = dbReadTable(pg_con, 'waterbody_lut')
+dat = dbGetQuery(pg_con, qry)
 dbDisconnect(pg_con)
 
 # Convert datetime to character
-dat = dat %>%
+wb = dat %>%
+  select(waterbody_id, waterbody_name, waterbody_display_name,
+         )
   mutate(obsolete_datetime = as.character(obsolete_datetime))
 
 # Write to sink
