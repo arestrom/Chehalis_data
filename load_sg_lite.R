@@ -84,21 +84,9 @@ pg_con_local = function(dbname, port = '5432') {
   con
 }
 
-
-#========== rpostgres =======================
-
-# Get values from source
-db_con = dbConnect(RPostgres::Postgres(), dbname = "shellfish", host = "localhost",
-                   port = "5432", user = pg_user("pg_user"), password = pg_pw("pg_pwd_local"))
-rpgs_tide = dbGetQuery(db_con, qry)
-dbDisconnect(db_con)
-
-# Explicitly convert timezones
-rpgs_tide = rpgs_tide %>%
-  mutate(tide_date = with_tz(tide_date, tzone = "America/Los_Angeles")) %>%
-  mutate(char_date = format(tide_date))
-
-
+#===============================================================================
+# Create database
+#===============================================================================
 
 # Create database connection
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -133,28 +121,27 @@ dbDisconnect(con)
 # # Disconnect
 # dbDisconnect(con)
 
-
-#===============================================================================
-# Playing with hex and binary
-#===============================================================================
-
-# Create point as wkt
-(stpt = st_point(c(-122.1234,47.3487)))
-
-# See wkt printed
-st_as_text(stpt)
-
-# Convert to binary
-(st_bin = st_as_binary(stpt))
-
-# Convert to hex
-(st_hex = rawToHex(st_bin))
-
-# Convert back to binary
-(st_bin_two = wkb::hex2raw(st_hex))
-
-# Convert back to sfc
-(x = st_as_sfc(st_bin_two))
+# #===============================================================================
+# # Playing with hex and binary
+# #===============================================================================
+#
+# # Create point as wkt
+# (stpt = st_point(c(-122.1234,47.3487)))
+#
+# # See wkt printed
+# st_as_text(stpt)
+#
+# # Convert to binary
+# (st_bin = st_as_binary(stpt))
+#
+# # Convert to hex
+# (st_hex = rawToHex(st_bin))
+#
+# # Convert back to binary
+# (st_bin_two = wkb::hex2raw(st_hex))
+#
+# # Convert back to sfc
+# (x = st_as_sfc(st_bin_two))
 
 #======================================================================================================
 # Copy LUTs
@@ -1470,16 +1457,46 @@ rm(list = c("dat"))
 # Location data
 #=================================================================================================
 
-# Get values from source
+# # Get values from source.
+# pg_con = pg_con_local(dbname = "spawning_ground")
+# dat = dbReadTable(pg_con, 'wria_lut')
+# dbDisconnect(pg_con)
+
+# Get values from source...for this iteration, want to simplify WRIA
 pg_con = pg_con_local(dbname = "spawning_ground")
-dat = dbReadTable(pg_con, 'wria_lut')
+dat = st_read(pg_con, query = "select * from wria_lut where wria_code in ('22', '23')")
 dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  filter(wria_code %in% c("22", "23")) %>%
   mutate(obsolete_datetime = as.character(obsolete_datetime)) %>%
   select(-gid)
+
+# Check size of object
+object.size(dat)
+
+# Simplify polygons for speed
+wria_polys = dat %>%
+  ms_simplify()
+
+# Check size of object
+object.size(wria_polys)
+# plot(wria_polys)
+
+# Verify crs
+st_crs(wria_polys)$epsg
+
+# Convert back to binary, then hex
+dat = wria_polys %>%
+  mutate(geom = st_as_binary(geom)) %>%
+  mutate(geom = rawToHex(geom)) %>%
+  mutate(geometry = geom) %>%
+  st_drop_geometry() %>%
+  select(wria_id, wria_code, wria_description, geom = geometry,
+         obsolete_flag, obsolete_datetime)
+
+# Check size of object
+object.size(dat)
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1487,7 +1504,7 @@ dbWriteTable(db_con, 'wria_lut', dat, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
 
 # Clean up
-rm(list = c("dat"))
+rm(list = c("dat", "wria_polys"))
 
 # # Test reading in as binary....WORKS PERFECT !!!!!  ========================
 #
@@ -1497,23 +1514,23 @@ rm(list = c("dat"))
 #
 # # Run the query
 # db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-# wria_st = st_read(db_con, query = qry)
+# wria_st = st_read(db_con, query = qry, crs = 2927)
 # dbDisconnect(db_con)
 #
-# # Check size of object
+# # Check size of object and crs
 # object.size(wria_st)
+# st_crs(wria_st)$epsg
 #
-# # Create wa_beaches with tide corrections and stations
-# wria_polys = wria_st %>%
-#   st_transform(4326) %>%
-#   ms_simplify() %>%
+# # Simplify polygons for speed
+# wria_st = wria_st %>%
 #   mutate(wria_name = paste0(wria_code, " ", wria_name)) %>%
 #   select(wria_name, geometry)
 #
-# # Check size of object
-# object.size(wria_polys)
+# # Verify with plot
+# plot(wria_st)
 #
-# plot(wria_polys)
+# # Clean up
+# rm(list = c("wria_st"))
 
 #=================================================================================================
 #=================================================================================================
@@ -1563,7 +1580,27 @@ dbDisconnect(db_con)
 # Clean up
 rm(list = c("dat", "wb", "st"))
 
-
-# DONE THROUGH STREAM !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # Test reading in as binary....WORKS PERFECT !!!!!  ========================
+#
+# # Query to get stream data
+# qry = glue("select wb.waterbody_name as stream_name, st.geom as geometry ",
+#            "from waterbody_lut as wb ",
+#            "inner join stream as st on wb.waterbody_id = st.waterbody_id ",
+#            "where wb.waterbody_name = 'Chehalis River'")
+#
+# # Run the query
+# db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+# ch_st = st_read(db_con, query = qry, crs = 2927)
+# dbDisconnect(db_con)
+#
+# # Check size of object and crs
+# object.size(ch_st)
+# st_crs(ch_st)$epsg
+#
+# # Verify with plot
+# plot(ch_st)
+#
+# # Clean up
+# rm(list = c("ch_st"))
 
 
