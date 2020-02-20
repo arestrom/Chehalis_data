@@ -1547,11 +1547,23 @@ db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
 dbWriteTable(db_con, 'waterbody_lut', wb, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
 
+# Pull out stream data
 st = dat %>%
+  select(stream_id, waterbody_id, geom = geometry, created_datetime,
+         created_by, modified_datetime, modified_by) %>%
+  filter(!is.na(stream_id)) %>%
+  mutate(created_datetime = as.character(created_datetime)) %>%
+  mutate(modified_datetime = as.character(modified_datetime))
 
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbWriteTable(db_con, 'stream', st, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
 
 # Clean up
-rm(list = c("dat"))
+rm(list = c("dat", "wb", "st"))
 
+
+# DONE THROUGH STREAM !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
