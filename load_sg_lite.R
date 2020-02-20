@@ -1519,7 +1519,7 @@ rm(list = c("dat"))
 #=================================================================================================
 
 # Get waterbody and stream data relevant to WRIAs 22 and 23
-qry = glue("select wb.waterbody_id, wb.waterbody_name, wb.waterbody_display_name, ",
+qry = glue("select distinct wb.waterbody_id, wb.waterbody_name, wb.waterbody_display_name, ",
            "wb.latitude_longitude_id, wb.stream_catalog_code, wb.tributary_to_name, ",
            "wb.obsolete_flag, wb.obsolete_datetime, st.stream_id, st.geom as geometry, ",
            "st.created_datetime, st.created_by, st.modified_datetime, st.modified_by ",
@@ -1537,13 +1537,18 @@ dbDisconnect(pg_con)
 # Convert datetime to character
 wb = dat %>%
   select(waterbody_id, waterbody_name, waterbody_display_name,
-         )
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+         latitude_longitude_id, stream_catalog_code, tributary_to_name,
+         obsolete_flag, obsolete_datetime) %>%
+  mutate(obsolete_datetime = as.character(obsolete_datetime)) %>%
+  distinct()
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-dbWriteTable(db_con, 'waterbody_lut', dat, row.names = FALSE, append = TRUE)
+dbWriteTable(db_con, 'waterbody_lut', wb, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
+
+st = dat %>%
+
 
 # Clean up
 rm(list = c("dat"))
