@@ -30,9 +30,9 @@
 #
 #
 # ToDo:
-#  1.
+#  1. Done with this set...may want to add some tables later.
 #
-# AS 2020-02-19
+# AS 2020-02-20
 #===============================================================================
 
 # Clear workspace
@@ -2204,20 +2204,285 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(fish_encounter_datetime = as.character(fish_encounter_datetime)) %>%
   mutate(created_datetime = as.character(created_datetime)) %>%
   mutate(modified_datetime = as.character(modified_datetime)) %>%
   distinct()
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-dbWriteTable(db_con, 'fish_encounter', dat, row.names = FALSE, append = TRUE)
+dbWriteTable(db_con, 'individual_fish', dat, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
 
 # Clean up
 rm(list = c("dat"))
 
+#=================================================================================================
+# Fish length measurement
+#=================================================================================================
 
+# Get location and location coordinates data relevant to WRIAs 22 and 23
+qry = glue("select distinct fl.fish_length_measurement_id, fl.individual_fish_id, ",
+           "fl.fish_length_measurement_type_id, fl.length_measurement_centimeter, ",
+           "fl.created_datetime, fl.created_by, fl.modified_datetime, fl.modified_by ",
+           "from fish_length_measurement as fl ",
+           "inner join individual_fish as ind on fl.individual_fish_id = ind.individual_fish_id ",
+           "inner join fish_encounter as fe on ind.fish_encounter_id = fe.fish_encounter_id ",
+           "inner join survey_event as se on fe.survey_event_id = se.survey_event_id ",
+           "inner join survey as s on se.survey_id = s.survey_id ",
+           "left join location as uploc on s.upper_end_point_id = uploc.location_id ",
+           "left join location as loloc on s.lower_end_point_id = loloc.location_id ",
+           "left join wria_lut as upwr on uploc.wria_id = upwr.wria_id ",
+           "left join wria_lut as lowr on loloc.wria_id = lowr.wria_id ",
+           "where upwr.wria_code in ('22', '23') or lowr.wria_code in ('22', '23')")
+
+# Get values from source
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbGetQuery(pg_con, qry)
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(created_datetime = as.character(created_datetime)) %>%
+  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  distinct()
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbWriteTable(db_con, 'fish_length_measurement', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
+
+#=================================================================================================
+# Fish capture event
+#=================================================================================================
+
+# Get location and location coordinates data relevant to WRIAs 22 and 23
+qry = glue("select distinct fc.fish_capture_event_id, fc.fish_encounter_id, ",
+           "fc.fish_capture_status_id, fc.disposition_type_id, fc.disposition_id, ",
+           "fc.disposition_location_id, fc.created_datetime, fc.created_by, ",
+           "fc.modified_datetime, fc.modified_by ",
+           "from fish_capture_event as fc ",
+           "inner join fish_encounter as fe on fc.fish_encounter_id = fe.fish_encounter_id ",
+           "inner join survey_event as se on fe.survey_event_id = se.survey_event_id ",
+           "inner join survey as s on se.survey_id = s.survey_id ",
+           "left join location as uploc on s.upper_end_point_id = uploc.location_id ",
+           "left join location as loloc on s.lower_end_point_id = loloc.location_id ",
+           "left join wria_lut as upwr on uploc.wria_id = upwr.wria_id ",
+           "left join wria_lut as lowr on loloc.wria_id = lowr.wria_id ",
+           "where upwr.wria_code in ('22', '23') or lowr.wria_code in ('22', '23')")
+
+# Get values from source
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbGetQuery(pg_con, qry)
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(created_datetime = as.character(created_datetime)) %>%
+  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  distinct()
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbWriteTable(db_con, 'fish_capture_event', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
+
+#=================================================================================================
+# Fish mark
+#=================================================================================================
+
+# Get location and location coordinates data relevant to WRIAs 22 and 23
+qry = glue("select distinct fm.fish_mark_id, fm.fish_encounter_id, ",
+           "fm.mark_type_id, fm.mark_status_id, fm.mark_orientation_id, ",
+           "fm.mark_placement_id, fm.mark_size_id, fm.mark_color_id, ",
+           "fm.mark_shape_id, fm.tag_number, fm.created_datetime, ",
+           "fm.created_by, fm.modified_datetime, fm.modified_by ",
+           "from fish_mark as fm ",
+           "inner join fish_encounter as fe on fm.fish_encounter_id = fe.fish_encounter_id ",
+           "inner join survey_event as se on fe.survey_event_id = se.survey_event_id ",
+           "inner join survey as s on se.survey_id = s.survey_id ",
+           "left join location as uploc on s.upper_end_point_id = uploc.location_id ",
+           "left join location as loloc on s.lower_end_point_id = loloc.location_id ",
+           "left join wria_lut as upwr on uploc.wria_id = upwr.wria_id ",
+           "left join wria_lut as lowr on loloc.wria_id = lowr.wria_id ",
+           "where upwr.wria_code in ('22', '23') or lowr.wria_code in ('22', '23')")
+
+# Get values from source
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbGetQuery(pg_con, qry)
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(created_datetime = as.character(created_datetime)) %>%
+  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  distinct()
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbWriteTable(db_con, 'fish_mark', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
+
+#=================================================================================================
+# Redd encounter
+#=================================================================================================
+
+# Get location and location coordinates data relevant to WRIAs 22 and 23
+qry = glue("select distinct re.redd_encounter_id, re.survey_event_id, ",
+           "re.redd_location_id, re.redd_status_id, re.redd_encounter_datetime, ",
+           "re.redd_count, re.comment_text, re.created_datetime, ",
+           "re.created_by, re.modified_datetime, re.modified_by ",
+           "from redd_encounter as re ",
+           "inner join survey_event as se on re.survey_event_id = se.survey_event_id ",
+           "inner join survey as s on se.survey_id = s.survey_id ",
+           "left join location as uploc on s.upper_end_point_id = uploc.location_id ",
+           "left join location as loloc on s.lower_end_point_id = loloc.location_id ",
+           "left join wria_lut as upwr on uploc.wria_id = upwr.wria_id ",
+           "left join wria_lut as lowr on loloc.wria_id = lowr.wria_id ",
+           "where upwr.wria_code in ('22', '23') or lowr.wria_code in ('22', '23')")
+
+# Get values from source
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbGetQuery(pg_con, qry)
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(redd_encounter_datetime = as.character(redd_encounter_datetime)) %>%
+  mutate(created_datetime = as.character(created_datetime)) %>%
+  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  distinct()
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbWriteTable(db_con, 'redd_encounter', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
+
+#=================================================================================================
+# Individual redd
+#=================================================================================================
+
+# Get location and location coordinates data relevant to WRIAs 22 and 23
+qry = glue("select distinct ir.individual_redd_id, ir.redd_encounter_id, ",
+           "ir.redd_shape_id, ir.redd_dewatered_type_id, ir.percent_redd_visible, ",
+           "ir.redd_length_measure_meter, ir.redd_width_measure_meter, ",
+           "ir.redd_depth_measure_meter, ir.tailspill_height_measure_meter, ",
+           "ir.percent_redd_superimposed, ir.percent_redd_degraded, ",
+           "ir.superimposed_redd_name, ir.comment_text, ir.created_datetime, ",
+           "ir.created_by, ir.modified_datetime, ir.modified_by ",
+           "from individual_redd as ir ",
+           "inner join redd_encounter as re on ir.redd_encounter_id = re.redd_encounter_id ",
+           "inner join survey_event as se on re.survey_event_id = se.survey_event_id ",
+           "inner join survey as s on se.survey_id = s.survey_id ",
+           "left join location as uploc on s.upper_end_point_id = uploc.location_id ",
+           "left join location as loloc on s.lower_end_point_id = loloc.location_id ",
+           "left join wria_lut as upwr on uploc.wria_id = upwr.wria_id ",
+           "left join wria_lut as lowr on loloc.wria_id = lowr.wria_id ",
+           "where upwr.wria_code in ('22', '23') or lowr.wria_code in ('22', '23')")
+
+# Get values from source
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbGetQuery(pg_con, qry)
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(created_datetime = as.character(created_datetime)) %>%
+  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  distinct()
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbWriteTable(db_con, 'individual_redd', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
+
+#=================================================================================================
+# Redd substrate
+#=================================================================================================
+
+# Get location and location coordinates data relevant to WRIAs 22 and 23
+qry = glue("select distinct rs.redd_substrate_id, rs.redd_encounter_id, ",
+           "rs.substrate_level_id, rs.substrate_type_id, rs.substrate_percent, ",
+           "rs.created_datetime, rs.created_by, rs.modified_datetime, rs.modified_by ",
+           "from redd_substrate as rs ",
+           "inner join redd_encounter as re on rs.redd_encounter_id = re.redd_encounter_id ",
+           "inner join survey_event as se on re.survey_event_id = se.survey_event_id ",
+           "inner join survey as s on se.survey_id = s.survey_id ",
+           "left join location as uploc on s.upper_end_point_id = uploc.location_id ",
+           "left join location as loloc on s.lower_end_point_id = loloc.location_id ",
+           "left join wria_lut as upwr on uploc.wria_id = upwr.wria_id ",
+           "left join wria_lut as lowr on loloc.wria_id = lowr.wria_id ",
+           "where upwr.wria_code in ('22', '23') or lowr.wria_code in ('22', '23')")
+
+# Get values from source
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbGetQuery(pg_con, qry)
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(created_datetime = as.character(created_datetime)) %>%
+  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  distinct()
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbWriteTable(db_con, 'redd_substrate', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
+
+#=================================================================================================
+# Redd confidence
+#=================================================================================================
+
+# Get location and location coordinates data relevant to WRIAs 22 and 23
+qry = glue("select distinct rc.redd_confidence_id, rc.redd_encounter_id, ",
+           "rc.redd_confidence_type_id, rc.redd_confidence_review_status_id, rc.comment_text, ",
+           "rc.created_datetime, rc.created_by, rc.modified_datetime, rc.modified_by ",
+           "from redd_confidence as rc ",
+           "inner join redd_encounter as re on rc.redd_encounter_id = re.redd_encounter_id ",
+           "inner join survey_event as se on re.survey_event_id = se.survey_event_id ",
+           "inner join survey as s on se.survey_id = s.survey_id ",
+           "left join location as uploc on s.upper_end_point_id = uploc.location_id ",
+           "left join location as loloc on s.lower_end_point_id = loloc.location_id ",
+           "left join wria_lut as upwr on uploc.wria_id = upwr.wria_id ",
+           "left join wria_lut as lowr on loloc.wria_id = lowr.wria_id ",
+           "where upwr.wria_code in ('22', '23') or lowr.wria_code in ('22', '23')")
+
+# Get values from source
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbGetQuery(pg_con, qry)
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(created_datetime = as.character(created_datetime)) %>%
+  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  distinct()
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbWriteTable(db_con, 'redd_confidence', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
 
 
 
