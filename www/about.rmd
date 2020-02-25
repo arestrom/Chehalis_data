@@ -1,0 +1,31 @@
+---
+title: "about"
+author: "Are Strom"
+date: "May 14, 2019"
+output: html_document
+--- 
+
+***  
+
+### Introduction 
+
+This application is intended as a demonstration of a create, update, and delete (CRUD) application using the R programming language, the shiny web-appliction framework and PostgreSQL as a backend database. 
+
+### Usage notes
+
+Use this to update beach data to the shellfish beach tables. See if you can break it. And please keep notes (add to global.R) on anything that could use improvement.
+
+### Next steps
+
+Develop a more sophisticated version with collapsible sidebar and additional tabs for the new spawning_ground database.
+
+***
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,22 @@
+---
+title: "credits"
+author: "Are Strom"
+date: "May 13, 2019"
+output: html_document
+---  
+
+#### Credits 
+
+*BeachData* was developed by *Are Strom* at the Washington Dept of Fish and Wildlife (WDFW).
+
+*Are Strom (2019) Biological Data Systems, WDFW*
+
+It was built using the R programming language  
+
+*R Core Team (2018). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria.*
+
+The user interface is made possible by the `shiny` R package from RStudio
+
+*Winston Chang, Joe Cheng, JJ Allaire, Yihui Xie and Jonathan McPherson (2018). shiny: Web Application Framework for R. R package version 1.2.0.*  
+
+
