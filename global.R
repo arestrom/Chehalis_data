@@ -100,6 +100,14 @@
 # 33. FUNCTIONS get_wrias() and get_streams() in wria_stream....CAN AND SHOULD BE OPTIMIZED !!!!!!
 # 34. Add raster tile coverage for full offline capability... !!!
 # 35. Eventually test with lidar and raytracer mapping.
+# 36. Use get_uuid() for all insert code....spatialite CreateUUID() does not always fire.
+#     Can then also probably get rid of spatialite dll's after finishing up.
+#     Can also get rid of default value code in create.sql, and also get rid
+#     of load extension code in global.R. Add get_uuid() to globals only.
+# 37. Should all datetime values be stored as UTC in sqlite....or convert to local?
+#     Current code generates created_datetime and mod-dt as UTC....Probably
+#     should store as UTC for consistency with PG. Also...store as text after
+#     perusing docs. Yes, store in UTC.
 #
 # AS 2020-02-11
 #==============================================================
@@ -173,6 +181,15 @@ source("survey/survey_global.R")
 
 # Switch to RPostgres....works, but need to change placeholders in separate branch...then do PR.
 pool = pool::dbPool(RSQLite::SQLite(), dbname = "data/sg_lite.sqlite", host = "localhost")
+
+# # Enable CreateUUID() from spatialite...spatialite dlls must be in the root directory
+# con = poolCheckout(pool)
+# qry = "SELECT load_extension('mod_spatialite')"
+# rs = DBI::dbGetQuery(con, qry)
+# poolReturn(con)
+
+# # Test
+# print(dbGetQuery(con, "SELECT CreateUUID() as uuid"))
 
 # Define functions =============================================================
 

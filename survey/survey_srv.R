@@ -366,14 +366,17 @@ survey_insert_vals = reactive({
       is.na(start_time) ~ as.POSIXct(NA),
       !is.na(start_time) ~ as.POSIXct(paste0(format(survey_dt), " ", format(start_time, "%H:%M")),
                                                       tz = "America/Los_Angeles"))) %>%
-    mutate(survey_start_datetime = with_tz(survey_start_datetime, tzone = "UTC")) %>%
+    mutate(survey_start_datetime = format(survey_start_datetime)) %>%
+    #mutate(survey_start_datetime = with_tz(survey_start_datetime, tzone = "UTC")) %>%
     mutate(survey_end_datetime = case_when(
       is.na(end_time) ~ as.POSIXct(NA),
       !is.na(end_time) ~ as.POSIXct(paste0(format(survey_dt), " ", format(end_time, "%H:%M")),
                                       tz = "America/Los_Angeles"))) %>%
-    mutate(survey_end_datetime = with_tz(survey_end_datetime, tzone = "UTC")) %>%
+    mutate(survey_end_datetime = format(survey_end_datetime)) %>%
+    #mutate(survey_end_datetime = with_tz(survey_end_datetime, tzone = "UTC")) %>%
     mutate(survey_dt = as.POSIXct(format(survey_dt), tz = "America/Los_Angeles")) %>%
-    mutate(survey_dt = with_tz(survey_dt, tzone = "UTC")) %>%
+    mutate(survey_dt = format(survey_dt)) %>%
+    #mutate(survey_dt = with_tz(survey_dt, tzone = "UTC")) %>%
     select(survey_dt, data_source_id, data_source_unit_id, survey_method_id,
            data_review_status_id, upper_end_point_id, lower_end_point_id,
            survey_completion_status_id, incomplete_survey_type_id,
