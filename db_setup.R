@@ -70,7 +70,7 @@ qry = glue("CREATE TABLE adipose_clip_status_lut ( ",
 	         "adipose_clip_status_id text DEFAULT (CreateUUID()) PRIMARY KEY, ",
            "adipose_clip_status_code text NOT NULL, ",
            "adipose_clip_status_description text NOT NULL, ",
-           "obsolete_flag text NOT NULL, ",
+           "obsolete_flag integer NOT NULL, ",
            "obsolete_datetime text DEFAULT (datetime('now')) ",
            ") WITHOUT ROWID;")
 
@@ -94,83 +94,83 @@ dbDisconnect(con)
 # # Disconnect
 # dbDisconnect(con)
 
-#===============================================================================
-# Inspect the meuse.sqlite database to see structure. How are geometries stored?
-# They are stored as blobs
-#===============================================================================
-
-# Create database connection
-con <- dbConnect(RSQLite::SQLite(), dbname = 'data/meuse.sqlite', loadable.extensions = TRUE)
-
-# Check
-dbListTables(con)
-
-# Disconnect
-dbDisconnect(con)
-
-#===============================================================================
-# Check using readwritesqlite
-#===============================================================================
-
-# Opens connection to sqlite db in memory....does not exist yet
-conn <- rws_connect()
-
-# Gets rws dataset
-rws_data <- readwritesqlite::rws_data
-rws_data
-
-# Write to the db in memory
-rws_write(rws_data, exists = FALSE, conn = conn)
-
-# Read from db in memory
-rws_db = rws_read_table("rws_data", conn = conn)
-
-# Write to sqlite on disk
-db_con = rws_connect(dbname = "data/rws_db.sqlite")
-
-# Write to the db on disk
-rws_write(rws_db, exists = FALSE, conn = db_con)
-
-# Disconnect
-rws_disconnect(conn)
-rws_disconnect(db_con)
-
-#===============================================================================
-# Playing with hex and binary
-#===============================================================================
-
-# Create point as wkt
-(stpt = st_point(c(-122.1234,47.3487)))
-
-# See wkt printed
-st_as_text(stpt)
-
-# Convert to binary
-(st_bin = st_as_binary(stpt))
-
-# Convert to hex
-(st_hex = rawToHex(st_bin))
-
-# Convert back to binary
-(st_bin_two = wkb::hex2raw(st_hex))
-
-# Convert back to sfc
-(x = st_as_sfc(st_bin_two))
-
-#===============================================================================
-# Test to see if built-in SQLite uuid() function works (new in latest version)
-# Not yet
-#===============================================================================
-
-# Create new in memory database
-con <- dbConnect(RSQLite::SQLite(), "my-db.sqlite")
-
-# Test...no go yet
-dbGetQuery(con, "SELECT uuid() as uuid")
-
-# Disconnect
-dbDisconnect(con)
-unlink("my-db.sqlite")
+# #===============================================================================
+# # Inspect the meuse.sqlite database to see structure. How are geometries stored?
+# # They are stored as blobs
+# #===============================================================================
+# 
+# # Create database connection
+# con <- dbConnect(RSQLite::SQLite(), dbname = 'data/meuse.sqlite', loadable.extensions = TRUE)
+# 
+# # Check
+# dbListTables(con)
+# 
+# # Disconnect
+# dbDisconnect(con)
+# 
+# #===============================================================================
+# # Check using readwritesqlite
+# #===============================================================================
+# 
+# # Opens connection to sqlite db in memory....does not exist yet
+# conn <- rws_connect()
+# 
+# # Gets rws dataset
+# rws_data <- readwritesqlite::rws_data
+# rws_data
+# 
+# # Write to the db in memory
+# rws_write(rws_data, exists = FALSE, conn = conn)
+# 
+# # Read from db in memory
+# rws_db = rws_read_table("rws_data", conn = conn)
+# 
+# # Write to sqlite on disk
+# db_con = rws_connect(dbname = "data/rws_db.sqlite")
+# 
+# # Write to the db on disk
+# rws_write(rws_db, exists = FALSE, conn = db_con)
+# 
+# # Disconnect
+# rws_disconnect(conn)
+# rws_disconnect(db_con)
+# 
+# #===============================================================================
+# # Playing with hex and binary
+# #===============================================================================
+# 
+# # Create point as wkt
+# (stpt = st_point(c(-122.1234,47.3487)))
+# 
+# # See wkt printed
+# st_as_text(stpt)
+# 
+# # Convert to binary
+# (st_bin = st_as_binary(stpt))
+# 
+# # Convert to hex
+# (st_hex = rawToHex(st_bin))
+# 
+# # Convert back to binary
+# (st_bin_two = wkb::hex2raw(st_hex))
+# 
+# # Convert back to sfc
+# (x = st_as_sfc(st_bin_two))
+# 
+# #===============================================================================
+# # Test to see if built-in SQLite uuid() function works (new in latest version)
+# # Not yet
+# #===============================================================================
+# 
+# # Create new in memory database
+# con <- dbConnect(RSQLite::SQLite(), "my-db.sqlite")
+# 
+# # Test...no go yet
+# dbGetQuery(con, "SELECT uuid() as uuid")
+# 
+# # Disconnect
+# dbDisconnect(con)
+# unlink("my-db.sqlite")
 
 
 

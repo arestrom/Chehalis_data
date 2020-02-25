@@ -649,13 +649,13 @@ CREATE TABLE cwt_detection_status_lut (
     obsolete_datetime text
 ) WITHOUT ROWID;
 
-CREATE TABLE adipose_clip_status_lut (
-	adipose_clip_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
-    adipose_clip_status_code text NOT NULL,
-    adipose_clip_status_description text NOT NULL,
-    obsolete_flag text NOT NULL,
-    obsolete_datetime text
-) WITHOUT ROWID;
+--CREATE TABLE adipose_clip_status_lut (
+--	adipose_clip_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+--    adipose_clip_status_code text NOT NULL,
+--    adipose_clip_status_description text NOT NULL,
+--    obsolete_flag text NOT NULL,
+--    obsolete_datetime text
+--) WITHOUT ROWID;
 
 CREATE TABLE fish_behavior_type_lut (
     fish_behavior_type_id text DEFAULT (Createtext()) PRIMARY KEY,

@@ -36,7 +36,7 @@
 #===============================================================================
 
 # Clear workspace
-rm(list=ls(all=TRUE))
+rm(list=ls(all.names=TRUE))
 
 # Load libraries
 library(dplyr)
@@ -83,65 +83,6 @@ pg_con_local = function(dbname, port = '5432') {
     port = port)
   con
 }
-
-#===============================================================================
-# Create database
-#===============================================================================
-
-# Create database connection
-db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-
-# Load a table...you can drop manually in spatilite gui later and it will still open without error
-# There just needs to be a table in the DB to ensure the magic number stuff works out correctly.
-qry = glue("CREATE TABLE adipose_clip_status_lut ( ",
-	         "adipose_clip_status_id text DEFAULT (CreateUUID()) PRIMARY KEY, ",
-           "adipose_clip_status_code text NOT NULL, ",
-           "adipose_clip_status_description text NOT NULL, ",
-           "obsolete_flag text NOT NULL, ",
-           "obsolete_datetime text DEFAULT (datetime('now')) ",
-           ") WITHOUT ROWID;")
-
-# Write new table
-dbExecute(con, qry)
-
-# Check
-dbListTables(con)
-dbListFields(con, name = 'adipose_clip_status_lut')
-
-# Disconnect
-dbDisconnect(con)
-
-# # Load the spatialite extension....spatialite dlls must be in the root directory
-# qry = "SELECT load_extension('mod_spatialite')"
-# rs = dbGetQuery(con, qry)
-#
-# # Test....works !!
-# dbGetQuery(con, "SELECT CreateUUID() as uuid")
-#
-# # Disconnect
-# dbDisconnect(con)
-
-# #===============================================================================
-# # Playing with hex and binary
-# #===============================================================================
-#
-# # Create point as wkt
-# (stpt = st_point(c(-122.1234,47.3487)))
-#
-# # See wkt printed
-# st_as_text(stpt)
-#
-# # Convert to binary
-# (st_bin = st_as_binary(stpt))
-#
-# # Convert to hex
-# (st_hex = rawToHex(st_bin))
-#
-# # Convert back to binary
-# (st_bin_two = wkb::hex2raw(st_hex))
-#
-# # Convert back to sfc
-# (x = st_as_sfc(st_bin_two))
 
 #======================================================================================================
 # Copy LUTs

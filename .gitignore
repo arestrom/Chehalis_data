@@ -16,3 +16,5 @@ libstdc++_64-6.dll
 mod_spatialite.dll
 zlib1.dll
 libxml2-2.dll
+correct_stock_lut.R
+chehalis_data.Rproj
