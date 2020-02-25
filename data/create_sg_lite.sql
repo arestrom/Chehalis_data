@@ -11,6 +11,7 @@
 --    See example in db_setup.R for examples of converting to and from
 --    hex and binary.
 -- 3. Design notes: https://www.gaia-gis.it/gaia-sins/spatialite-cookbook-5/cookbook_topics.03.html#topic_Creating_a_well_designed_DB
+-- 4. Sometimes get error on first run when using spatialite gui...just delete and recreate db once again...then run and success.
 
 -- ToDo:
 -- 1. Load sqlite with WRIA 22 and 23 data. Nick has not loaded anything since July of 2019.
