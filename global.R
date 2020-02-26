@@ -106,6 +106,9 @@
 # 37. All datetime values be stored in sqlite as UTC. Dates stored as text after review
 #     of options. Updated globals to convert to local in sql rather than lubridate.
 #     Sqlite datetime('localtime') function was tested and is dst enabled.
+# 38. Update all names in inputs and DT columns to more readable format.
+# 39. Add code to unselect row in parent table whenever a row is deleted in child table.
+#     Use example from survey_comment_srv code.
 #
 # AS 2020-02-26
 #==============================================================

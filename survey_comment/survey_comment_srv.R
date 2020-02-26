@@ -2,7 +2,7 @@
 output$area_surveyed_select = renderUI({
   area_surveyed_list = get_area_surveyed()$area_surveyed
   area_surveyed_list = c("", area_surveyed_list)
-  selectizeInput("area_surveyed_select", label = "area_surveyed",
+  selectizeInput("area_surveyed_select", label = "area_surveyed_condition",
                  choices = area_surveyed_list, selected = NULL,
                  width = "175px")
 })
@@ -50,7 +50,7 @@ output$survey_direction_select = renderUI({
 output$survey_timing_select = renderUI({
   survey_timing_list = get_survey_timing()$survey_timing
   survey_timing_list = c("", survey_timing_list)
-  selectizeInput("survey_timing_select", label = "survey_timing",
+  selectizeInput("survey_timing_select", label = "survey_timing_condition",
                  choices = survey_timing_list, selected = NULL,
                  width = "150px")
 })
