@@ -1,6 +1,6 @@
 # Function to get header data...use multiselect for year
 get_surveys = function(waterbody_id, survey_year) {
-  qry = glue("select s.survey_id, s.survey_datetime as survey_date, ",
+  qry = glue("select s.survey_id, datetime(s.survey_datetime, 'localtime') as survey_date, ",
              "ds.data_source_code, ",
              "data_source_code || ': ' || data_source_name as data_source, ",
              "du.data_source_unit_name as data_source_unit, ",
@@ -12,12 +12,12 @@ get_surveys = function(waterbody_id, survey_year) {
              "locl.location_id as lower_location_id, ",
              "sct.completion_status_description as completion, ",
              "ics.incomplete_survey_description as incomplete_type, ",
-             "s.survey_start_datetime as start_time, ",
-             "s.survey_end_datetime as end_time, ",
+             "datetime(s.survey_start_datetime, 'localtime') as start_time, ",
+             "datetime(s.survey_end_datetime, 'localtime') as end_time, ",
              "s.observer_last_name as observer, ",
              "s.data_submitter_last_name as submitter, ",
-             "s.created_datetime as created_date, ",
-             "s.created_by, s.modified_datetime as modified_date, ",
+             "datetime(s.created_datetime, 'localtime') as created_date, ",
+             "s.created_by, datetime(s.modified_datetime, 'localtime') as modified_date, ",
              "s.modified_by ",
              "from survey as s ",
              "inner join data_source_lut as ds on s.data_source_id = ds.data_source_id ",
@@ -28,21 +28,21 @@ get_surveys = function(waterbody_id, survey_year) {
              "inner join location as locl on s.lower_end_point_id = locl.location_id ",
              "left join survey_completion_status_lut as sct on s.survey_completion_status_id = sct.survey_completion_status_id ",
              "inner join incomplete_survey_type_lut as ics on s.incomplete_survey_type_id = ics.incomplete_survey_type_id ",
-             "where strftime('%Y', s.survey_datetime) = '{survey_year}' ",
+             "where strftime('%Y', datetime(s.survey_datetime, 'localtime')) = '{survey_year}' ",
              "and (locu.waterbody_id = '{waterbody_id}' or locl.waterbody_id = '{waterbody_id}')")
   con = poolCheckout(pool)
   surveys = DBI::dbGetQuery(con, qry)
   poolReturn(con)
   surveys = surveys %>%
-    mutate(survey_date = with_tz(as.POSIXct(survey_date), tzone = "America/Los_Angeles")) %>%
+    mutate(survey_date = as.POSIXct(survey_date, tz = "America/Los_Angeles")) %>%
     mutate(survey_date_dt = format(survey_date, "%m/%d/%Y")) %>%
-    mutate(start_time = with_tz(as.POSIXct(start_time), tzone = "America/Los_Angeles")) %>%
+    mutate(start_time = as.POSIXct(start_time, tz = "America/Los_Angeles")) %>%
     mutate(start_time_dt = format(start_time, "%H:%M")) %>%
-    mutate(end_time = with_tz(as.POSIXct(end_time), tzone = "America/Los_Angeles")) %>%
+    mutate(end_time = as.POSIXct(end_time, tz = "America/Los_Angeles")) %>%
     mutate(end_time_dt = format(end_time, "%H:%M")) %>%
-    mutate(created_date = with_tz(as.POSIXct(created_date), tzone = "America/Los_Angeles")) %>%
+    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
     mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(as.POSIXct(modified_date), tzone = "America/Los_Angeles")) %>%
+    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
     mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
     mutate(survey_date = as.Date(survey_date)) %>%
     select(survey_id, survey_date, survey_date_dt, survey_method, up_rm = upper_rm,
@@ -164,7 +164,7 @@ dup_survey = function(new_survey_vals, existing_survey_vals) {
 survey_insert = function(new_values) {
   survey_id = remisc::get_uuid(1L)
   # Pull out data
-  survey_datetime = new_values$survey_dt
+  survey_datetime = format(new_values$survey_dt)
   data_source_id = new_values$data_source_id
   data_source_unit_id = new_values$data_source_unit_id
   survey_method_id = new_values$survey_method_id
@@ -173,8 +173,8 @@ survey_insert = function(new_values) {
   lower_end_point_id = new_values$lower_end_point_id
   survey_completion_status_id = new_values$survey_completion_status_id
   incomplete_survey_type_id = new_values$incomplete_survey_type_id
-  survey_start_datetime = new_values$survey_start_datetime
-  survey_end_datetime = new_values$survey_end_datetime
+  survey_start_datetime = format(new_values$survey_start_datetime)
+  survey_end_datetime = format(new_values$survey_end_datetime)
   observer_last_name = new_values$observer_last_name
   if (is.na(observer_last_name) | observer_last_name == "") { observer_last_name = NA }
   data_submitter_last_name = new_values$data_submitter_last_name
@@ -220,7 +220,7 @@ survey_insert = function(new_values) {
 # Define update callback
 survey_update = function(edit_values) {
   # Pull out data
-  survey_datetime = edit_values$survey_datetime
+  survey_datetime = format(edit_values$survey_datetime)
   data_source_id = edit_values$data_source_id
   data_source_unit_id = edit_values$data_source_unit_id
   survey_method_id = edit_values$survey_method_id
@@ -229,35 +229,35 @@ survey_update = function(edit_values) {
   lower_end_point_id = edit_values$lower_end_point_id
   survey_completion_status_id = edit_values$survey_completion_status_id
   incomplete_survey_type_id = edit_values$incomplete_survey_type_id
-  survey_start_datetime = edit_values$survey_start_datetime
-  survey_end_datetime = edit_values$survey_end_datetime
+  survey_start_datetime = format(edit_values$survey_start_datetime)
+  survey_end_datetime = format(edit_values$survey_end_datetime)
   observer_last_name = edit_values$observer
   if (is.na(observer_last_name) | observer_last_name == "") { observer_last_name = NA }
   data_submitter_last_name = edit_values$submitter
   if (is.na(data_submitter_last_name) | data_submitter_last_name == "") { data_submitter_last_name = NA }
-  mod_dt = lubridate::with_tz(Sys.time(), "UTC")
+  mod_dt = format(lubridate::with_tz(Sys.time(), "UTC"))
   mod_by = Sys.getenv("USERNAME")
   survey_id = edit_values$survey_id
   # Checkout a connection
   con = poolCheckout(pool)
   update_result = dbSendStatement(
     con, glue_sql("UPDATE survey SET ",
-                  "survey_datetime = $1, ",
-                  "data_source_id = $2, ",
-                  "data_source_unit_id = $3, ",
-                  "survey_method_id = $4, ",
-                  "data_review_status_id = $5, ",
-                  "upper_end_point_id = $6, ",
-                  "lower_end_point_id = $7, ",
-                  "survey_completion_status_id = $8, ",
-                  "incomplete_survey_type_id = $9, ",
-                  "survey_start_datetime = $10, ",
-                  "survey_end_datetime = $11, ",
-                  "observer_last_name = $12, ",
-                  "data_submitter_last_name = $13, ",
-                  "modified_datetime = $14, ",
-                  "modified_by = $15 ",
-                  "where survey_id = $16"))
+                  "survey_datetime = ?, ",
+                  "data_source_id = ?, ",
+                  "data_source_unit_id = ?, ",
+                  "survey_method_id = ?, ",
+                  "data_review_status_id = ?, ",
+                  "upper_end_point_id = ?, ",
+                  "lower_end_point_id = ?, ",
+                  "survey_completion_status_id = ?, ",
+                  "incomplete_survey_type_id = ?, ",
+                  "survey_start_datetime = ?, ",
+                  "survey_end_datetime = ?, ",
+                  "observer_last_name = ?, ",
+                  "data_submitter_last_name = ?, ",
+                  "modified_datetime = ?, ",
+                  "modified_by = ? ",
+                  "where survey_id = ?"))
   dbBind(update_result, list(survey_datetime, data_source_id, data_source_unit_id,
                              survey_method_id, data_review_status_id, upper_end_point_id,
                              lower_end_point_id, survey_completion_status_id,

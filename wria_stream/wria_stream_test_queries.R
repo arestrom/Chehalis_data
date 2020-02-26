@@ -28,7 +28,7 @@ strt = Sys.time()
 (wrias = get_wrias())
 nd = Sys.time(); nd - strt
 
-# # Get streams Method 1....works
+# # Get streams Method 1, filter in dplyr....works
 # chosen_wria = wrias[[1]]
 # get_streams_one = function(chosen_wria) {
 #   qry = glue("select distinct wb.waterbody_id, wb.waterbody_name as stream_name, ",
@@ -53,7 +53,7 @@ nd = Sys.time(); nd - strt
 # streams = get_streams_one(chosen_wria)
 # nd = Sys.time(); nd - strt
 
-# Get streams....Method 2....much faster, from 2.61 seconds to 0.42 seconds (6.2 times as fast)
+# Get streams....Method 2, filter in sql....much faster, from 2.61 seconds to 0.42 seconds (6.2 times as fast)
 chosen_wria = wrias[[2]]
 get_streams = function(chosen_wria) {
   qry = glue("select distinct wb.waterbody_id, wb.waterbody_name as stream_name, ",

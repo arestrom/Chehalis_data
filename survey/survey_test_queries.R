@@ -77,7 +77,7 @@ nd = Sys.time(); nd - strt
 # Function to get header data...use multiselect for year
 survey_year = survey_years[[1]]
 get_surveys = function(waterbody_id, survey_year) {
-  qry = glue("select s.survey_id, s.survey_datetime as survey_date, ",
+  qry = glue("select s.survey_id, datetime(s.survey_datetime, 'localtime') as survey_date, ",
              "ds.data_source_code, ",
              "data_source_code || ': ' || data_source_name as data_source, ",
              "du.data_source_unit_name as data_source_unit, ",
@@ -89,12 +89,12 @@ get_surveys = function(waterbody_id, survey_year) {
              "locl.location_id as lower_location_id, ",
              "sct.completion_status_description as completion, ",
              "ics.incomplete_survey_description as incomplete_type, ",
-             "s.survey_start_datetime as start_time, ",
-             "s.survey_end_datetime as end_time, ",
+             "datetime(s.survey_start_datetime, 'localtime') as start_time, ",
+             "datetime(s.survey_end_datetime, 'localtime') as end_time, ",
              "s.observer_last_name as observer, ",
              "s.data_submitter_last_name as submitter, ",
-             "s.created_datetime as created_date, ",
-             "s.created_by, s.modified_datetime as modified_date, ",
+             "datetime(s.created_datetime, 'localtime') as created_date, ",
+             "s.created_by, datetime(s.modified_datetime, 'localtime') as modified_date, ",
              "s.modified_by ",
              "from survey as s ",
              "inner join data_source_lut as ds on s.data_source_id = ds.data_source_id ",
@@ -105,21 +105,21 @@ get_surveys = function(waterbody_id, survey_year) {
              "inner join location as locl on s.lower_end_point_id = locl.location_id ",
              "left join survey_completion_status_lut as sct on s.survey_completion_status_id = sct.survey_completion_status_id ",
              "inner join incomplete_survey_type_lut as ics on s.incomplete_survey_type_id = ics.incomplete_survey_type_id ",
-             "where strftime('%Y', s.survey_datetime) = '{survey_year}' ",
+             "where strftime('%Y', datetime(s.survey_datetime, 'localtime')) = '{survey_year}' ",
              "and (locu.waterbody_id = '{waterbody_id}' or locl.waterbody_id = '{waterbody_id}')")
   con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
   surveys = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   surveys = surveys %>%
-    mutate(survey_date = with_tz(as.POSIXct(survey_date), tzone = "America/Los_Angeles")) %>%
+    mutate(survey_date = as.POSIXct(survey_date, tz = "America/Los_Angeles")) %>%
     mutate(survey_date_dt = format(survey_date, "%m/%d/%Y")) %>%
-    mutate(start_time = with_tz(as.POSIXct(start_time), tzone = "America/Los_Angeles")) %>%
+    mutate(start_time = as.POSIXct(start_time, tz = "America/Los_Angeles")) %>%
     mutate(start_time_dt = format(start_time, "%H:%M")) %>%
-    mutate(end_time = with_tz(as.POSIXct(end_time), tzone = "America/Los_Angeles")) %>%
+    mutate(end_time = as.POSIXct(end_time, tz = "America/Los_Angeles")) %>%
     mutate(end_time_dt = format(end_time, "%H:%M")) %>%
-    mutate(created_date = with_tz(as.POSIXct(created_date), tzone = "America/Los_Angeles")) %>%
+    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
     mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(as.POSIXct(modified_date), tzone = "America/Los_Angeles")) %>%
+    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
     mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
     mutate(survey_date = as.Date(survey_date)) %>%
     select(survey_id, survey_date, survey_date_dt, survey_method, up_rm = upper_rm,
