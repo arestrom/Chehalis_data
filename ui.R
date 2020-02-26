@@ -44,7 +44,7 @@ ui = dashboardPagePlus(
                       title = "Survey comments",
                       color = "purple",
                       collapsed = TRUE,
-                      #survey_comment_ui
+                      survey_comment_ui
                     ),
                     accordionItem(
                       id = 2,

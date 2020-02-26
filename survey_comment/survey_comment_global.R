@@ -9,8 +9,8 @@ get_survey_comment = function(survey_id) {
              "vt.visibility_type_short_description as visibility_type, ",
              "wt.weather_type_description as weather_type, ",
              "sc.comment_text as survey_comment, ",
-             "sc.created_datetime as created_date, ",
-             "sc.created_by, sc.modified_datetime as modified_date, ",
+             "datetime(sc.created_datetime, 'localtime') as created_date, ",
+             "sc.created_by, datetime(sc.modified_datetime, 'localtime') as modified_date, ",
              "sc.modified_by ",
              "from survey_comment as sc ",
              "left join area_surveyed_lut as ars on sc.area_surveyed_id = ars.area_surveyed_id ",
@@ -28,10 +28,9 @@ get_survey_comment = function(survey_id) {
   survey_comments = DBI::dbGetQuery(pool, qry)
   poolReturn(con)
   survey_comments = survey_comments %>%
-    # mutate(survey_comment_id = tolower(survey_comment_id)) %>%
-    mutate(created_date = with_tz(created_date, tzone = "America/Los_Angeles")) %>%
+    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
     mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(modified_date, tzone = "America/Los_Angeles")) %>%
+    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
     mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
     select(survey_comment_id, area_surveyed, abundance_condition, stream_condition,
            stream_flow, count_condition, survey_direction, survey_timing,
@@ -183,6 +182,7 @@ get_weather_type = function() {
 # Define the insert callback
 survey_comment_insert = function(new_comment_values) {
   new_comment_values = new_comment_values
+  survey_comment_id = remisc::get_uuid(1L)
   # Pull out data
   survey_id = new_comment_values$survey_id
   area_surveyed_id = new_comment_values$area_surveyed_id
@@ -202,6 +202,7 @@ survey_comment_insert = function(new_comment_values) {
   con = poolCheckout(pool)
   insert_result = dbSendStatement(
     con, glue_sql("INSERT INTO survey_comment (",
+                  "survey_comment_id, ",
                   "survey_id, ",
                   "area_surveyed_id, ",
                   "fish_abundance_condition_id, ",
@@ -216,8 +217,8 @@ survey_comment_insert = function(new_comment_values) {
                   "comment_text, ",
                   "created_by) ",
                   "VALUES (",
-                  "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
-  dbBind(insert_result, list(survey_id, area_surveyed_id, fish_abundance_condition_id,
+                  "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+  dbBind(insert_result, list(survey_comment_id, survey_id, area_surveyed_id, fish_abundance_condition_id,
                              stream_condition_id, stream_flow_type_id,
                              survey_count_condition_id, survey_direction_id,
                              survey_timing_id, visibility_condition_id,
@@ -249,26 +250,26 @@ survey_comment_update = function(comment_edit_values) {
   weather_type_id = edit_values$weather_type_id
   comment_text = edit_values$comment_text
   if (is.na(comment_text) | comment_text == "") { comment_text = NA }
-  mod_dt = lubridate::with_tz(Sys.time(), "UTC")
+  mod_dt = format(lubridate::with_tz(Sys.time(), "UTC"))
   mod_by = Sys.getenv("USERNAME")
   # Checkout a connection
   con = poolCheckout(pool)
   update_result = dbSendStatement(
     con, glue_sql("UPDATE survey_comment SET ",
-                  "area_surveyed_id = $1, ",
-                  "fish_abundance_condition_id = $2, ",
-                  "stream_condition_id = $3, ",
-                  "stream_flow_type_id = $4, ",
-                  "survey_count_condition_id = $5, ",
-                  "survey_direction_id = $6, ",
-                  "survey_timing_id = $7, ",
-                  "visibility_condition_id = $8, ",
-                  "visibility_type_id = $9, ",
-                  "weather_type_id = $10, ",
-                  "comment_text = $11, ",
-                  "modified_datetime = $12, ",
-                  "modified_by = $13 ",
-                  "where survey_comment_id = $14"))
+                  "area_surveyed_id = ?, ",
+                  "fish_abundance_condition_id = ?, ",
+                  "stream_condition_id = ?, ",
+                  "stream_flow_type_id = ?, ",
+                  "survey_count_condition_id = ?, ",
+                  "survey_direction_id = ?, ",
+                  "survey_timing_id = ?, ",
+                  "visibility_condition_id = ?, ",
+                  "visibility_type_id = ?, ",
+                  "weather_type_id = ?, ",
+                  "comment_text = ?, ",
+                  "modified_datetime = ?, ",
+                  "modified_by = ? ",
+                  "where survey_comment_id = ?"))
   dbBind(update_result, list(area_surveyed_id, fish_abundance_condition_id,
                              stream_condition_id, stream_flow_type_id,
                              survey_count_condition_id, survey_direction_id,
@@ -289,7 +290,7 @@ survey_comment_delete = function(delete_values) {
   survey_comment_id = delete_values$survey_comment_id
   con = poolCheckout(pool)
   delete_result = dbSendStatement(
-    con, glue_sql("DELETE FROM survey_comment WHERE survey_comment_id = $1"))
+    con, glue_sql("DELETE FROM survey_comment WHERE survey_comment_id = ?"))
   dbBind(delete_result, list(survey_comment_id))
   dbGetRowsAffected(delete_result)
   dbClearResult(delete_result)

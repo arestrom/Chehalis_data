@@ -36,7 +36,7 @@ output$count_condition_select = renderUI({
   count_condition_list = c("", count_condition_list)
   selectizeInput("count_condition_select", label = "count_condition",
                  choices = count_condition_list, selected = NULL,
-                 width = "200px")
+                 width = "250px")
 })
 
 output$survey_direction_select = renderUI({
@@ -678,6 +678,11 @@ observeEvent(input$delete_survey_comment, {
            visibility_condition, visibility_type, weather_type, survey_comment,
            created_dt, created_by, modified_dt, modified_by)
   replaceData(survey_comment_dt_proxy, survey_comments_after_delete)
+})
+
+# Set row selection to NULL if survey comment is deleted
+observeEvent(input$delete_survey_comment, {
+  selectRows(survey_dt_proxy, NULL)
 })
 
 

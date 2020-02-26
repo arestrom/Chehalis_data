@@ -6,7 +6,7 @@
 server = function(input, output, session) {
   source("wria_stream/wria_stream_srv.R", local = TRUE)
   source("survey/survey_srv.R", local = TRUE)
-  # source("survey_comment/survey_comment_srv.R", local = TRUE)
+  source("survey_comment/survey_comment_srv.R", local = TRUE)
   # source("survey_intent/survey_intent_srv.R", local = TRUE)
   # source("waterbody_meas/waterbody_meas_srv.R", local = TRUE)
   # source("survey_event/survey_event_srv.R", local = TRUE)
