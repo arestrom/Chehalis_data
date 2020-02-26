@@ -51,18 +51,8 @@ library(tibble)
 library(sf)
 library(glue)
 
-# # Must add at least one table for spatialite gui to not give error
-# mydb <- dbConnect(RSQLite::SQLite(), "my_db.sqlite")
-# dbWriteTable(mydb, "mtcars", mtcars)
-# dbWriteTable(mydb, "iris", iris)
-# dbListTables(mydb)
-# dbDisconnect(mydb)
-
 # Create database connection
 con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-# load extension...needed for at least the uuid function
-qry = "SELECT load_extension('mod_spatialite')"
-rs = dbGetQuery(con, qry)
 
 # Load a table...you can drop manually in spatilite gui later and it will still open without error
 # There just needs to be a table in the DB to ensure the magic number stuff works out correctly.

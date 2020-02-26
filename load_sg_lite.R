@@ -26,7 +26,7 @@
 #
 #
 # Notes on R procedure:
-#  1.
+#  1. Updated to convert all times to UTC for loading to sqlite
 #
 #
 # ToDo:
@@ -95,7 +95,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -115,7 +115,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -135,7 +135,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -155,7 +155,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -175,7 +175,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -195,7 +195,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -215,7 +215,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -235,7 +235,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -255,7 +255,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -275,7 +275,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -295,7 +295,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -315,7 +315,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -335,7 +335,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -355,7 +355,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -375,7 +375,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -395,7 +395,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -415,7 +415,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -435,7 +435,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -456,7 +456,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -476,7 +476,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -496,7 +496,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -516,7 +516,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -536,7 +536,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -556,7 +556,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -576,7 +576,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -596,7 +596,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -616,7 +616,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -636,7 +636,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -657,7 +657,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -678,7 +678,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -698,7 +698,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -718,7 +718,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -738,7 +738,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -759,7 +759,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -780,7 +780,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -801,7 +801,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -821,7 +821,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -841,7 +841,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -861,7 +861,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -881,7 +881,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -901,7 +901,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -921,7 +921,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -941,7 +941,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -961,7 +961,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -981,7 +981,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1001,7 +1001,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1021,7 +1021,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1042,7 +1042,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1062,7 +1062,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1082,7 +1082,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1102,7 +1102,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1122,7 +1122,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1142,7 +1142,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1162,7 +1162,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1182,7 +1182,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1203,7 +1203,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1223,7 +1223,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1243,7 +1243,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1263,7 +1263,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1283,7 +1283,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1303,7 +1303,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1323,7 +1323,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1343,7 +1343,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1363,7 +1363,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1383,7 +1383,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime))
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1392,7 +1392,6 @@ dbDisconnect(db_con)
 
 # Clean up
 rm(list = c("dat"))
-
 
 #=================================================================================================
 # Location data
@@ -1412,7 +1411,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime)) %>%
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC"))) %>%
   select(-gid)
 
 # Check size of object
@@ -1500,7 +1499,7 @@ wb = dat %>%
   select(waterbody_id, waterbody_name, waterbody_display_name,
          latitude_longitude_id, stream_catalog_code, tributary_to_name,
          obsolete_flag, obsolete_datetime) %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime)) %>%
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1513,8 +1512,8 @@ st = dat %>%
   select(stream_id, waterbody_id, geom = geometry, created_datetime,
          created_by, modified_datetime, modified_by) %>%
   filter(!is.na(stream_id)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime))
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC")))
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -1578,8 +1577,8 @@ loc = dat %>%
          river_mile_measure, location_code, location_name,
          location_description, waloc_id, created_datetime,
          created_by, modified_datetime, modified_by) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1594,8 +1593,8 @@ lc = dat %>%
          created_by = lc_create_by, modified_datetime = lc_modify_date,
          modified_by = lc_modify_by) %>%
   filter(!is.na(location_coordinates_id)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1631,7 +1630,7 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(obsolete_datetime = as.character(obsolete_datetime)) %>%
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1668,11 +1667,11 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(survey_datetime = as.character(survey_datetime)) %>%
-  mutate(survey_start_datetime = as.character(survey_start_datetime)) %>%
-  mutate(survey_end_datetime = as.character(survey_end_datetime)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(survey_datetime = format(with_tz(survey_datetime, tzone = "UTC"))) %>%
+  mutate(survey_start_datetime = format(with_tz(survey_start_datetime, tzone = "UTC"))) %>%
+  mutate(survey_end_datetime = format(with_tz(survey_end_datetime, tzone = "UTC"))) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1709,8 +1708,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1744,8 +1743,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1779,8 +1778,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1843,9 +1842,9 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(inactive_datetime = as.character(inactive_datetime)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(inactive_datetime = format(with_tz(inactive_datetime, tzone = "UTC"))) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1880,9 +1879,9 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(barrier_observed_datetime = as.character(barrier_observed_datetime)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(barrier_observed_datetime = format(with_tz(barrier_observed_datetime, tzone = "UTC"))) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1918,10 +1917,10 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(start_water_temperature_datetime = as.character(start_water_temperature_datetime)) %>%
-  mutate(end_water_temperature_datetime = as.character(end_water_temperature_datetime)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(start_water_temperature_datetime = format(with_tz(start_water_temperature_datetime, tzone = "UTC"))) %>%
+  mutate(end_water_temperature_datetime = format(with_tz(end_water_temperature_datetime, tzone = "UTC"))) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1956,9 +1955,9 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(observation_datetime = as.character(observation_datetime)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(observation_datetime = format(with_tz(observation_datetime, tzone = "UTC"))) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -1992,10 +1991,10 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(fish_start_datetime = as.character(fish_start_datetime)) %>%
-  mutate(fish_end_datetime = as.character(fish_end_datetime)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(fish_start_datetime = format(with_tz(fish_start_datetime, tzone = "UTC"))) %>%
+  mutate(fish_end_datetime = format(with_tz(fish_end_datetime, tzone = "UTC"))) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2029,8 +2028,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2065,8 +2064,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2103,9 +2102,9 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(fish_encounter_datetime = as.character(fish_encounter_datetime)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(fish_encounter_datetime = format(with_tz(fish_encounter_datetime, tzone = "UTC"))) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2145,8 +2144,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2183,8 +2182,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2221,8 +2220,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2260,8 +2259,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2297,9 +2296,9 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(redd_encounter_datetime = as.character(redd_encounter_datetime)) %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(redd_encounter_datetime = format(with_tz(redd_encounter_datetime, tzone = "UTC"))) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2339,8 +2338,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2376,8 +2375,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
@@ -2413,8 +2412,8 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(created_datetime = as.character(created_datetime)) %>%
-  mutate(modified_datetime = as.character(modified_datetime)) %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink

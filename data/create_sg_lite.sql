@@ -31,7 +31,7 @@
 -- Location ------------------------------------------------------
 
 CREATE TABLE waterbody_lut (
-    waterbody_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    waterbody_id text PRIMARY KEY,
     waterbody_name text NOT NULL,
     waterbody_display_name text,
     latitude_longitude_id character varying(13),
@@ -42,7 +42,7 @@ CREATE TABLE waterbody_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE stream (
-    stream_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    stream_id text PRIMARY KEY,
     waterbody_id text NOT NULL,
     geom BLOB NOT NULL,
     created_datetime text DEFAULT (datetime('now')) NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE stream (
 ) WITHOUT ROWID;
 
 CREATE TABLE wria_lut (
-    wria_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    wria_id text PRIMARY KEY,
     wria_code character varying(2) NOT NULL,
     wria_description text NOT NULL,
     geom BLOB NOT NULL,
@@ -62,28 +62,28 @@ CREATE TABLE wria_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE location_type_lut (
-    location_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    location_type_id text PRIMARY KEY,
     location_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE location_orientation_type_lut (
-    location_orientation_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    location_orientation_type_id text PRIMARY KEY,
     orientation_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE stream_channel_type_lut (
-    stream_channel_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    stream_channel_type_id text PRIMARY KEY,
     channel_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE location (
-    location_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    location_id text PRIMARY KEY,
     waterbody_id text NOT NULL,
     wria_id text NOT NULL,
     location_type_id text NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE location (
 ) WITHOUT ROWID;
 
 CREATE TABLE location_coordinates (
-    location_coordinates_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    location_coordinates_id text PRIMARY KEY,
     location_id text NOT NULL,
     horizontal_accuracy decimal(8,2),
     comment_text text,
@@ -119,7 +119,7 @@ CREATE TABLE location_coordinates (
 ) WITHOUT ROWID;
 
 CREATE TABLE media_type_lut (
-    media_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    media_type_id text PRIMARY KEY,
     media_type_code text NOT NULL,
     media_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -127,7 +127,7 @@ CREATE TABLE media_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE media_location (
-    media_location_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    media_location_id text PRIMARY KEY,
     location_id text NOT NULL,
     media_type_id text NOT NULL,
     media_url text NOT NULL,
@@ -140,7 +140,7 @@ CREATE TABLE media_location (
 ) WITHOUT ROWID;
 
 CREATE TABLE species_lut (
-    species_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    species_id text PRIMARY KEY,
     species_code text NOT NULL,
     common_name text NOT NULL,
     genus text,
@@ -151,7 +151,7 @@ CREATE TABLE species_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE run_lut (
-    run_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    run_id text PRIMARY KEY,
     run_short_description text NOT NULL,
     run_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -159,7 +159,7 @@ CREATE TABLE run_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE stock_lut (
-    stock_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    stock_id text PRIMARY KEY,
     waterbody_id text NOT NULL,
     species_id text NOT NULL,
     run_id text NOT NULL,
@@ -179,7 +179,7 @@ CREATE TABLE stock_lut (
 --  Survey ------------------------------------------------------
 
 CREATE TABLE data_source_lut (
-    data_source_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    data_source_id text PRIMARY KEY,
     data_source_name text NOT NULL,
     data_source_code text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -187,14 +187,14 @@ CREATE TABLE data_source_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE data_source_unit_lut (
-    data_source_unit_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    data_source_unit_id text PRIMARY KEY,
     data_source_unit_name text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_method_lut (
-    survey_method_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_method_id text PRIMARY KEY,
     survey_method_code text NOT NULL,
     survey_method_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -202,28 +202,28 @@ CREATE TABLE survey_method_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE data_review_status_lut (
-    data_review_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    data_review_status_id text PRIMARY KEY,
     data_review_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_completion_status_lut (
-    survey_completion_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_completion_status_id text PRIMARY KEY,
     completion_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE incomplete_survey_type_lut (
-    incomplete_survey_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    incomplete_survey_type_id text PRIMARY KEY,
     incomplete_survey_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey (
-    survey_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_id text PRIMARY KEY,
     survey_datetime text NOT NULL,
     data_source_id text NOT NULL,
     data_source_unit_id text NOT NULL,
@@ -254,28 +254,28 @@ CREATE TABLE survey (
 -- Survey comment ------------------------------------------------------
 
 CREATE TABLE area_surveyed_lut (
-    area_surveyed_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    area_surveyed_id text PRIMARY KEY,
     area_surveyed text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_abundance_condition_lut (
-    fish_abundance_condition_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_abundance_condition_id text PRIMARY KEY,
     fish_abundance_condition text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE stream_condition_lut (
-    stream_condition_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    stream_condition_id text PRIMARY KEY,
     stream_condition text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE stream_flow_type_lut (
-    stream_flow_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    stream_flow_type_id text PRIMARY KEY,
     flow_type_short_description text NOT NULL,
     flow_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -283,35 +283,35 @@ CREATE TABLE stream_flow_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_count_condition_lut (
-    survey_count_condition_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_count_condition_id text PRIMARY KEY,
     survey_count_condition text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_direction_lut (
-    survey_direction_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_direction_id text PRIMARY KEY,
     survey_direction_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_timing_lut (
-    survey_timing_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_timing_id text PRIMARY KEY,
     survey_timing text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE visibility_condition_lut (
-    visibility_condition_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    visibility_condition_id text PRIMARY KEY,
     visibility_condition text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE visibility_type_lut (
-    visibility_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    visibility_type_id text PRIMARY KEY,
     visibility_type_short_description text NOT NULL,
     visibility_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -319,14 +319,14 @@ CREATE TABLE visibility_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE weather_type_lut (
-    weather_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    weather_type_id text PRIMARY KEY,
     weather_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_comment (
-    survey_comment_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_comment_id text PRIMARY KEY,
     survey_id text NOT NULL,
     area_surveyed_id text,
     fish_abundance_condition_id text,
@@ -359,7 +359,7 @@ CREATE TABLE survey_comment (
 -- Survey intent ------------------------------------------------------
 
 CREATE TABLE count_type_lut (
-    count_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    count_type_id text PRIMARY KEY,
     count_type_code text NOT NULL,
     count_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -367,7 +367,7 @@ CREATE TABLE count_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_intent (
-    survey_intent_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_intent_id text PRIMARY KEY,
     survey_id text NOT NULL,
     species_id text NOT NULL,
     count_type_id text NOT NULL,
@@ -383,7 +383,7 @@ CREATE TABLE survey_intent (
 -- Mobile survey form ------------------------------------------------------
 
 CREATE TABLE mobile_survey_form (
-    mobile_survey_form_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mobile_survey_form_id text PRIMARY KEY,
     survey_id text NOT NULL,
     parent_form_survey_id integer NOT NULL,
     parent_form_survey_guid text NOT NULL,
@@ -399,14 +399,14 @@ CREATE TABLE mobile_survey_form (
 -- Mobile device ------------------------------------------------------
 
 CREATE TABLE mobile_device_type_lut (
-    mobile_device_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mobile_device_type_id text PRIMARY KEY,
     mobile_device_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mobile_device (
-    mobile_device_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mobile_device_id text PRIMARY KEY,
     mobile_device_type_id text NOT NULL,
     mobile_equipment_identifier text NOT NULL,
     mobile_device_name text NOT NULL,
@@ -423,7 +423,7 @@ CREATE TABLE mobile_device (
 -- Survey mobile device ------------------------------------------------------
 
 CREATE TABLE survey_mobile_device (
-    survey_mobile_device_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_mobile_device_id text PRIMARY KEY,
     survey_id text NOT NULL,
     mobile_device_id text NOT NULL,
     CONSTRAINT fk_survey__survey_mobile_device FOREIGN KEY (survey_id) REFERENCES survey(survey_id),
@@ -433,21 +433,21 @@ CREATE TABLE survey_mobile_device (
 -- Fish barrier ------------------------------------------------------
 
 CREATE TABLE barrier_type_lut (
-    barrier_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    barrier_type_id text PRIMARY KEY,
     barrier_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE barrier_measurement_type_lut (
-    barrier_measurement_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    barrier_measurement_type_id text PRIMARY KEY,
     measurement_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_barrier (
-    fish_barrier_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_barrier_id text PRIMARY KEY,
     survey_id text NOT NULL,
     barrier_location_id text NOT NULL,
     barrier_type_id text NOT NULL,
@@ -471,7 +471,7 @@ CREATE TABLE fish_barrier (
 -- Waterbody measurement ------------------------------------------------------
 
 CREATE TABLE water_clarity_type_lut (
-    water_clarity_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    water_clarity_type_id text PRIMARY KEY,
     clarity_type_short_description text NOT NULL,
     clarity_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -479,7 +479,7 @@ CREATE TABLE water_clarity_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE waterbody_measurement (
-    waterbody_measurement_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    waterbody_measurement_id text PRIMARY KEY,
     survey_id text NOT NULL,
     water_clarity_type_id text,
     water_clarity_meter decimal(4,2),
@@ -500,7 +500,7 @@ CREATE TABLE waterbody_measurement (
 -- Other observation ------------------------------------------------------
 
 CREATE TABLE observation_type_lut (
-    observation_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    observation_type_id text PRIMARY KEY,
     observation_type_name text NOT NULL,
     observation_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -508,7 +508,7 @@ CREATE TABLE observation_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE other_observation (
-    other_observation_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    other_observation_id text PRIMARY KEY,
     survey_id text NOT NULL,
     observation_location_id text,
     observation_type_id text NOT NULL,
@@ -527,7 +527,7 @@ CREATE TABLE other_observation (
 -- Fish capture ------------------------------------------------------
 
 CREATE TABLE gear_performance_type_lut (
-    gear_performance_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    gear_performance_type_id text PRIMARY KEY,
     performance_short_description text NOT NULL,
     performance_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -535,7 +535,7 @@ CREATE TABLE gear_performance_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_capture (
-    fish_capture_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_capture_id text PRIMARY KEY,
     survey_id text NOT NULL,
     gear_performance_type_id text NOT NULL,
     fish_start_datetime text,
@@ -551,14 +551,14 @@ CREATE TABLE fish_capture (
 -- Fish presence ------------------------------------------------------
 
 CREATE TABLE fish_presence_type_lut (
-    fish_presence_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_presence_type_id text PRIMARY KEY,
     fish_presence_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_species_presence (
-    fish_species_presence_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_species_presence_id text PRIMARY KEY,
     survey_id text NOT NULL,
     species_id text NOT NULL,
     fish_presence_type_id text NOT NULL,
@@ -575,7 +575,7 @@ CREATE TABLE fish_species_presence (
 -- Create tables: Survey event Level -----------------------------------------------------------------------------------------------------
 
 CREATE TABLE survey_design_type_lut (
-    survey_design_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_design_type_id text PRIMARY KEY,
     survey_design_type_code text NOT NULL,
     survey_design_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -583,14 +583,14 @@ CREATE TABLE survey_design_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE cwt_detection_method_lut (
-    cwt_detection_method_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    cwt_detection_method_id text PRIMARY KEY,
     detection_method_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE survey_event (
-    survey_event_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    survey_event_id text PRIMARY KEY,
     survey_id text NOT NULL,
     species_id text NOT NULL,
     survey_design_type_id text NOT NULL,
@@ -615,21 +615,21 @@ CREATE TABLE survey_event (
 -- Fish encounter ------------------------------------------------------
 
 CREATE TABLE fish_status_lut (
-    fish_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_status_id text PRIMARY KEY,
     fish_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE sex_lut (
-    sex_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    sex_id text PRIMARY KEY,
     sex_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE maturity_lut (
-    maturity_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    maturity_id text PRIMARY KEY,
     maturity_short_description text NOT NULL,
     maturity_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -637,21 +637,21 @@ CREATE TABLE maturity_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE origin_lut (
-    origin_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    origin_id text PRIMARY KEY,
     origin_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE cwt_detection_status_lut (
-    cwt_detection_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    cwt_detection_status_id text PRIMARY KEY,
     detection_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 --CREATE TABLE adipose_clip_status_lut (
---	adipose_clip_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+--	adipose_clip_status_id text PRIMARY KEY,
 --    adipose_clip_status_code text NOT NULL,
 --    adipose_clip_status_description text NOT NULL,
 --    obsolete_flag text NOT NULL,
@@ -667,7 +667,7 @@ CREATE TABLE fish_behavior_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE mortality_type_lut (
-    mortality_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mortality_type_id text PRIMARY KEY,
     mortality_type_short_description text NOT NULL,
     mortality_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -675,7 +675,7 @@ CREATE TABLE mortality_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_encounter (
-    fish_encounter_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_encounter_id text PRIMARY KEY,
     survey_event_id text NOT NULL,
     fish_location_id text,
     fish_status_id text NOT NULL,
@@ -708,7 +708,7 @@ CREATE TABLE fish_encounter (
 -- Individual fish ------------------------------------------------------
 
 CREATE TABLE fish_condition_type_lut (
-    fish_condition_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_condition_type_id text PRIMARY KEY,
     fish_condition_short_description text NOT NULL,
     fish_condition_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -716,7 +716,7 @@ CREATE TABLE fish_condition_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_trauma_type_lut (
-    fish_trauma_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_trauma_type_id text PRIMARY KEY,
     trauma_type_short_description text NOT NULL,
     trauma_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -724,14 +724,14 @@ CREATE TABLE fish_trauma_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE gill_condition_type_lut (
-    gill_condition_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    gill_condition_type_id text PRIMARY KEY,
     gill_condition_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE spawn_condition_type_lut (
-    spawn_condition_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    spawn_condition_type_id text PRIMARY KEY,
     spawn_condition_short_description text NOT NULL,
     spawn_condition_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -739,7 +739,7 @@ CREATE TABLE spawn_condition_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE cwt_result_type_lut (
-    cwt_result_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    cwt_result_type_id text PRIMARY KEY,
     cwt_result_type_code text NOT NULL,
     cwt_result_type_short_description text NOT NULL,
     cwt_result_type_description text NOT NULL,
@@ -748,7 +748,7 @@ CREATE TABLE cwt_result_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE age_code_lut (
-    age_code_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    age_code_id text PRIMARY KEY,
     european_age_code text NOT NULL,
     gilbert_rich_age_code text,
     fresh_water_annuli integer,
@@ -761,7 +761,7 @@ CREATE TABLE age_code_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE individual_fish (
-    individual_fish_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    individual_fish_id text PRIMARY KEY,
     fish_encounter_id text NOT NULL,
     fish_condition_type_id text NOT NULL,
     fish_trauma_type_id text NOT NULL,
@@ -794,7 +794,7 @@ CREATE TABLE individual_fish (
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_length_measurement_type_lut (
-    fish_length_measurement_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_length_measurement_type_id text PRIMARY KEY,
     length_type_code text NOT NULL,
     length_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -802,7 +802,7 @@ CREATE TABLE fish_length_measurement_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_length_measurement (
-    fish_length_measurement_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_length_measurement_id text PRIMARY KEY,
     individual_fish_id text NOT NULL,
     fish_length_measurement_type_id text NOT NULL,
     length_measurement_centimeter decimal(6,2) NOT NULL,
@@ -817,7 +817,7 @@ CREATE TABLE fish_length_measurement (
 -- Fish capture event ------------------------------------------------------
 
 CREATE TABLE fish_capture_status_lut (
-    fish_capture_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_capture_status_id text PRIMARY KEY,
     fish_capture_status_code text NOT NULL,
     fish_capture_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -825,7 +825,7 @@ CREATE TABLE fish_capture_status_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE disposition_type_lut (
-    disposition_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    disposition_type_id text PRIMARY KEY,
     disposition_type_code text NOT NULL,
     disposition_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -833,7 +833,7 @@ CREATE TABLE disposition_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE disposition_lut (
-    disposition_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    disposition_id text PRIMARY KEY,
     disposition_code text NOT NULL,
     fish_books_code text,
     disposition_description text NOT NULL,
@@ -842,7 +842,7 @@ CREATE TABLE disposition_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_capture_event (
-    fish_capture_event_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_capture_event_id text PRIMARY KEY,
     fish_encounter_id text NOT NULL,
     fish_capture_status_id text NOT NULL,
     disposition_type_id text NOT NULL,
@@ -862,14 +862,14 @@ CREATE TABLE fish_capture_event (
 -- Fish mark ------------------------------------------------------
 
 CREATE TABLE mark_type_category_lut (
-    mark_type_category_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mark_type_category_id text PRIMARY KEY,
     mark_type_category_name text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_type_lut (
-    mark_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mark_type_id text PRIMARY KEY,
     mark_type_category_id text NOT NULL,
     mark_type_code text NOT NULL,
     mark_type_description text NOT NULL,
@@ -879,14 +879,14 @@ CREATE TABLE mark_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_status_lut (
-    mark_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mark_status_id text PRIMARY KEY,
     mark_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_orientation_lut (
-    mark_orientation_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mark_orientation_id text PRIMARY KEY,
     mark_orientation_code text NOT NULL,
     mark_orientation_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -894,7 +894,7 @@ CREATE TABLE mark_orientation_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_placement_lut (
-    mark_placement_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mark_placement_id text PRIMARY KEY,
     mark_placement_code text NOT NULL,
     mark_placement_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -902,7 +902,7 @@ CREATE TABLE mark_placement_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_size_lut (
-    mark_size_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mark_size_id text PRIMARY KEY,
     mark_size_code text NOT NULL,
     mark_size_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -910,7 +910,7 @@ CREATE TABLE mark_size_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_color_lut (
-    mark_color_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mark_color_id text PRIMARY KEY,
     mark_color_code text NOT NULL,
     mark_color_name text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -918,7 +918,7 @@ CREATE TABLE mark_color_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE mark_shape_lut (
-    mark_shape_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    mark_shape_id text PRIMARY KEY,
     mark_shape_code text NOT NULL,
     mark_shape_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -926,7 +926,7 @@ CREATE TABLE mark_shape_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE fish_mark (
-    fish_mark_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    fish_mark_id text PRIMARY KEY,
     fish_encounter_id text NOT NULL,
     mark_type_id text NOT NULL,
     mark_status_id text NOT NULL,
@@ -955,7 +955,7 @@ CREATE TABLE fish_mark (
 -- Redd encounter ------------------------------------------------------
 
 CREATE TABLE redd_status_lut (
-    redd_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    redd_status_id text PRIMARY KEY,
     redd_status_code text NOT NULL,
     redd_status_short_description text NOT NULL,
     redd_status_description text NOT NULL,
@@ -964,7 +964,7 @@ CREATE TABLE redd_status_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_encounter (
-    redd_encounter_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    redd_encounter_id text PRIMARY KEY,
     survey_event_id text NOT NULL,
     redd_location_id text,
     redd_status_id text NOT NULL,
@@ -983,21 +983,21 @@ CREATE TABLE redd_encounter (
 -- Individual redd ------------------------------------------------------
 
 CREATE TABLE redd_shape_lut (
-    redd_shape_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    redd_shape_id text PRIMARY KEY,
     redd_shape_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_dewatered_type_lut (
-    redd_dewatered_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    redd_dewatered_type_id text PRIMARY KEY,
     dewatered_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE individual_redd (
-    individual_redd_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    individual_redd_id text PRIMARY KEY,
     redd_encounter_id text NOT NULL,
     redd_shape_id text NOT NULL,
     redd_dewatered_type_id text,
@@ -1022,7 +1022,7 @@ CREATE TABLE individual_redd (
 -- Redd substrate ------------------------------------------------------
 
 CREATE TABLE substrate_level_lut (
-    substrate_level_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    substrate_level_id text PRIMARY KEY,
     substrate_level_short_description text NOT NULL,
     substrate_level_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -1030,14 +1030,14 @@ CREATE TABLE substrate_level_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE substrate_type_lut (
-    substrate_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    substrate_type_id text PRIMARY KEY,
     substrate_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_substrate (
-    redd_substrate_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    redd_substrate_id text PRIMARY KEY,
     redd_encounter_id text NOT NULL,
     substrate_level_id text NOT NULL,
     substrate_type_id text NOT NULL,
@@ -1054,7 +1054,7 @@ CREATE TABLE redd_substrate (
 -- Redd confidence ------------------------------------------------------
 
 CREATE TABLE redd_confidence_type_lut (
-    redd_confidence_type_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    redd_confidence_type_id text PRIMARY KEY,
     confidence_type_short_description text NOT NULL,
     confidence_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
@@ -1062,14 +1062,14 @@ CREATE TABLE redd_confidence_type_lut (
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_confidence_review_status_lut (
-    redd_confidence_review_status_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    redd_confidence_review_status_id text PRIMARY KEY,
     review_status_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
 CREATE TABLE redd_confidence (
-    redd_confidence_id text DEFAULT (CreateUUID()) PRIMARY KEY,
+    redd_confidence_id text PRIMARY KEY,
     redd_encounter_id text NOT NULL,
     redd_confidence_type_id text NOT NULL,
     redd_confidence_review_status_id text NOT NULL,
