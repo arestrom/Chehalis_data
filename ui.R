@@ -68,7 +68,7 @@ ui = dashboardPagePlus(
                   collapsible = TRUE,
                   solidHeader = FALSE,
                   collapsed = FALSE,
-                  #survey_event_ui,
+                  survey_event_ui,
                   width = 12
                 ),
                 boxPlus(

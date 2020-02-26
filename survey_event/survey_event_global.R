@@ -6,8 +6,8 @@ get_survey_event = function(survey_id) {
              "rn.run_short_description as run, se.run_year, ",
              "se.estimated_percent_fish_seen as pct_fish_seen, ",
              "se.comment_text as species_comment, ",
-             "se.created_datetime as created_date, se.created_by, ",
-             "se.modified_datetime as modified_date, se.modified_by ",
+             "datetime(se.created_datetime, 'localtime') as created_date, se.created_by, ",
+             "datetime(se.modified_datetime, 'localtime') as modified_date, se.modified_by ",
              "from survey_event as se ",
              "left join species_lut as sp on se.species_id = sp.species_id ",
              "left join survey_design_type_lut as sd on se.survey_design_type_id = sd.survey_design_type_id ",
@@ -18,9 +18,9 @@ get_survey_event = function(survey_id) {
   survey_events = DBI::dbGetQuery(con, qry)
   poolReturn(con)
   survey_events = survey_events %>%
-    mutate(created_date = with_tz(created_date, tzone = "America/Los_Angeles")) %>%
+    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
     mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(modified_date, tzone = "America/Los_Angeles")) %>%
+    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
     mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
     select(survey_event_id, species_id, species, survey_design, cwt_detect_method,
            run, run_year, pct_fish_seen, species_comment, created_date,
@@ -111,6 +111,7 @@ dup_survey_event = function(new_survey_event_vals, existing_survey_event_vals) {
 # Define the insert callback
 survey_event_insert = function(new_event_values) {
   new_event_values = new_event_values
+  survey_event_id = remisc::get_uuid(1L)
   # Pull out data
   survey_id = new_event_values$survey_id
   species_id = new_event_values$species_id
@@ -126,6 +127,7 @@ survey_event_insert = function(new_event_values) {
   con = poolCheckout(pool)
   insert_result = dbSendStatement(
     con, glue_sql("INSERT INTO survey_event (",
+                  "survey_event_id, ",
                   "survey_id, ",
                   "species_id, ",
                   "survey_design_type_id, ",
@@ -136,8 +138,8 @@ survey_event_insert = function(new_event_values) {
                   "comment_text, ",
                   "created_by) ",
                   "VALUES (",
-                  "$1, $2, $3, $4, $5, $6, $7, $8, $9)"))
-  dbBind(insert_result, list(survey_id, species_id, survey_design_type_id,
+                  "?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+  dbBind(insert_result, list(survey_event_id, survey_id, species_id, survey_design_type_id,
                              cwt_detection_method_id, run_id, run_year,
                              estimated_percent_fish_seen, comment_text,
                              created_by))
@@ -163,22 +165,22 @@ survey_event_update = function(survey_event_edit_values) {
   estimated_percent_fish_seen = edit_values$pct_fish_seen
   comment_text = edit_values$species_comment
   if (is.na(comment_text) | comment_text == "") { comment_text = NA }
-  mod_dt = lubridate::with_tz(Sys.time(), "UTC")
+  mod_dt = format(lubridate::with_tz(Sys.time(), "UTC"))
   mod_by = Sys.getenv("USERNAME")
   # Checkout a connection
   con = poolCheckout(pool)
   update_result = dbSendStatement(
     con, glue_sql("UPDATE survey_event SET ",
-                  "species_id = $1, ",
-                  "survey_design_type_id = $2, ",
-                  "cwt_detection_method_id = $3, ",
-                  "run_id = $4, ",
-                  "run_year = $5, ",
-                  "estimated_percent_fish_seen = $6, ",
-                  "comment_text = $7, ",
-                  "modified_datetime = $8, ",
-                  "modified_by = $9 ",
-                  "where survey_event_id = $10"))
+                  "species_id = ?, ",
+                  "survey_design_type_id = ?, ",
+                  "cwt_detection_method_id = ?, ",
+                  "run_id = ?, ",
+                  "run_year = ?, ",
+                  "estimated_percent_fish_seen = ?, ",
+                  "comment_text = ?, ",
+                  "modified_datetime = ?, ",
+                  "modified_by = ? ",
+                  "where survey_event_id = ?"))
   dbBind(update_result, list(species_id, survey_design_type_id,
                              cwt_detection_method_id, run_id, run_year,
                              estimated_percent_fish_seen, comment_text,
@@ -218,7 +220,7 @@ survey_event_delete = function(delete_values) {
   survey_event_id = delete_values$survey_event_id
   con = poolCheckout(pool)
   delete_result = dbSendStatement(
-    con, glue_sql("DELETE FROM survey_event WHERE survey_event_id = $1"))
+    con, glue_sql("DELETE FROM survey_event WHERE survey_event_id = ?"))
   dbBind(delete_result, list(survey_event_id))
   dbGetRowsAffected(delete_result)
   dbClearResult(delete_result)
