@@ -80,7 +80,7 @@ nd = Sys.time(); nd - strt
 # Get years
 waterbody_id = streams$waterbody_id[[1]]
 get_data_years = function(waterbody_id) {
-  qry = glue("select distinct strftime('%Y', s.survey_datetime) as data_year ",
+  qry = glue("select distinct strftime('%Y', datetime(s.survey_datetime, 'localtime')) as data_year ",
              "from survey as s ",
              "inner join location as up_loc on s.upper_end_point_id = up_loc.location_id ",
              "inner join location as lo_loc on s.lower_end_point_id = lo_loc.location_id ",
