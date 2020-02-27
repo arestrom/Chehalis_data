@@ -4,8 +4,8 @@ get_length_measurements = function(individual_fish_id) {
   qry = glue("select flm.fish_length_measurement_id, ",
              "mt.length_type_description as length_type, ",
              "flm.length_measurement_centimeter as length_cm, ",
-             "flm.created_datetime as created_date, flm.created_by, ",
-             "flm.modified_datetime as modified_date, flm.modified_by ",
+             "datetime(flm.created_datetime, 'localtime') as created_date, flm.created_by, ",
+             "datetime(flm.modified_datetime, 'localtime') as modified_date, flm.modified_by ",
              "from fish_length_measurement as flm ",
              "inner join fish_length_measurement_type_lut as mt on flm.fish_length_measurement_type_id = mt.fish_length_measurement_type_id ",
              "where flm.individual_fish_id = '{individual_fish_id}'")
@@ -14,9 +14,9 @@ get_length_measurements = function(individual_fish_id) {
   poolReturn(con)
   length_measurements = length_measurements %>%
     mutate(fish_length_measurement_id = tolower(fish_length_measurement_id)) %>%
-    mutate(created_date = with_tz(created_date, tzone = "America/Los_Angeles")) %>%
+    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
     mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(modified_date, tzone = "America/Los_Angeles")) %>%
+    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
     mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
     select(fish_length_measurement_id, length_type, length_cm, created_date, created_dt, created_by,
            modified_date, modified_dt, modified_by) %>%
@@ -67,6 +67,7 @@ dup_length_type = function(new_length_type_vals, existing_length_type_vals) {
 # Define the insert callback
 length_measurement_insert = function(new_length_measurement_values) {
   new_insert_values = new_length_measurement_values
+  fish_length_measurement_id = remisc::get_uuid(1L)
   # Pull out data
   individual_fish_id = new_insert_values$individual_fish_id
   fish_length_measurement_type_id = new_insert_values$fish_length_measurement_type_id
@@ -76,13 +77,14 @@ length_measurement_insert = function(new_length_measurement_values) {
   con = poolCheckout(pool)
   insert_result = dbSendStatement(
     con, glue_sql("INSERT INTO fish_length_measurement (",
+                  "fish_length_measurement_id, ",
                   "individual_fish_id, ",
                   "fish_length_measurement_type_id, ",
                   "length_measurement_centimeter, ",
                   "created_by) ",
                   "VALUES (",
-                  "$1, $2, $3, $4)"))
-  dbBind(insert_result, list(individual_fish_id, fish_length_measurement_type_id,
+                  "?, ?, ?, ?, ?)"))
+  dbBind(insert_result, list(fish_length_measurement_id, individual_fish_id, fish_length_measurement_type_id,
                              length_measurement_centimeter, created_by))
   dbGetRowsAffected(insert_result)
   dbClearResult(insert_result)
@@ -100,17 +102,17 @@ length_measurement_update = function(length_measurement_edit_values) {
   fish_length_measurement_id = edit_values$fish_length_measurement_id
   fish_length_measurement_type_id = edit_values$fish_length_measurement_type_id
   length_measurement_centimeter =  edit_values$length_cm
-  mod_dt = lubridate::with_tz(Sys.time(), "UTC")
+  mod_dt = format(lubridate::with_tz(Sys.time(), "UTC"))
   mod_by = Sys.getenv("USERNAME")
   # Checkout a connection
   con = poolCheckout(pool)
   update_result = dbSendStatement(
     con, glue_sql("UPDATE fish_length_measurement SET ",
-                  "fish_length_measurement_type_id = $1, ",
-                  "length_measurement_centimeter = $2, ",
-                  "modified_datetime = $3, ",
-                  "modified_by = $4 ",
-                  "where fish_length_measurement_id = $5"))
+                  "fish_length_measurement_type_id = ?, ",
+                  "length_measurement_centimeter = ?, ",
+                  "modified_datetime = ?, ",
+                  "modified_by = ? ",
+                  "where fish_length_measurement_id = ?"))
   dbBind(update_result, list(fish_length_measurement_type_id,
                              length_measurement_centimeter,
                              mod_dt, mod_by,
@@ -129,7 +131,7 @@ length_measurement_delete = function(delete_values) {
   fish_length_measurement_id = delete_values$fish_length_measurement_id
   con = poolCheckout(pool)
   delete_result = dbSendStatement(
-    con, glue_sql("DELETE FROM fish_length_measurement WHERE fish_length_measurement_id = $1"))
+    con, glue_sql("DELETE FROM fish_length_measurement WHERE fish_length_measurement_id = ?"))
   dbBind(delete_result, list(fish_length_measurement_id))
   dbGetRowsAffected(delete_result)
   dbClearResult(delete_result)

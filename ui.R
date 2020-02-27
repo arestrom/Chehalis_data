@@ -105,7 +105,7 @@ ui = dashboardPagePlus(
                       title = "Fish length measurement",
                       color = "purple",
                       collapsed = TRUE,
-                      #fish_length_measurement_ui
+                      fish_length_measurement_ui
                     )
                   )
                 ),
