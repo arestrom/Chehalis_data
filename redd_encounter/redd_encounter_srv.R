@@ -425,7 +425,6 @@ output$redd_encounter_modal_delete_vals = renderDT({
 redd_encounter_dependencies = reactive({
   redd_encounter_id = selected_redd_encounter_data()$redd_encounter_id
   redd_enc_dep = get_redd_encounter_dependencies(redd_encounter_id)
-  print(redd_enc_dep)
   return(redd_enc_dep)
 })
 

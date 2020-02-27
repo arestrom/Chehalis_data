@@ -16,6 +16,5 @@ redd_substrate_ui = tags$div(
   br(),
   br(),
   br(),
-  DT::DTOutput("redd_substrates"),
-  verbatimTextOutput("chk_substrate_edit")
+  DT::DTOutput("redd_substrates")
 )
