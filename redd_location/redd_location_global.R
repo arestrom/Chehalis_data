@@ -38,7 +38,7 @@ get_redd_locations = function(waterbody_id, up_rm, lo_rm, survey_date, species_i
   # Pull out location_ids for second query
   loc_ids = paste0(paste0("'", unique(redd_loc_one$redd_location_id), "'"), collapse = ", ")
   # Define query for redd locations already tied to surveys
-  qry_two = glue("select s.survey_datetime as redd_survey_date, se.species_id as db_species_id, ",
+  qry_two = glue("select datetime(s.survey_datetime, 'localtime') as redd_survey_date, se.species_id as db_species_id, ",
                  "sp.common_name as species, uploc.river_mile_measure as up_rm, ",
                  "loloc.river_mile_measure as lo_rm, rloc.location_id as redd_location_id, ",
                  "rloc.location_name as redd_name, rs.redd_status_short_description as redd_status, ",
