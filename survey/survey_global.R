@@ -297,6 +297,7 @@ get_survey_dependencies = function(survey_id) {
              "where s.survey_id = '{survey_id}'")
   con = poolCheckout(pool)
   survey_dependents = DBI::dbGetQuery(pool, qry)
+  poolReturn(con)
   has_entries = function(x) any(x > 0L)
   survey_dependents = survey_dependents %>%
     select_if(has_entries)

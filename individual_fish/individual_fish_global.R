@@ -18,8 +18,8 @@ get_individual_fish = function(fish_encounter_id) {
              "ind.cwt_tag_code, ind.genetic_sample_number as genetic_sample_num, ",
              "ind.otolith_sample_number as otolith_sample_num, ",
              "ind.comment_text as fish_comment, ",
-             "ind.created_datetime as created_date, ind.created_by, ",
-             "ind.modified_datetime as modified_date, ind.modified_by ",
+             "datetime(ind.created_datetime, 'localtime') as created_date, ind.created_by, ",
+             "datetime(ind.modified_datetime, 'localtime') as modified_date, ind.modified_by ",
              "from individual_fish as ind ",
              "left join fish_condition_type_lut as fc on ind.fish_condition_type_id = fc.fish_condition_type_id ",
              "left join fish_trauma_type_lut as ft on ind.fish_trauma_type_id = ft.fish_trauma_type_id ",
@@ -34,9 +34,9 @@ get_individual_fish = function(fish_encounter_id) {
   individual_fish = individual_fish %>%
     mutate(age_code = if_else(!is.na(age_code), paste0("eu: ", age_code), age_code)) %>%
     mutate(age_code = if_else(!is.na(age_code) & !is.na(gr), paste0(age_code, "; gr: ", gr), age_code)) %>%
-    mutate(created_date = with_tz(created_date, tzone = "America/Los_Angeles")) %>%
+    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
     mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(modified_date, tzone = "America/Los_Angeles")) %>%
+    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
     mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
     select(individual_fish_id, fish_condition, fish_trauma, gill_condition, spawn_condition,
            fish_sample_num, scale_card_num, scale_position_num, age_code, snout_sample_num,
@@ -138,6 +138,7 @@ get_cwt_result = function() {
 # Define the insert callback
 individual_fish_insert = function(new_individual_fish_values) {
   new_insert_values = new_individual_fish_values
+  individual_fish_id = remisc::get_uuid(1L)
   # Pull out data
   fish_encounter_id = new_insert_values$fish_encounter_id
   fish_condition_type_id = new_insert_values$fish_condition_type_id
@@ -170,6 +171,7 @@ individual_fish_insert = function(new_individual_fish_values) {
   con = poolCheckout(pool)
   insert_result = dbSendStatement(
     con, glue_sql("INSERT INTO individual_fish (",
+                  "individual_fish_id, ",
                   "fish_encounter_id, ",
                   "fish_condition_type_id, ",
                   "fish_trauma_type_id, ",
@@ -190,8 +192,8 @@ individual_fish_insert = function(new_individual_fish_values) {
                   "comment_text, ",
                   "created_by) ",
                   "VALUES (",
-                  "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)"))
-  dbBind(insert_result, list(fish_encounter_id, fish_condition_type_id, fish_trauma_type_id,
+                  "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+  dbBind(insert_result, list(individual_fish_id, fish_encounter_id, fish_condition_type_id, fish_trauma_type_id,
                              gill_condition_type_id, spawn_condition_type_id, cwt_result_type_id,
                              age_code_id, percent_eggs_retained, eggs_retained_gram,
                              eggs_retained_number, fish_sample_number, scale_sample_card_number,
@@ -236,32 +238,32 @@ individual_fish_update = function(individual_fish_edit_values) {
   if (is.na(genetic_sample_number) | genetic_sample_number == "") { genetic_sample_number = NA }
   if (is.na(otolith_sample_number) | otolith_sample_number == "") { otolith_sample_number = NA }
   if (is.na(comment_text) | comment_text == "") { comment_text = NA }
-  mod_dt = lubridate::with_tz(Sys.time(), "UTC")
+  mod_dt = format(lubridate::with_tz(Sys.time(), "UTC"))
   mod_by = Sys.getenv("USERNAME")
   # Checkout a connection
   con = poolCheckout(pool)
   update_result = dbSendStatement(
     con, glue_sql("UPDATE individual_fish SET ",
-                  "fish_condition_type_id = $1, ",
-                  "fish_trauma_type_id = $2, ",
-                  "gill_condition_type_id = $3, ",
-                  "spawn_condition_type_id = $4, ",
-                  "cwt_result_type_id = $5, ",
-                  "age_code_id = $6, ",
-                  "percent_eggs_retained = $7, ",
-                  "eggs_retained_gram = $8, ",
-                  "eggs_retained_number = $9, ",
-                  "fish_sample_number = $10, ",
-                  "scale_sample_card_number = $11, ",
-                  "scale_sample_position_number = $12, ",
-                  "cwt_snout_sample_number = $13, ",
-                  "cwt_tag_code = $14, ",
-                  "genetic_sample_number = $15, ",
-                  "otolith_sample_number = $16, ",
-                  "comment_text = $17, ",
-                  "modified_datetime = $18, ",
-                  "modified_by = $19 ",
-                  "where individual_fish_id = $20"))
+                  "fish_condition_type_id = ?, ",
+                  "fish_trauma_type_id = ?, ",
+                  "gill_condition_type_id = ?, ",
+                  "spawn_condition_type_id = ?, ",
+                  "cwt_result_type_id = ?, ",
+                  "age_code_id = ?, ",
+                  "percent_eggs_retained = ?, ",
+                  "eggs_retained_gram = ?, ",
+                  "eggs_retained_number = ?, ",
+                  "fish_sample_number = ?, ",
+                  "scale_sample_card_number = ?, ",
+                  "scale_sample_position_number = ?, ",
+                  "cwt_snout_sample_number = ?, ",
+                  "cwt_tag_code = ?, ",
+                  "genetic_sample_number = ?, ",
+                  "otolith_sample_number = ?, ",
+                  "comment_text = ?, ",
+                  "modified_datetime = ?, ",
+                  "modified_by = ? ",
+                  "where individual_fish_id = ?"))
   dbBind(update_result, list(fish_condition_type_id, fish_trauma_type_id,
                              gill_condition_type_id, spawn_condition_type_id,
                              cwt_result_type_id, age_code_id, percent_eggs_retained,
@@ -288,6 +290,7 @@ get_individual_fish_dependencies = function(individual_fish_id) {
              "where fl.individual_fish_id = '{individual_fish_id}'")
   con = poolCheckout(pool)
   individual_fish_dependents = DBI::dbGetQuery(pool, qry)
+  poolReturn(con)
   has_entries = function(x) any(x > 0L)
   individual_fish_dependents = individual_fish_dependents %>%
     select_if(has_entries)
@@ -303,7 +306,7 @@ individual_fish_delete = function(delete_values) {
   individual_fish_id = delete_values$individual_fish_id
   con = poolCheckout(pool)
   delete_result = dbSendStatement(
-    con, glue_sql("DELETE FROM individual_fish WHERE individual_fish_id = $1"))
+    con, glue_sql("DELETE FROM individual_fish WHERE individual_fish_id = ?"))
   dbBind(delete_result, list(individual_fish_id))
   dbGetRowsAffected(delete_result)
   dbClearResult(delete_result)
