@@ -111,6 +111,8 @@
 #     Use example from survey_comment_srv code.
 # 40. Consider using fish_location_insert code from here in salmon_data (parameterized...not postgis sql)
 # 41. Check all st_read arguments to make sure they include crs = 2927!!!!!!!!!!!!!
+# 42. Need to verify if I'm pulling up all possible redd and fish locations...redd locs first. !!!!!!!!!!!!!!!!!!!!!
+#     There appear to be surveys with redd_name that are not in redd_location table.
 #
 # AS 2020-02-26
 #==============================================================
