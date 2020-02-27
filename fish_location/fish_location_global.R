@@ -176,28 +176,6 @@ get_fish_orientation_type = function() {
   return(orientation_type_list)
 }
 
-#==========================================================================
-# Get centroid of waterbody to use in interactive redd_map
-#==========================================================================
-
-# Stream centroid query
-get_stream_centroid = function(waterbody_id) {
-  qry = glue("select DISTINCT st.waterbody_id, ",
-             "st.geom as geometry ",
-             "from stream as st ",
-             "where st.waterbody_id = '{waterbody_id}'")
-  con = poolCheckout(pool)
-  stream_centroid = sf::st_read(con, query = qry, crs = 2927) %>%
-    mutate(stream_center = st_centroid(geometry)) %>%
-    mutate(stream_center = st_transform(stream_center, 4326)) %>%
-    mutate(center_lon = as.numeric(st_coordinates(stream_center)[,1])) %>%
-    mutate(center_lat = as.numeric(st_coordinates(stream_center)[,2])) %>%
-    st_drop_geometry() %>%
-    select(waterbody_id, center_lon, center_lat)
-  poolReturn(con)
-  return(stream_centroid)
-}
-
 #========================================================
 # Insert callback
 #========================================================
@@ -392,11 +370,11 @@ fish_location_update = function(fish_location_edit_values, selected_fish_locatio
 
 # Identify fish_encounter dependencies prior to delete
 get_fish_location_dependencies = function(fish_location_id) {
-  qry = glue("select fd.fish_encounter_id, fd.fish_encounter_datetime as fish_encounter_time, ",
+  qry = glue("select fd.fish_encounter_id, datetime(fd.fish_encounter_datetime, 'localtime') as fish_encounter_time, ",
              "fd.fish_count, fs.fish_status_description as fish_status, ",
              "fd.fish_location_id, loc.location_name as fish_name, ",
-             "fd.created_datetime as created_date, fd.created_by, ",
-             "fd.modified_datetime as modified_date, fd.modified_by ",
+             "datetime(fd.created_datetime, 'localtime') as created_date, fd.created_by, ",
+             "datetime(fd.modified_datetime, 'localtime') as modified_date, fd.modified_by ",
              "from fish_encounter as fd ",
              "inner join fish_status_lut as fs on fd.fish_status_id = fs.fish_status_id ",
              "left join location as loc on fd.fish_location_id = loc.location_id ",

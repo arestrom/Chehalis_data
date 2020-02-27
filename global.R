@@ -169,10 +169,10 @@ source("individual_fish/individual_fish_ui.R")
 source("individual_fish/individual_fish_global.R")
 source("fish_length_measurement/fish_length_measurement_ui.R")
 source("fish_length_measurement/fish_length_measurement_global.R")
-# source("redd_location/redd_location_ui.R")
-# source("redd_location/redd_location_global.R")
-# source("redd_encounter/redd_encounter_ui.R")
-# source("redd_encounter/redd_encounter_global.R")
+source("redd_location/redd_location_ui.R")
+source("redd_location/redd_location_global.R")
+source("redd_encounter/redd_encounter_ui.R")
+source("redd_encounter/redd_encounter_global.R")
 # source("individual_redd/individual_redd_ui.R")
 # source("individual_redd/individual_redd_global.R")
 # source("redd_substrate/redd_substrate_ui.R")
@@ -186,6 +186,28 @@ source("fish_length_measurement/fish_length_measurement_global.R")
 pool = pool::dbPool(RSQLite::SQLite(), dbname = "data/sg_lite.sqlite", host = "localhost")
 
 # Define functions =============================================================
+
+#==========================================================================
+# Get centroid of waterbody to use in interactive map
+#==========================================================================
+
+# Stream centroid query
+get_stream_centroid = function(waterbody_id) {
+  qry = glue("select DISTINCT st.waterbody_id, ",
+             "st.geom as geometry ",
+             "from stream as st ",
+             "where st.waterbody_id = '{waterbody_id}'")
+  con = poolCheckout(pool)
+  stream_centroid = sf::st_read(con, query = qry, crs = 2927) %>%
+    mutate(stream_center = st_centroid(geometry)) %>%
+    mutate(stream_center = st_transform(stream_center, 4326)) %>%
+    mutate(center_lon = as.numeric(st_coordinates(stream_center)[,1])) %>%
+    mutate(center_lat = as.numeric(st_coordinates(stream_center)[,2])) %>%
+    st_drop_geometry() %>%
+    select(waterbody_id, center_lon, center_lat)
+  poolReturn(con)
+  return(stream_centroid)
+}
 
 # Function to close pool
 onStop(function() {

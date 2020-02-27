@@ -122,14 +122,14 @@ ui = dashboardPagePlus(
                       title = "Redd location",
                       color = "purple",
                       collapsed = TRUE,
-                      #redd_location_ui
+                      redd_location_ui
                     ),
                     accordionItem(
                       id = 9,
                       title = "Redd counts",
                       color = "purple",
                       collapsed = FALSE,
-                      #redd_encounter_ui
+                      redd_encounter_ui
                     ),
                     accordionItem(
                       id = 10,
