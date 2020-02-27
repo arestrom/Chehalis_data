@@ -155,10 +155,6 @@ get_fish_coordinates = function(fish_location_id) {
   fish_coordinates = sf::st_read(con, query = qry, crs = 2927)
   dbDisconnect(con)
   #poolReturn(con)
-
-  # STOPPED HERE....SHOULD WORK NOW....remember crs argument when reading data.
-
-
   # Only do the rest if nrows > 0
   if (nrow(fish_coordinates) > 0 ) {
     fish_coordinates = fish_coordinates %>%

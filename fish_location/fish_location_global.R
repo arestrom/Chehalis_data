@@ -23,11 +23,11 @@ get_fish_locations = function(waterbody_id, up_rm, lo_rm, survey_date, species_i
                  "and floc.waterbody_id = '{waterbody_id}'")
   # Checkout connection
   con = poolCheckout(pool)
-  fish_loc_one = sf::st_read(con, query = qry_one)
+  fish_loc_one = sf::st_read(con, query = qry_one, crs = 2927)
   # st_coordinates does not work with missing coordinates, so parse out separately
   fish_loc_one_coords = fish_loc_one %>%
     filter(!is.na(location_coordinates_id)) %>%
-    mutate(geometry = st_transform(geometry, 4326)) %>%
+    st_transform(., 4326) %>%
     mutate(longitude = as.numeric(st_coordinates(geometry)[,1])) %>%
     mutate(latitude = as.numeric(st_coordinates(geometry)[,2])) %>%
     st_drop_geometry()
@@ -68,12 +68,12 @@ get_fish_locations = function(waterbody_id, up_rm, lo_rm, survey_date, species_i
                  "and uploc.river_mile_measure <= {up_rm} ",
                  "and loloc.river_mile_measure >= {lo_rm} ",
                  "and fs.fish_status_description = 'Dead'")
-  fish_loc_two = sf::st_read(con, query = qry_two)
+  fish_loc_two = sf::st_read(con, query = qry_two, crs = 2927)
   poolReturn(con)
   # st_coordinates does not work with missing coordinates, so parse out separately
   fish_loc_two_coords = fish_loc_two %>%
     filter(!is.na(location_coordinates_id)) %>%
-    mutate(geometry = st_transform(geometry, 4326)) %>%
+    st_transform(., 4326) %>%
     mutate(longitude = as.numeric(st_coordinates(geometry)[,1])) %>%
     mutate(latitude = as.numeric(st_coordinates(geometry)[,2])) %>%
     st_drop_geometry()
@@ -122,12 +122,12 @@ get_fish_coordinates = function(fish_location_id) {
              "inner join location_coordinates as lc on loc.location_id = lc.location_id ",
              "where loc.location_id = '{fish_location_id}'")
   con = poolCheckout(pool)
-  fish_coordinates = sf::st_read(con, query = qry)
+  fish_coordinates = sf::st_read(con, query = qry, crs = 2927)
   poolReturn(con)
   # Only do the rest if nrows > 0
   if (nrow(fish_coordinates) > 0 ) {
     fish_coordinates = fish_coordinates %>%
-      mutate(geometry = st_transform(geometry, 4326)) %>%
+      st_transform(., 4326) %>%
       mutate(longitude = as.numeric(st_coordinates(geometry)[,1])) %>%
       mutate(latitude = as.numeric(st_coordinates(geometry)[,2])) %>%
       st_drop_geometry() %>%
@@ -187,7 +187,7 @@ get_stream_centroid = function(waterbody_id) {
              "from stream as st ",
              "where st.waterbody_id = '{waterbody_id}'")
   con = poolCheckout(pool)
-  stream_centroid = sf::st_read(con, query = qry) %>%
+  stream_centroid = sf::st_read(con, query = qry, crs = 2927) %>%
     mutate(stream_center = st_centroid(geometry)) %>%
     mutate(stream_center = st_transform(stream_center, 4326)) %>%
     mutate(center_lon = as.numeric(st_coordinates(stream_center)[,1])) %>%
@@ -374,7 +374,7 @@ fish_location_update = function(fish_location_edit_values, selected_fish_locatio
         con, glue_sql("UPDATE location_coordinates SET ",
                       "horizontal_accuracy = ?, ",
                       "geom = ?, ",
-                      "modified_datetime = ? ",
+                      "modified_datetime = ?, ",
                       "modified_by = ? ",
                       "where location_id = ?"))
       dbBind(update_lc_result, list(horizontal_accuracy, geom,
