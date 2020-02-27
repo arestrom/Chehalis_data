@@ -12,8 +12,8 @@ get_individual_redd = function(redd_encounter_id) {
              "ir.percent_redd_degraded as pct_degraded, ",
              "ir.superimposed_redd_name, ",
              "ir.comment_text as individual_redd_comment, ",
-             "ir.created_datetime as created_date, ir.created_by, ",
-             "ir.modified_datetime as modified_date, ir.modified_by ",
+             "datetime(ir.created_datetime, 'localtime') as created_date, ir.created_by, ",
+             "datetime(ir.modified_datetime, 'localtime') as modified_date, ir.modified_by ",
              "from individual_redd as ir ",
              "left join redd_shape_lut as rh on ir.redd_shape_id = rh.redd_shape_id ",
              "left join redd_dewatered_type_lut as rd on ir.redd_dewatered_type_id = rd.redd_dewatered_type_id ",
@@ -22,9 +22,9 @@ get_individual_redd = function(redd_encounter_id) {
   individual_redds = DBI::dbGetQuery(con, qry)
   poolReturn(con)
   individual_redds = individual_redds %>%
-    mutate(created_date = with_tz(created_date, tzone = "America/Los_Angeles")) %>%
+    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
     mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(modified_date, tzone = "America/Los_Angeles")) %>%
+    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
     mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
     select(individual_redd_id, redd_shape, dewatered_type, pct_visible,
            redd_length_m, redd_width_m, redd_depth_m, tailspill_height_m,
@@ -72,6 +72,7 @@ get_dewatered_type = function() {
 # Define the insert callback
 individual_redd_insert = function(new_individual_redd_values) {
   new_insert_values = new_individual_redd_values
+  individual_redd_id = remisc::get_uuid(1L)
   # Pull out data
   redd_encounter_id = new_insert_values$redd_encounter_id
   redd_shape_id = new_insert_values$redd_shape_id
@@ -92,6 +93,7 @@ individual_redd_insert = function(new_individual_redd_values) {
   con = poolCheckout(pool)
   insert_result = dbSendStatement(
     con, glue_sql("INSERT INTO individual_redd (",
+                  "individual_redd_id, ",
                   "redd_encounter_id, ",
                   "redd_shape_id, ",
                   "redd_dewatered_type_id, ",
@@ -106,8 +108,8 @@ individual_redd_insert = function(new_individual_redd_values) {
                   "comment_text, ",
                   "created_by) ",
                   "VALUES (",
-                  "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
-  dbBind(insert_result, list(redd_encounter_id, redd_shape_id, redd_dewatered_type_id,
+                  "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+  dbBind(insert_result, list(individual_redd_id, redd_encounter_id, redd_shape_id, redd_dewatered_type_id,
                              percent_redd_visible, redd_length_measure_meter,
                              redd_width_measure_meter, redd_depth_measure_meter,
                              tailspill_height_measure_meter, percent_redd_superimposed,
@@ -140,26 +142,26 @@ individual_redd_update = function(individual_redd_edit_values) {
   comment_text = edit_values$individual_redd_comment
   if (is.na(superimposed_redd_name) | superimposed_redd_name == "") { superimposed_redd_name = NA }
   if (is.na(comment_text) | comment_text == "") { comment_text = NA }
-  mod_dt = lubridate::with_tz(Sys.time(), "UTC")
+  mod_dt = format(lubridate::with_tz(Sys.time(), "UTC"))
   mod_by = Sys.getenv("USERNAME")
   # Checkout a connection
   con = poolCheckout(pool)
   update_result = dbSendStatement(
     con, glue_sql("UPDATE individual_redd SET ",
-                  "redd_shape_id = $1, ",
-                  "redd_dewatered_type_id = $2, ",
-                  "percent_redd_visible = $3, ",
-                  "redd_length_measure_meter = $4, ",
-                  "redd_width_measure_meter = $5, ",
-                  "redd_depth_measure_meter = $6, ",
-                  "tailspill_height_measure_meter = $7, ",
-                  "percent_redd_superimposed = $8, ",
-                  "percent_redd_degraded = $9, ",
-                  "superimposed_redd_name = $10, ",
-                  "comment_text = $11, ",
-                  "modified_datetime = $12, ",
-                  "modified_by = $13 ",
-                  "where individual_redd_id = $14"))
+                  "redd_shape_id = ?, ",
+                  "redd_dewatered_type_id = ?, ",
+                  "percent_redd_visible = ?, ",
+                  "redd_length_measure_meter = ?, ",
+                  "redd_width_measure_meter = ?, ",
+                  "redd_depth_measure_meter = ?, ",
+                  "tailspill_height_measure_meter = ?, ",
+                  "percent_redd_superimposed = ?, ",
+                  "percent_redd_degraded = ?, ",
+                  "superimposed_redd_name = ?, ",
+                  "comment_text = ?, ",
+                  "modified_datetime = ?, ",
+                  "modified_by = ? ",
+                  "where individual_redd_id = ?"))
   dbBind(update_result, list(redd_shape_id, redd_dewatered_type_id,
                              percent_redd_visible, redd_length_measure_meter,
                              redd_width_measure_meter, redd_depth_measure_meter,
@@ -181,7 +183,7 @@ individual_redd_delete = function(delete_values) {
   individual_redd_id = delete_values$individual_redd_id
   con = poolCheckout(pool)
   delete_result = dbSendStatement(
-    con, glue_sql("DELETE FROM individual_redd WHERE individual_redd_id = $1"))
+    con, glue_sql("DELETE FROM individual_redd WHERE individual_redd_id = ?"))
   dbBind(delete_result, list(individual_redd_id))
   dbGetRowsAffected(delete_result)
   dbClearResult(delete_result)

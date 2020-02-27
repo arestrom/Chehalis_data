@@ -16,7 +16,7 @@ server = function(input, output, session) {
   source("fish_length_measurement/fish_length_measurement_srv.R", local = TRUE)
   source("redd_location/redd_location_srv.R", local = TRUE)
   source("redd_encounter/redd_encounter_srv.R", local = TRUE)
-  # source("individual_redd/individual_redd_srv.R", local = TRUE)
+  source("individual_redd/individual_redd_srv.R", local = TRUE)
   # source("redd_substrate/redd_substrate_srv.R", local = TRUE)
   # source("reach_point/reach_point_srv.R", local = TRUE)
 
