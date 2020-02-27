@@ -11,7 +11,7 @@ fish_location_ui = tags$div(
   tippy("<i style='color:#1a5e86;padding-left:8px', class='fas fa-info-circle'></i>",
         tooltip = glue("To track carcass life you must first enter, at minimum, ",
                        "a fish name (fish_id or carcass code) into the fish location table. ",
-                       "Then to associate a carcas count with a carcass location, select the ",
+                       "Then to associate a carcass count with a carcass location, select the ",
                        "'fish_name' using the drop-down in the 'Fish counts' data entry screen. ",
                        "Latitude and longitude are optional, but highly recommended.")),
   br(),

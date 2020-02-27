@@ -109,6 +109,8 @@
 # 38. Update all names in inputs and DT columns to more readable format.
 # 39. Add code to unselect row in parent table whenever a row is deleted in child table.
 #     Use example from survey_comment_srv code.
+# 40. Consider using fish_location_insert code from here in salmon_data (parameterized...not postgis sql)
+# 41. Check all st_read arguments to make sure they include crs = 2927!!!!!!!!!!!!!
 #
 # AS 2020-02-26
 #==============================================================
@@ -159,6 +161,8 @@ source("waterbody_meas/waterbody_meas_ui.R")
 source("waterbody_meas/waterbody_meas_global.R")
 source("survey_event/survey_event_ui.R")
 source("survey_event/survey_event_global.R")
+source("fish_location/fish_location_ui.R")
+source("fish_location/fish_location_global.R")
 # source("fish_encounter/fish_encounter_ui.R")
 # source("fish_encounter/fish_encounter_global.R")
 # source("individual_fish/individual_fish_ui.R")
@@ -173,8 +177,6 @@ source("survey_event/survey_event_global.R")
 # source("individual_redd/individual_redd_global.R")
 # source("redd_substrate/redd_substrate_ui.R")
 # source("redd_substrate/redd_substrate_global.R")
-# source("fish_location/fish_location_ui.R")
-# source("fish_location/fish_location_global.R")
 # source("reach_point/reach_point_ui.R")
 # source("reach_point/reach_point_global.R")
 

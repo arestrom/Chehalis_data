@@ -6,14 +6,14 @@ get_fish_locations = function(waterbody_id, up_rm, lo_rm, survey_date, species_i
   qry_one = glue("select floc.location_id as fish_location_id, ",
                  "floc.location_name as fish_name, ",
                  "lc.location_coordinates_id, ",
-                 "st_x(st_transform(lc.geom, 4326)) as longitude, ",
-                 "st_y(st_transform(lc.geom, 4326)) as latitude, ",
+                 "lc.geom as geometry, ",
                  "lc.horizontal_accuracy as horiz_accuracy, ",
                  "sc.channel_type_description as channel_type, ",
                  "lo.orientation_type_description as orientation_type, ",
                  "floc.location_description, ",
-                 "floc.created_datetime as created_date, floc.created_by, ",
-                 "floc.modified_datetime as modified_date, floc.modified_by ",
+                 "datetime(floc.created_datetime, 'localtime') as created_date, ",
+                 "datetime(floc.modified_datetime, 'localtime') as modified_date, ",
+                 "floc.created_by, floc.modified_by ",
                  "from location as floc ",
                  "inner join location_type_lut as lt on floc.location_type_id = lt.location_type_id ",
                  "left join location_coordinates as lc on floc.location_id = lc.location_id ",
@@ -23,23 +23,36 @@ get_fish_locations = function(waterbody_id, up_rm, lo_rm, survey_date, species_i
                  "and floc.waterbody_id = '{waterbody_id}'")
   # Checkout connection
   con = poolCheckout(pool)
-  fish_loc_one = DBI::dbGetQuery(con, qry_one)
+  fish_loc_one = sf::st_read(con, query = qry_one)
+  # st_coordinates does not work with missing coordinates, so parse out separately
+  fish_loc_one_coords = fish_loc_one %>%
+    filter(!is.na(location_coordinates_id)) %>%
+    mutate(geometry = st_transform(geometry, 4326)) %>%
+    mutate(longitude = as.numeric(st_coordinates(geometry)[,1])) %>%
+    mutate(latitude = as.numeric(st_coordinates(geometry)[,2])) %>%
+    st_drop_geometry()
+  fish_loc_one_no_coords = fish_loc_one %>%
+    filter(is.na(location_coordinates_id)) %>%
+    st_drop_geometry()
+  # Combine
+  fish_loc_one = bind_rows(fish_loc_one_no_coords, fish_loc_one_coords)
   # Pull out location_ids for second query
   loc_ids = paste0(paste0("'", unique(fish_loc_one$fish_location_id), "'"), collapse = ", ")
   # Define query for fish locations already tied to surveys
-  qry_two = glue("select s.survey_datetime as fish_survey_date, se.species_id as db_species_id, ",
+  qry_two = glue("select datetime(s.survey_datetime, 'localtime') as fish_survey_date, ",
+                 "se.species_id as db_species_id, ",
                  "sp.common_name as species, uploc.river_mile_measure as up_rm, ",
                  "loloc.river_mile_measure as lo_rm, floc.location_id as fish_location_id, ",
                  "floc.location_name as fish_name, fs.fish_status_description as fish_status, ",
                  "lc.location_coordinates_id, ",
-                 "st_x(st_transform(lc.geom, 4326)) as longitude, ",
-                 "st_y(st_transform(lc.geom, 4326)) as latitude, ",
+                 "lc.geom as geometry, ",
                  "lc.horizontal_accuracy as horiz_accuracy, ",
                  "sc.channel_type_description as channel_type, ",
                  "lo.orientation_type_description as orientation_type, ",
                  "floc.location_description, ",
-                 "floc.created_datetime as created_date, floc.created_by, ",
-                 "floc.modified_datetime as modified_date, floc.modified_by ",
+                 "datetime(floc.created_datetime, 'localtime') as created_date, ",
+                 "datetime(floc.modified_datetime, 'localtime') as modified_date,  ",
+                 "floc.created_by, floc.modified_by ",
                  "from survey as s ",
                  "inner join location as uploc on s.upper_end_point_id = uploc.location_id ",
                  "inner join location as loloc on s.lower_end_point_id = loloc.location_id ",
@@ -55,8 +68,20 @@ get_fish_locations = function(waterbody_id, up_rm, lo_rm, survey_date, species_i
                  "and uploc.river_mile_measure <= {up_rm} ",
                  "and loloc.river_mile_measure >= {lo_rm} ",
                  "and fs.fish_status_description = 'Dead'")
-  fish_loc_two = DBI::dbGetQuery(con, qry_two)
+  fish_loc_two = sf::st_read(con, query = qry_two)
   poolReturn(con)
+  # st_coordinates does not work with missing coordinates, so parse out separately
+  fish_loc_two_coords = fish_loc_two %>%
+    filter(!is.na(location_coordinates_id)) %>%
+    mutate(geometry = st_transform(geometry, 4326)) %>%
+    mutate(longitude = as.numeric(st_coordinates(geometry)[,1])) %>%
+    mutate(latitude = as.numeric(st_coordinates(geometry)[,2])) %>%
+    st_drop_geometry()
+  fish_loc_two_no_coords = fish_loc_two %>%
+    filter(is.na(location_coordinates_id)) %>%
+    st_drop_geometry()
+  # Combine
+  fish_loc_two = bind_rows(fish_loc_two_no_coords, fish_loc_two_coords)
   # Dump entries in fish_loc_one that have surveys attached
   fish_loc_one = fish_loc_one %>%
     anti_join(fish_loc_two, by = "fish_location_id")
@@ -64,13 +89,13 @@ get_fish_locations = function(waterbody_id, up_rm, lo_rm, survey_date, species_i
     filter(is.na(db_species_id) | db_species_id == species_id) %>%
     mutate(latitude = round(latitude, 7)) %>%
     mutate(longitude = round(longitude, 7)) %>%
-    mutate(fish_survey_date = with_tz(fish_survey_date, tzone = "America/Los_Angeles")) %>%
+    mutate(fish_survey_date = as.POSIXct(fish_survey_date, tz = "America/Los_Angeles")) %>%
     mutate(survey_dt = format(fish_survey_date, "%m/%d/%Y")) %>%
     filter( is.na(fish_survey_date) | fish_survey_date >= (as.Date(survey_date) - months(3)) ) %>%
     filter( is.na(fish_survey_date) | fish_survey_date <= as.Date(survey_date) ) %>%
-    mutate(created_date = with_tz(created_date, tzone = "America/Los_Angeles")) %>%
+    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
     mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(modified_date, tzone = "America/Los_Angeles")) %>%
+    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
     mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
     select(fish_location_id, location_coordinates_id,
            survey_date = fish_survey_date, survey_dt, species,
@@ -83,35 +108,41 @@ get_fish_locations = function(waterbody_id, up_rm, lo_rm, survey_date, species_i
 }
 
 #==========================================================================
-# Get just the redd_coordinates
+# Get just the fish_coordinates
 #==========================================================================
 
 # fish_coordinates query
 get_fish_coordinates = function(fish_location_id) {
   qry = glue("select loc.location_id, lc.location_coordinates_id, ",
-             "st_x(st_transform(lc.geom, 4326)) as longitude, ",
-             "st_y(st_transform(lc.geom, 4326)) as latitude, ",
+             "lc.geom as geometry, ",
              "lc.horizontal_accuracy as horiz_accuracy, ",
-             "lc.created_datetime as created_date, lc.created_by, ",
-             "lc.modified_datetime as modified_date, lc.modified_by ",
+             "datetime(lc.created_datetime, 'localtime') as created_date, lc.created_by, ",
+             "datetime(lc.modified_datetime, 'localtime') as modified_date, lc.modified_by ",
              "from location as loc ",
              "inner join location_coordinates as lc on loc.location_id = lc.location_id ",
              "where loc.location_id = '{fish_location_id}'")
   con = poolCheckout(pool)
-  fish_coordinates = DBI::dbGetQuery(con, qry)
+  fish_coordinates = sf::st_read(con, query = qry)
   poolReturn(con)
-  fish_coordinates = fish_coordinates %>%
-    mutate(latitude = round(latitude, 7)) %>%
-    mutate(longitude = round(longitude, 7)) %>%
-    mutate(created_date = with_tz(created_date, tzone = "America/Los_Angeles")) %>%
-    mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(modified_date, tzone = "America/Los_Angeles")) %>%
-    mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
-    select(fish_location_id = location_id, location_coordinates_id,
-           latitude, longitude, horiz_accuracy, created_date,
-           created_dt, created_by, modified_date, modified_dt,
-           modified_by) %>%
-    arrange(created_date)
+  # Only do the rest if nrows > 0
+  if (nrow(fish_coordinates) > 0 ) {
+    fish_coordinates = fish_coordinates %>%
+      mutate(geometry = st_transform(geometry, 4326)) %>%
+      mutate(longitude = as.numeric(st_coordinates(geometry)[,1])) %>%
+      mutate(latitude = as.numeric(st_coordinates(geometry)[,2])) %>%
+      st_drop_geometry() %>%
+      mutate(latitude = round(latitude, 7)) %>%
+      mutate(longitude = round(longitude, 7)) %>%
+      mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
+      mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
+      mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
+      mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
+      select(fish_location_id = location_id, location_coordinates_id,
+             latitude, longitude, horiz_accuracy, created_date,
+             created_dt, created_by, modified_date, modified_dt,
+             modified_by) %>%
+      arrange(created_date)
+  }
   return(fish_coordinates)
 }
 
@@ -149,14 +180,20 @@ get_fish_orientation_type = function() {
 # Get centroid of waterbody to use in interactive redd_map
 #==========================================================================
 
+# Stream centroid query
 get_stream_centroid = function(waterbody_id) {
-  qry = glue("select DISTINCT waterbody_id, ",
-             "ST_X(ST_Transform(ST_Centroid(geom), 4326)) as center_lon, ",
-             "ST_Y(ST_Transform(ST_Centroid(geom), 4326)) as center_lat ",
-             "from stream ",
-             "where waterbody_id = '{waterbody_id}'")
+  qry = glue("select DISTINCT st.waterbody_id, ",
+             "st.geom as geometry ",
+             "from stream as st ",
+             "where st.waterbody_id = '{waterbody_id}'")
   con = poolCheckout(pool)
-  stream_centroid = DBI::dbGetQuery(con, qry)
+  stream_centroid = sf::st_read(con, query = qry) %>%
+    mutate(stream_center = st_centroid(geometry)) %>%
+    mutate(stream_center = st_transform(stream_center, 4326)) %>%
+    mutate(center_lon = as.numeric(st_coordinates(stream_center)[,1])) %>%
+    mutate(center_lat = as.numeric(st_coordinates(stream_center)[,2])) %>%
+    st_drop_geometry() %>%
+    select(waterbody_id, center_lon, center_lat)
   poolReturn(con)
   return(stream_centroid)
 }
@@ -185,8 +222,6 @@ fish_location_insert = function(new_fish_location_values) {
   location_description = new_insert_values$location_description
   if (is.na(location_name) | location_name == "") { location_name = NA }
   if (is.na(location_description) | location_description == "") { location_description = NA }
-  mod_dt = lubridate::with_tz(Sys.time(), "UTC")
-  mod_by = Sys.getenv("USERNAME")
   # Insert to location table
   con = poolCheckout(pool)
   insert_loc_result = dbSendStatement(
@@ -201,7 +236,7 @@ fish_location_insert = function(new_fish_location_values) {
                   "location_description, ",
                   "created_by) ",
                   "VALUES (",
-                  "$1, $2, $3, $4, $5, $6, $7, $8, $9)"))
+                  "?, ?, ?, ?, ?, ?, ?, ?, ?)"))
   dbBind(insert_loc_result, list(location_id, waterbody_id, wria_id,
                                  location_type_id, stream_channel_type_id,
                                  location_orientation_type_id, location_name,
@@ -210,13 +245,26 @@ fish_location_insert = function(new_fish_location_values) {
   dbClearResult(insert_loc_result)
   # Insert coordinates to location_coordinates
   if (!is.na(latitude) & !is.na(longitude) ) {
-    qry = glue_sql("INSERT INTO location_coordinates ",
-                   "(location_id, horizontal_accuracy, geom, created_by) ",
-                   "VALUES ({location_id}, {horizontal_accuracy}, ",
-                   "ST_Transform(ST_GeomFromText('POINT({longitude} {latitude})', 4326), 2927), ",
-                   "{created_by}) ",
-                   .con = con)
-    DBI::dbExecute(con, qry)
+    # Create location_coordinates_id
+    location_coordinates_id = remisc::get_uuid(1L)
+    # Create a point in hex binary
+    geom = st_point(c(longitude, latitude)) %>%
+      st_sfc(., crs = 4326) %>%
+      st_transform(., 2927) %>%
+      st_as_binary(., hex = TRUE)
+    insert_lc_result = dbSendStatement(
+      con, glue_sql("INSERT INTO location_coordinates (",
+                    "location_coordinates_id, ",
+                    "location_id, ",
+                    "horizontal_accuracy, ",
+                    "geom, ",
+                    "created_by) ",
+                    "VALUES (",
+                    "?, ?, ?, ?, ?)"))
+    dbBind(insert_lc_result, list(location_coordinates_id, location_id,
+                                  horizontal_accuracy, geom, created_by))
+    dbGetRowsAffected(insert_lc_result)
+    dbClearResult(insert_lc_result)
   }
   poolReturn(con)
 }
@@ -227,7 +275,7 @@ fish_location_insert = function(new_fish_location_values) {
 
 # Identify fish_encounter dependencies prior to delete
 get_fish_location_surveys = function(fish_location_id) {
-  qry = glue("select s.survey_datetime as survey_date, ",
+  qry = glue("select datetime(s.survey_datetime, 'localtime') as survey_date, ",
              "s.observer_last_name as observer, loc.location_name as fish_name, ",
              "fe.fish_count, mt.media_type_code as media_type, ",
              "ot.observation_type_name as other_observation_type ",
@@ -244,7 +292,7 @@ get_fish_location_surveys = function(fish_location_id) {
   fish_loc_surveys = DBI::dbGetQuery(con, qry)
   poolReturn(con)
   fish_loc_surveys = fish_loc_surveys %>%
-    mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+    mutate(survey_date = as.POSIXct(survey_date, tz = "America/Los_Angeles")) %>%
     mutate(survey_date = format(survey_date, "%m/%d/%Y"))
   return(fish_loc_surveys)
 }
@@ -264,7 +312,7 @@ fish_location_update = function(fish_location_edit_values, selected_fish_locatio
   location_description = edit_values$location_description
   if (is.na(location_name) | location_name == "") { location_name = NA }
   if (is.na(location_description) | location_description == "") { location_description = NA }
-  mod_dt = lubridate::with_tz(Sys.time(), "UTC")
+  mod_dt = format(lubridate::with_tz(Sys.time(), "UTC"))
   mod_by = Sys.getenv("USERNAME")
   created_by = mod_by
   # Pull out data for location_coordinates table
@@ -275,13 +323,13 @@ fish_location_update = function(fish_location_edit_values, selected_fish_locatio
   con = poolCheckout(pool)
   update_result = dbSendStatement(
     con, glue_sql("UPDATE location SET ",
-                  "stream_channel_type_id = $1, ",
-                  "location_orientation_type_id = $2, ",
-                  "location_name = $3, ",
-                  "location_description = $4, ",
-                  "modified_datetime = $5, ",
-                  "modified_by = $6 ",
-                  "where location_id = $7"))
+                  "stream_channel_type_id = ?, ",
+                  "location_orientation_type_id = ?, ",
+                  "location_name = ?, ",
+                  "location_description = ?, ",
+                  "modified_datetime = ?, ",
+                  "modified_by = ? ",
+                  "where location_id = ?"))
   dbBind(update_result, list(stream_channel_type_id,
                              location_orientation_type_id,
                              location_name, location_description,
@@ -293,24 +341,46 @@ fish_location_update = function(fish_location_edit_values, selected_fish_locatio
   if ( is.na(selected_fish_location_data$latitude) & is.na(selected_fish_location_data$longitude) ) {
     if ( !is.na(latitude) & !is.na(longitude) ) {
       # Insert coordinates to location_coordinates
-      qry = glue_sql("INSERT INTO location_coordinates ",
-                     "(location_id, horizontal_accuracy, geom, created_by) ",
-                     "VALUES ({location_id}, {horizontal_accuracy}, ",
-                     "ST_Transform(ST_GeomFromText('POINT({longitude} {latitude})', 4326), 2927), ",
-                     "{created_by}) ",
-                     .con = con)
-      DBI::dbExecute(con, qry)
+      # Create location_coordinates_id
+      location_coordinates_id = remisc::get_uuid(1L)
+      # Create a point in hex binary
+      geom = st_point(c(longitude, latitude)) %>%
+        st_sfc(., crs = 4326) %>%
+        st_transform(., 2927) %>%
+        st_as_binary(., hex = TRUE)
+      insert_lc_result = dbSendStatement(
+        con, glue_sql("INSERT INTO location_coordinates (",
+                      "location_coordinates_id, ",
+                      "location_id, ",
+                      "horizontal_accuracy, ",
+                      "geom, ",
+                      "created_by) ",
+                      "VALUES (",
+                      "?, ?, ?, ?, ?)"))
+      dbBind(insert_lc_result, list(location_coordinates_id, location_id,
+                                    horizontal_accuracy, geom, created_by))
+      dbGetRowsAffected(insert_lc_result)
+      dbClearResult(insert_lc_result)
     }
     # Otherwise update coordinates if previous entry does exist
   } else if (!is.na(selected_fish_location_data$latitude) & !is.na(selected_fish_location_data$longitude) ) {
     if ( !is.na(latitude) & !is.na(longitude) ) {
-      qry = glue_sql("UPDATE location_coordinates ",
-                     "SET horizontal_accuracy = {horizontal_accuracy}, ",
-                     "geom = ST_Transform(ST_GeomFromText('POINT({longitude} {latitude})', 4326), 2927), ",
-                     "modified_datetime = {mod_dt}, modified_by = {mod_by} ",
-                     "WHERE location_id = {location_id} ",
-                     .con = con)
-      DBI::dbExecute(con, qry)
+      # Create a point in hex binary
+      geom = st_point(c(longitude, latitude)) %>%
+        st_sfc(., crs = 4326) %>%
+        st_transform(., 2927) %>%
+        st_as_binary(., hex = TRUE)
+      update_lc_result = dbSendStatement(
+        con, glue_sql("UPDATE location_coordinates SET ",
+                      "horizontal_accuracy = ?, ",
+                      "geom = ?, ",
+                      "modified_datetime = ? ",
+                      "modified_by = ? ",
+                      "where location_id = ?"))
+      dbBind(update_lc_result, list(horizontal_accuracy, geom,
+                                    mod_dt, mod_by, location_id))
+      dbGetRowsAffected(update_lc_result)
+      dbClearResult(update_lc_result)
     }
   }
   poolReturn(con)
@@ -335,12 +405,12 @@ get_fish_location_dependencies = function(fish_location_id) {
   fish_encounters = DBI::dbGetQuery(con, qry)
   poolReturn(con)
   fish_encounters = fish_encounters %>%
-    mutate(fish_encounter_time = with_tz(fish_encounter_time, tzone = "America/Los_Angeles")) %>%
+    mutate(fish_encounter_time = as.POSIXct(fish_encounter_time, tz = "America/Los_Angeles")) %>%
     mutate(fish_encounter_date = format(fish_encounter_time, "%m/%d/%Y")) %>%
     mutate(fish_encounter_time = format(fish_encounter_time, "%H:%M")) %>%
-    mutate(created_date = with_tz(created_date, tzone = "America/Los_Angeles")) %>%
+    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
     mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = with_tz(modified_date, tzone = "America/Los_Angeles")) %>%
+    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
     mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
     select(fish_encounter_id, fish_encounter_date, fish_encounter_time, fish_count,
            fish_status, fish_location_id, fish_name, created_date,
@@ -359,12 +429,12 @@ fish_location_delete = function(delete_values) {
   con = poolCheckout(pool)
   # New function...delete only after all dependencies are removed
   delete_result_one = dbSendStatement(
-    con, glue_sql("DELETE FROM location_coordinates WHERE location_id = $1"))
+    con, glue_sql("DELETE FROM location_coordinates WHERE location_id = ?"))
   dbBind(delete_result_one, list(fish_location_id))
   dbGetRowsAffected(delete_result_one)
   dbClearResult(delete_result_one)
   delete_result_two = dbSendStatement(
-    con, glue_sql("DELETE FROM location WHERE location_id = $1"))
+    con, glue_sql("DELETE FROM location WHERE location_id = ?"))
   dbBind(delete_result_two, list(fish_location_id))
   dbGetRowsAffected(delete_result_two)
   dbClearResult(delete_result_two)
