@@ -198,8 +198,8 @@ output$fish_map <- renderLeaflet({
 fish_marker_data = reactive({
   req(input$fish_map_marker_click)
   fish_click_data = input$fish_map_marker_click
-  fish_mark_dat = tibble(latitude = round(as.numeric(fish_click_data$lat), digits = 6),
-                         longitude = round(as.numeric(fish_click_data$lng), digits = 6))
+  fish_mark_dat = tibble(latitude = round(as.numeric(fish_click_data$lat), digits = 7),
+                         longitude = round(as.numeric(fish_click_data$lng), digits = 7))
   return(fish_mark_dat)
 })
 
