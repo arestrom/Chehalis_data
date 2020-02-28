@@ -171,7 +171,7 @@ ui = dashboardPagePlus(
                 boxPlus(
                   title = "Import from Mobile API (ToDo)",
                   closable = FALSE,
-                  collapsible = TRUE,
+                  collapsible = FALSE,
                   solidHeader = FALSE,
                   collapsed = FALSE,
                   width = 12
