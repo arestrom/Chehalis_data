@@ -178,8 +178,8 @@ source("individual_redd/individual_redd_ui.R")
 source("individual_redd/individual_redd_global.R")
 source("redd_substrate/redd_substrate_ui.R")
 source("redd_substrate/redd_substrate_global.R")
-# source("reach_point/reach_point_ui.R")
-# source("reach_point/reach_point_global.R")
+source("reach_point/reach_point_ui.R")
+source("reach_point/reach_point_global.R")
 
 # Define globals ================================================================
 

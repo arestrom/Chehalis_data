@@ -159,7 +159,7 @@ ui = dashboardPagePlus(
                   collapsible = TRUE,
                   solidHeader = FALSE,
                   collapsed = FALSE,
-                  #reach_point_ui,
+                  reach_point_ui,
                   width = 12
                 )
               )
