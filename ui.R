@@ -174,6 +174,7 @@ ui = dashboardPagePlus(
                   collapsible = FALSE,
                   solidHeader = FALSE,
                   collapsed = FALSE,
+                  mobile_import_ui,
                   width = 12
                 )
               )
