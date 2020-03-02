@@ -181,6 +181,7 @@ source("redd_substrate/redd_substrate_global.R")
 source("reach_point/reach_point_ui.R")
 source("reach_point/reach_point_global.R")
 source("mobile_import/mobile_import_ui.R")
+source("mobile_import/mobile_import_global.R")
 
 # Define globals ================================================================
 

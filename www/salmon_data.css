@@ -282,9 +282,9 @@
   text-align: center;
 }
 
-#sportsmen_image {
+#sportswomen_image {
   display:inline-block;
-  text-align: right;
+  text-align: center;
 }
 
 #wria_text {
@@ -293,21 +293,18 @@
   font-weight: bold;
 }
 
-#mobile_form_text {
-  text-align: left;
-  font-size: 0.9em;
-  font-weight: bold;
-}
-
-#mobile_import_text {
-  text-align: left;
-  font-size: 0.9em;
-  font-weight: bold;
+#check_for_new_surveys {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
 }
 
 #import_mobile {
   color: #e6ebef;
-  background-color:#231651;
+  background-color:#4d1566;
   font-size: 11px;
   font-weight: 300;
   line-height: 1.3;

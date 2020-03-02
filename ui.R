@@ -169,7 +169,7 @@ ui = dashboardPagePlus(
                 br(),
                 br(),
                 boxPlus(
-                  title = "Import from Mobile API (ToDo)",
+                  title = "Import from Mobile data server",
                   closable = FALSE,
                   collapsible = FALSE,
                   solidHeader = FALSE,
