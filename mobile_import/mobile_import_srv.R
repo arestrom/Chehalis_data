@@ -1,13 +1,54 @@
 
 #========================================================
-# Generate lut select ui's
+# Generate select ui's
 #========================================================
+
+output$project_select = renderUI({
+  project_list = c("417821: Chehalis SGS")
+  selectizeInput("project_select", label = "Select your project or profile ID",
+                 choices = project_list, selected = project_list[[1]],
+                 width = "275px")
+})
 
 output$mobile_form_select = renderUI({
   mobile_form_list = c("3363255: Stream Survey Form")
   selectizeInput("mobile_form_select", label = "Select the mobile form",
                  choices = mobile_form_list, selected = mobile_form_list[[1]],
-                 width = "250px")
+                 width = "275px")
+})
+
+#========================================================
+# Get info on surveys that need to be uploaded
+#========================================================
+
+# Event reactive to get new Access token
+new_access_token = eventReactive(input$check_for_new_surveys, {
+  access_token = NULL
+  while (is.null(access_token)) {
+    access_token = iformr::get_iform_access_token(
+      server_name = "wdfw",
+      client_key_name = "r6production_key",
+      client_secret_name = "r6production_secret")
+  }
+  return(access_token)
+})
+
+# Update DB and reload DT
+new_survey_data = eventReactive(input$check_for_new_surveys, {
+  req(input$project_select)
+  req(input$mobile_form_select)
+  # req(!is.null(new_access_token()))
+  prof_id = as.integer(remisc::get_text_item(input$project_select, item = 1, sep = ":"))
+  pf_page_id = as.integer(remisc::get_text_item(input$mobile_form_select, item = 1, sep = ":"))
+  tryCatch({
+    new_surveys = count_new_surveys(profile_id = prof_id,
+                                    parent_form_page_id = pf_page_id,
+                                    access_token = new_access_token())
+    shinytoastr::toastr_success("Search complete")
+  }, error = function(e) {
+    shinytoastr::toastr_error(title = "Connection error", conditionMessage(e))
+  })
+  return(new_surveys)
 })
 
 #========================================================
@@ -17,11 +58,15 @@ output$mobile_form_select = renderUI({
 # Primary DT datatable for survey_intent
 output$new_surveys = renderDT({
   req(input$tabs == "mobile_import")
-  req(input$mobile_form_select)
-  new_surveys_title = glue("New surveys for {input$mobile_form_select}")
-  new_surveys_data = get_new_surveys(parent_form_id)
+  new_surveys_title = glue("New surveys for mobile form {input$mobile_form_select}")
   # Generate table
-  datatable(new_surveys_data,
+  new_survey_data = tibble(n_surveys = 0L,
+                           first_id = 0L,
+                           start_date = "Unknown",
+                           last_id = 0L,
+                           end_date = "Unknown")
+  datatable(new_survey_data,
+            colnames = c('Number of surveys', 'First ID', 'Start date', 'Last ID', 'End date'),
             options = list(dom = 't',
                            initComplete = JS(
                              "function(settings, json) {",
@@ -34,7 +79,12 @@ output$new_surveys = renderDT({
 
 # Create surveys DT proxy object
 new_surveys_dt_proxy = dataTableProxy(outputId = "new_surveys")
-#
+
+observeEvent(input$check_for_new_surveys, {
+  new_survey_vals = new_survey_data()
+  replaceData(new_surveys_dt_proxy, new_survey_vals)
+}, priority = 9999)
+
 # #========================================================
 # # Collect location values from selected row for later use
 # #========================================================

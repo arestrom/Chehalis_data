@@ -9,15 +9,17 @@ library(DBI)
 library(RSQLite)
 library(tibble)
 library(glue)
+library(iformr)
 
 # Set data for query
+# Profile ID
+profile_id = 417821L
 # Parent form id
-parent_form_id = 3363255L
+parent_form_page_id = 3363255L
 
-get_new_surveys = function(parent_form_id) {
+count_new_surveys = function(profile_id, parent_form_page_id) {
   # Define query for new mobile surveys
-  qry = glue("select distinct s.survey_id, ",
-             "datetime(s.survey_date, 'localtime') ",
+  qry = glue("select distinct s.survey_id ",
              "from survey as s")
   # Checkout connection
   con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
@@ -25,48 +27,42 @@ get_new_surveys = function(parent_form_id) {
   existing_surveys = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   #poolReturn(con)
+  # Define fields...just parent_id and survey_id this time
+  fields = paste("id, headerid, survey_date")
+  start_id = 0L
+  # Get list of all survey_ids and parent_form iform ids on server
+  field_string <- paste0("id:<(>\"", start_id, "\"),", fields)
+  # Loop through all survey records
+  parent_ids = get_all_records(
+    server_name = "wdfw",
+    profile_id = profile_id,
+    page_id = parent_form_page_id,
+    fields = "fields",
+    limit = 1000,
+    offset = 0,
+    access_token = access_token,
+    field_string = field_string,
+    since_id = start_id)
 
-  dbDisconnect(con)
-  # st_coordinates does not work with missing coordinates, so parse out separately
-  fish_loc_two_coords = fish_loc_two %>%
-    filter(!is.na(location_coordinates_id)) %>%
-    mutate(geometry = st_transform(geometry, 4326)) %>%
-    mutate(longitude = as.numeric(st_coordinates(geometry)[,1])) %>%
-    mutate(latitude = as.numeric(st_coordinates(geometry)[,2])) %>%
-    st_drop_geometry()
-  fish_loc_two_no_coords = fish_loc_two %>%
-    filter(is.na(location_coordinates_id)) %>%
-    st_drop_geometry()
-  # Combine
-  fish_loc_two = bind_rows(fish_loc_two_no_coords, fish_loc_two_coords)
-  # Dump entries in fish_loc_one that have surveys attached
-  fish_loc_one = fish_loc_one %>%
-    anti_join(fish_loc_two, by = "fish_location_id")
-  fish_locations = bind_rows(fish_loc_one, fish_loc_two) %>%
-    filter(is.na(db_species_id) | db_species_id == species_id) %>%
-    mutate(latitude = round(latitude, 7)) %>%
-    mutate(longitude = round(longitude, 7)) %>%
-    mutate(fish_survey_date = as.POSIXct(fish_survey_date, tz = "America/Los_Angeles")) %>%
-    mutate(survey_dt = format(fish_survey_date, "%m/%d/%Y")) %>%
-    filter( is.na(fish_survey_date) | fish_survey_date >= (as.Date(survey_date) - months(3)) ) %>%
-    filter( is.na(fish_survey_date) | fish_survey_date <= as.Date(survey_date) ) %>%
-    mutate(created_date = as.POSIXct(created_date, tz = "America/Los_Angeles")) %>%
-    mutate(created_dt = format(created_date, "%m/%d/%Y %H:%M")) %>%
-    mutate(modified_date = as.POSIXct(modified_date, tz = "America/Los_Angeles")) %>%
-    mutate(modified_dt = format(modified_date, "%m/%d/%Y %H:%M")) %>%
-    select(fish_location_id, location_coordinates_id,
-           survey_date = fish_survey_date, survey_dt, species,
-           fish_name, fish_status, latitude, longitude, horiz_accuracy,
-           channel_type, orientation_type, location_description,
-           created_date, created_dt, created_by, modified_date,
-           modified_dt, modified_by) %>%
-    arrange(created_date)
-  return(fish_locations)
+  # Keep only records where headerid is not in survey_id
+  new_survey_data = parent_ids %>%
+    select(parent_form_survey_id = id, survey_id = headerid, survey_date) %>%
+    distinct() %>%
+    anti_join(existing_surveys, by = "survey_id") %>%
+    arrange(as.Date(survey_date)) %>%
+    mutate(n_surveys = n()) %>%
+    mutate(first_id = min(parent_form_survey_id)) %>%
+    mutate(last_id = max(parent_form_survey_id)) %>%
+    mutate(start_date = min(as.Date(survey_date))) %>%
+    mutate(end_date = max(as.Date(survey_date))) %>%
+    select(n_surveys, first_id, start_date, last_id, end_date) %>%
+    distinct()
+  return(new_survey_data)
 }
 
 # Test
 strt = Sys.time()
-fish_locs = get_fish_locations(waterbody_id, up_rm, lo_rm, survey_date, species_id)
+new_surveys = count_new_surveys(profile_id, parent_form_page_id)
 nd = Sys.time(); nd - strt
 
 # fish_coordinates query
