@@ -37,7 +37,7 @@ new_access_token = eventReactive(input$check_for_new_surveys, {
 new_survey_data = eventReactive(input$check_for_new_surveys, {
   req(input$project_select)
   req(input$mobile_form_select)
-  # req(!is.null(new_access_token()))
+  #req(!is.null(new_access_token()))
   prof_id = as.integer(remisc::get_text_item(input$project_select, item = 1, sep = ":"))
   pf_page_id = as.integer(remisc::get_text_item(input$mobile_form_select, item = 1, sep = ":"))
   tryCatch({
@@ -66,7 +66,7 @@ output$new_surveys = renderDT({
                            last_id = 0L,
                            end_date = "Unknown")
   datatable(new_survey_data,
-            colnames = c('Number of surveys', 'First ID', 'Start date', 'Last ID', 'End date'),
+            colnames = c('Number of new surveys', 'First ID', 'Start date', 'Last ID', 'End date'),
             options = list(dom = 't',
                            initComplete = JS(
                              "function(settings, json) {",
@@ -80,9 +80,94 @@ output$new_surveys = renderDT({
 # Create surveys DT proxy object
 new_surveys_dt_proxy = dataTableProxy(outputId = "new_surveys")
 
+#========================================================
+# Missing streams datatable
+#========================================================
+
+# Primary DT datatable for survey_intent
+output$missing_streams = renderDT({
+  req(input$tabs == "mobile_import")
+  missing_streams_title = glue("If any streams are missing, please edit {input$mobile_form_select}")
+  # Generate table
+  missing_stream_data = tibble(parent_form_survey_id = "None",
+                               survey_date = "",
+                               stream_name = "",
+                               stream_name_text = "")
+  datatable(missing_stream_data,
+            colnames = c('Parent form ID', 'Survey date', 'Stream uuid', 'Stream name'),
+            options = list(dom = 't',
+                           initComplete = JS(
+                             "function(settings, json) {",
+                             "$(this.api().table().header()).css({'background-color': '#9eb3d6'});",
+                             "}")),
+            caption = htmltools::tags$caption(
+              style = 'caption-side: top; text-align: left; color: black; width: auto;',
+              htmltools::em(htmltools::strong(missing_streams_title))))
+})
+
+# Create surveys DT proxy object
+missing_streams_dt_proxy = dataTableProxy(outputId = "missing_streams")
+
+#========================================================
+# Missing reaches datatable
+#========================================================
+
+# Primary DT datatable for survey_intent
+output$missing_reaches = renderDT({
+  req(input$tabs == "mobile_import")
+  missing_reaches_title = glue("If any reaches are missing, please edit {input$mobile_form_select}")
+  # Generate table
+  missing_reach_data = tibble(parent_form_survey_id = "None",
+                              survey_date = "",
+                              reach = "",
+                              reach_text = "")
+  datatable(missing_reach_data,
+            colnames = c('Parent form ID', 'Survey date', 'Reach key value', 'Reach description'),
+            options = list(dom = 't',
+                           initComplete = JS(
+                             "function(settings, json) {",
+                             "$(this.api().table().header()).css({'background-color': '#9eb3d6'});",
+                             "}")),
+            caption = htmltools::tags$caption(
+              style = 'caption-side: top; text-align: left; color: black; width: auto;',
+              htmltools::em(htmltools::strong(missing_reaches_title))))
+})
+
+# Create surveys DT proxy object
+missing_reaches_dt_proxy = dataTableProxy(outputId = "missing_reaches")
+
+# Generate counts for new_surveys datatable
 observeEvent(input$check_for_new_surveys, {
-  new_survey_vals = new_survey_data()
+  # Set progress bar...estimate 3 seconds
+  progress = Progress$new(session, min = 1, max = 3)
+  on.exit(progress$close())
+  # Just output message without bar for now
+  progress$set(message = 'Contacting server',
+               detail = 'One moment please...')
+  for (i in 1:3) {
+    progress$set(value = i)
+    Sys.sleep(1)
+  }
+  new_survey_vals = new_survey_data() %>%
+    # Count number of surveys and get dates and ids of first, last
+    mutate(n_surveys = n()) %>%
+    mutate(first_id = min(parent_form_survey_id)) %>%
+    mutate(last_id = max(parent_form_survey_id)) %>%
+    mutate(start_date = min(as.Date(survey_date))) %>%
+    mutate(end_date = max(as.Date(survey_date))) %>%
+    select(n_surveys, first_id, start_date, last_id, end_date) %>%
+    distinct()
   replaceData(new_surveys_dt_proxy, new_survey_vals)
+}, priority = 9999)
+
+# Generate values for missing streams datatable
+observeEvent(input$check_for_new_surveys, {
+  missing_stream_vals = new_survey_data() %>%
+    filter(nchar(stream_name) < 36L) %>%
+    select(parent_form_survey_id, survey_date,
+           stream_name, stream_name_text) %>%
+    distinct()
+  replaceData(missing_streams_dt_proxy, missing_stream_vals)
 }, priority = 9999)
 
 # #========================================================

@@ -1,6 +1,13 @@
 #==============================================================
 # Application to edit data for spawning_ground database
 #
+# Notes for Lea...form related
+#  1. Should change logins for consistency, so created_by can be pulled from start portion.
+#     Could be underscore or .
+#  2. Disallow surveying streams that have not yet been entered...or manually edit in iform
+#     front-end afterwards. Then require coordinates for any new endpoints. Can create new
+#     stream in database, then add to form and manually update stream_name field.
+#
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
 #     get_beaches(). I had to wrap output with as.data.frame().
@@ -111,7 +118,10 @@
 #     Use example from survey_comment_srv code.
 # 40. Consider using fish_location_insert code from here in salmon_data (parameterized...not postgis sql)
 # 41. Check all st_read arguments to make sure they include crs = 2927!!!!!!!!!!!!!
-# 42.
+# 42. For update of sqlite data to main pg DB, need to include any new locations
+#     or streams entered to local.
+# 43. Look into using busy spinner with loading datatable in mobile operations
+# 44. Disable button to write new surveys in mobile_import if streams or reaches missing.
 #
 # AS 2020-02-26
 #==============================================================
@@ -137,6 +147,7 @@ library(lubridate)
 library(remisc)
 library(leaflet.extras)
 library(shinytoastr)
+library(stringi)
 #library(reactlog)
 
 # Keep connections pane from opening

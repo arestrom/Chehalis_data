@@ -5,11 +5,9 @@ count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   qry = glue("select distinct s.survey_id ",
              "from survey as s")
   # Checkout connection
-  con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-  #con = poolCheckout(pool)
+  con = poolCheckout(pool)
   existing_surveys = DBI::dbGetQuery(con, qry)
-  DBI::dbDisconnect(con)
-  #poolReturn(con)
+  poolReturn(con)
   # Define fields...just parent_id and survey_id this time
   fields = paste("id, headerid, survey_date")
   start_id = 0L
