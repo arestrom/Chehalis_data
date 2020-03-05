@@ -51,6 +51,56 @@ new_survey_data = eventReactive(input$check_for_new_surveys, {
   return(new_surveys)
 })
 
+# Reactive to update missing streams dt
+missing_stream_vals = reactive({
+  # Pull out only needed data
+  missing_streams = new_survey_data() %>%
+    filter(nchar(stream_name) < 36L) %>%
+    mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
+    mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
+    mutate(stream_name = case_when(
+      stream_name == "unnamed_tributary" & no_llid == "no" ~ llid,
+      stream_name == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
+      stream_name == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
+      !stream_name %in% c("unnamed_tributary", "not_listed") ~ stream_name)) %>%
+    mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
+    mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
+    mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
+    mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
+    mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
+    mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
+    mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
+    mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
+    select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
+           lower_coords, upper_coords) %>%
+    distinct()
+  return(missing_streams)
+})
+
+missing_reach_vals =reactive({
+  missing_reaches = new_survey_data() %>%
+    filter(nchar(reach) < 27L) %>%
+    mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
+    mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
+    mutate(stream_name = case_when(
+      stream_name == "unnamed_tributary" & no_llid == "no" ~ llid,
+      stream_name == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
+      stream_name == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
+      !stream_name %in% c("unnamed_tributary", "not_listed") ~ stream_name)) %>%
+    mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
+    mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
+    mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
+    mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
+    mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
+    mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
+    mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
+    mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
+    mutate(reach_text = if_else(reach_text == "Not Listed", new_reach, reach_text)) %>%
+    select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
+           reach, reach_text, lower_coords, upper_coords) %>%
+    distinct()
+  return(missing_reaches)
+})
 #========================================================
 # New surveys summary datatable
 #========================================================
@@ -58,13 +108,13 @@ new_survey_data = eventReactive(input$check_for_new_surveys, {
 # Primary DT datatable for survey_intent
 output$new_surveys = renderDT({
   req(input$tabs == "mobile_import")
-  new_surveys_title = glue("New surveys for mobile form {input$mobile_form_select}")
+  new_surveys_title = glue("Count of new surveys for: '{input$mobile_form_select}'")
   # Generate table
   new_survey_data = tibble(n_surveys = 0L,
                            first_id = 0L,
-                           start_date = "Unknown",
+                           start_date = "Click to check",
                            last_id = 0L,
-                           end_date = "Unknown")
+                           end_date = "")
   datatable(new_survey_data,
             colnames = c('Number of new surveys', 'First ID', 'Start date', 'Last ID', 'End date'),
             options = list(dom = 't',
@@ -80,6 +130,18 @@ output$new_surveys = renderDT({
 # Create surveys DT proxy object
 new_surveys_dt_proxy = dataTableProxy(outputId = "new_surveys")
 
+# Disable Sync button initially and if missing streams or reaches are found
+observe({
+  req(input$tabs == "mobile_import")
+  if ( input$check_for_new_surveys == 0L ) {
+    shinyjs::disable("import_mobile")
+  } else if ( nrow(missing_stream_vals()) > 0L | nrow(missing_reach_vals()) > 0L ) {
+    shinyjs::disable("import_mobile")
+  } else {
+    shinyjs::enable("import_mobile")
+  }
+})
+
 #========================================================
 # Missing streams datatable
 #========================================================
@@ -87,15 +149,23 @@ new_surveys_dt_proxy = dataTableProxy(outputId = "new_surveys")
 # Primary DT datatable for survey_intent
 output$missing_streams = renderDT({
   req(input$tabs == "mobile_import")
-  missing_streams_title = glue("If any streams are missing, please edit {input$mobile_form_select}")
+  missing_streams_title = glue("Missing streams are shown below. Please edit: '{input$mobile_form_select}'")
   # Generate table
   missing_stream_data = tibble(parent_form_survey_id = "None",
                                survey_date = "",
                                stream_name = "",
-                               stream_name_text = "")
+                               stream_name_text = "",
+                               lower_coords = "",
+                               upper_coords = "")
   datatable(missing_stream_data,
-            colnames = c('Parent form ID', 'Survey date', 'Stream uuid', 'Stream name'),
-            options = list(dom = 't',
+            colnames = c('Parent form ID', 'Survey date', 'Stream id',
+                         'Stream name', 'Lower coords', 'Upper coords'),
+            extensions = 'Buttons',
+            options = list(dom = 'Blftp',
+                           pageLength = 5,
+                           lengthMenu = c(5, 25, 100, 500),
+                           scrollX = T,
+                           buttons = c('excel', 'print'),
                            initComplete = JS(
                              "function(settings, json) {",
                              "$(this.api().table().header()).css({'background-color': '#9eb3d6'});",
@@ -115,15 +185,25 @@ missing_streams_dt_proxy = dataTableProxy(outputId = "missing_streams")
 # Primary DT datatable for survey_intent
 output$missing_reaches = renderDT({
   req(input$tabs == "mobile_import")
-  missing_reaches_title = glue("If any reaches are missing, please edit {input$mobile_form_select}")
+  missing_reaches_title = glue("Missing reaches are shown below. Please edit: '{input$mobile_form_select}'")
   # Generate table
   missing_reach_data = tibble(parent_form_survey_id = "None",
                               survey_date = "",
+                              stream_name = "",
+                              stream_name_text = "",
                               reach = "",
-                              reach_text = "")
+                              reach_text = "",
+                              lower_coords = "",
+                              upper_coords = "")
   datatable(missing_reach_data,
-            colnames = c('Parent form ID', 'Survey date', 'Reach key value', 'Reach description'),
-            options = list(dom = 't',
+            colnames = c('Parent form ID', 'Survey date', 'Stream id', 'Stream name',
+                         'Reach key value', 'Reach description', 'Lower coords', 'Upper coords'),
+            extensions = 'Buttons',
+            options = list(dom = 'Blftp',
+                           pageLength = 5,
+                           lengthMenu = c(5, 25, 100, 500),
+                           scrollX = T,
+                           buttons = c('excel', 'print'),
                            initComplete = JS(
                              "function(settings, json) {",
                              "$(this.api().table().header()).css({'background-color': '#9eb3d6'});",
@@ -148,8 +228,8 @@ observeEvent(input$check_for_new_surveys, {
     progress$set(value = i)
     Sys.sleep(1)
   }
+  # Count number of surveys and get dates and ids of first, last
   new_survey_vals = new_survey_data() %>%
-    # Count number of surveys and get dates and ids of first, last
     mutate(n_surveys = n()) %>%
     mutate(first_id = min(parent_form_survey_id)) %>%
     mutate(last_id = max(parent_form_survey_id)) %>%
@@ -162,13 +242,13 @@ observeEvent(input$check_for_new_surveys, {
 
 # Generate values for missing streams datatable
 observeEvent(input$check_for_new_surveys, {
-  missing_stream_vals = new_survey_data() %>%
-    filter(nchar(stream_name) < 36L) %>%
-    select(parent_form_survey_id, survey_date,
-           stream_name, stream_name_text) %>%
-    distinct()
-  replaceData(missing_streams_dt_proxy, missing_stream_vals)
-}, priority = 9999)
+  replaceData(missing_streams_dt_proxy, missing_stream_vals())
+}, priority = 5)
+
+# Generate values for missing reaches datatable
+observeEvent(input$check_for_new_surveys, {
+  replaceData(missing_reaches_dt_proxy, missing_reach_vals())
+}, priority = 5)
 
 # #========================================================
 # # Collect location values from selected row for later use

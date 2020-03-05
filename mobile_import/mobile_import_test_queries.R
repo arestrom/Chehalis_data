@@ -7,6 +7,7 @@
 # Load libraries
 library(DBI)
 library(RSQLite)
+library(dplyr)
 library(tibble)
 library(glue)
 library(iformr)
@@ -17,14 +18,6 @@ library(stringi)
 profile_id = 417821L
 # Parent form id
 parent_form_page_id = 3363255L
-
-access_token = NULL
-while (is.null(access_token)) {
-  access_token = iformr::get_iform_access_token(
-    server_name = "wdfw",
-    client_key_name = "r6production_key",
-    client_secret_name = "r6production_secret")
-}
 
 # Get counts and date-range of surveys ready to download
 count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
@@ -39,7 +32,9 @@ count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   #poolReturn(con)
   # Define fields...just parent_id and survey_id this time
   fields = paste0("id, headerid, survey_date, stream_name, ",
-                  "stream_name_text, reach, reach_text")
+                  "stream_name_text, new_stream_name, reach, ",
+                  "reach_text, new_reach, gps_loc_lower, ",
+                  "gps_loc_upper")
   start_id = 0L
   # Get list of all survey_ids and parent_form iform ids on server
   field_string <- paste0("id:<(>\"", start_id, "\"),", fields)
@@ -57,11 +52,20 @@ count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   # Keep only records where headerid is not in survey_id
   new_survey_data = parent_ids %>%
     select(parent_form_survey_id = id, survey_id = headerid, survey_date,
-           stream_name, stream_name_text, reach, reach_text) %>%
+           stream_name, stream_name_text, new_stream_name, reach, reach_text,
+           new_reach, gps_loc_lower, gps_loc_upper) %>%
     distinct() %>%
     anti_join(existing_surveys, by = "survey_id") %>%
     arrange(as.Date(survey_date))
   return(new_survey_data)
+}
+
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
 }
 
 # Test
@@ -81,12 +85,51 @@ new_survey_counts = new_surveys %>%
   distinct()
 
 # Get start_id
-start_id = new_surveys$first_id
+start_id = new_survey_counts$first_id
 
 # Pull out only needed data
 missing_stream_vals = new_surveys %>%
   filter(nchar(stream_name) < 36L) %>%
-  select(parent_form_survey_id, survey_date, stream_name, stream_name_text) %>%
+  mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
+  mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
+  mutate(stream_name = case_when(
+    stream_name == "unnamed_tributary" & no_llid == "no" ~ llid,
+    stream_name == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
+    stream_name == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
+    !stream_name %in% c("unnamed_tributary", "not_listed") ~ stream_name)) %>%
+  mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
+  mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
+  mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
+  mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
+  mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
+  mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
+  mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
+  mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
+  select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
+         lower_coords, upper_coords) %>%
+  distinct()
+
+# Pull out only needed data
+missing_reach_vals = new_surveys %>%
+  filter(nchar(reach) < 27L) %>%
+  mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
+  mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
+  mutate(stream_name = case_when(
+    stream_name == "unnamed_tributary" & no_llid == "no" ~ llid,
+    stream_name == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
+    stream_name == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
+    !stream_name %in% c("unnamed_tributary", "not_listed") ~ stream_name)) %>%
+  mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
+  mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
+  mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
+  mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
+  mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
+  mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
+  mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
+  mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
+  mutate(reach_text = if_else(reach_text == "Not Listed", new_reach, reach_text)) %>%
+  select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
+         reach, reach_text, lower_coords, upper_coords) %>%
   distinct()
 
 # New access token
@@ -149,32 +192,30 @@ get_header_data = function(profile_id, parent_form_page_id, start_id, access_tok
            steelhead_count_type, chum_count_type, gps_loc_lower, gps_loc_upper,
            coho_run_year, steelhead_run_year, chum_run_year, chinook_run_year,
            carcass_tagging, code_reach)
-
-  # Process stream and reach data
-  chk_stream_name = survey_records %>%
-    filter(nchar(stream_name) < 36L) %>%
-    mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
-    mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
-    select(parent_record_id, observers, stream_name, stream_name_text, new_stream_name,
-           reach, reach_text, new_reach, code_reach, gps_loc_lower, gps_loc_upper,
-           llid, no_llid)
 }
 
-fields = glue::glue("id,parent_record_id,parent_page_id,parent_element_id,created_date,created_by,",
-                    "created_location,created_device_id,modified_date,modified_by,modified_location,",
-                    "modified_device_id,data_entry_type,target_species,survey_date,start_time,observers,",
-                    "stream_name,stream_name_text,new_stream_name,reach,reach_text,new_reach,survey_type,",
-                    "survey_method,survey_direction,clarity_ft,clarity_code,weather,flow,stream_conditions,",
-                    "no_survey,reachsplit_yn,user_name,headerid,end_time,header_comments,",
-                    "stream_temp,survey_completion_status,chinook_count_type,",
-                    "coho_count_type,steelhead_count_type,chum_count_type,gps_loc_lower,gps_loc_upper,",
-                    "coho_run_year,steelhead_run_year,chum_run_year,chinook_run_year,carcass_tagging,code_reach")
+# New access token
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
+}
 
-# Collapse vector of column names into a single string
-form_fields <- paste(fields, collapse = ',')
+# Test
+strt = Sys.time()
+header_data = get_header_data(profile_id, parent_form_page_id, start_id, access_token)
+nd = Sys.time(); nd - strt
 
-# Pull data from iForm
-r6_stream_surveys = get_all_records("wdfw",417821,3363255,fields = "fields", limit = 1000, 0, access_token, form_fields,0)
+# Process stream and reach data
+chk_stream_name = header_data %>%
+  filter(nchar(stream_name) < 36L) %>%
+  mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
+  mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
+  select(parent_record_id, observers, stream_name, stream_name_text, new_stream_name,
+         reach, reach_text, new_reach, code_reach, gps_loc_lower, gps_loc_upper,
+         llid, no_llid)
 
 
 

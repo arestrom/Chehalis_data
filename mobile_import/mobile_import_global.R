@@ -5,11 +5,16 @@ count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   qry = glue("select distinct s.survey_id ",
              "from survey as s")
   # Checkout connection
-  con = poolCheckout(pool)
+  con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  #con = poolCheckout(pool)
   existing_surveys = DBI::dbGetQuery(con, qry)
-  poolReturn(con)
+  DBI::dbDisconnect(con)
+  #poolReturn(con)
   # Define fields...just parent_id and survey_id this time
-  fields = paste("id, headerid, survey_date")
+  fields = paste0("id, headerid, survey_date, stream_name, ",
+                  "stream_name_text, new_stream_name, reach, ",
+                  "reach_text, new_reach, gps_loc_lower, ",
+                  "gps_loc_upper")
   start_id = 0L
   # Get list of all survey_ids and parent_form iform ids on server
   field_string <- paste0("id:<(>\"", start_id, "\"),", fields)
@@ -26,18 +31,12 @@ count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
     since_id = start_id)
   # Keep only records where headerid is not in survey_id
   new_survey_data = parent_ids %>%
-    select(parent_form_survey_id = id, survey_id = headerid, survey_date) %>%
+    select(parent_form_survey_id = id, survey_id = headerid, survey_date,
+           stream_name, stream_name_text, new_stream_name, reach, reach_text,
+           new_reach, gps_loc_lower, gps_loc_upper) %>%
     distinct() %>%
     anti_join(existing_surveys, by = "survey_id") %>%
-    arrange(as.Date(survey_date)) %>%
-    # Count number of surveys and get dates and ids of first, last
-    mutate(n_surveys = n()) %>%
-    mutate(first_id = min(parent_form_survey_id)) %>%
-    mutate(last_id = max(parent_form_survey_id)) %>%
-    mutate(start_date = min(as.Date(survey_date))) %>%
-    mutate(end_date = max(as.Date(survey_date))) %>%
-    select(n_surveys, first_id, start_date, last_id, end_date) %>%
-    distinct()
+    arrange(as.Date(survey_date))
   return(new_survey_data)
 }
 
