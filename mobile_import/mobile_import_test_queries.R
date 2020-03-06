@@ -175,7 +175,7 @@ get_header_data = function(profile_id, parent_form_page_id, start_id, access_tok
     mutate(modified_datetime = iformr::idate_time(modified_date)) %>%
     mutate(survey_start_datetime = as.POSIXct(paste0(survey_date, " ", start_time), tz = "America/Los_Angeles")) %>%
     mutate(survey_end_datetime = as.POSIXct(paste0(survey_date, " ", end_time), tz = "America/Los_Angeles")) %>%
-    # Temporary fix for target species
+    # Temporary fix for target species!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     mutate(target_species = case_when(
       target_species == "Chinook" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",
       target_species == "Chum" ~ "69d1348b-7e8e-4232-981a-702eda20c9b1",
@@ -208,9 +208,38 @@ strt = Sys.time()
 header_data = get_header_data(profile_id, parent_form_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
+# Check some values
+unique(header_data$observers)
+unique(header_data$data_entry_type)
+unique(header_data$reachsplit_yn)
 
+# Check for missing values...required fields
+any(is.na(header_data$survey_date))
+any(is.na(header_data$survey_start_datetime))
+any(is.na(header_data$survey_end_datetime))
+any(is.na(header_data$survey_type))
+any(is.na(header_data$survey_method))
 
+# Optional
+any(is.na(header_data$survey_direction))
+unique(header_data$chinook_count_type)
+unique(header_data$coho_count_type)
+unique(header_data$steelhead_count_type)
+unique(header_data$chum_count_type)
 
+# Run year
+unique(header_data$coho_run_year)
+unique(header_data$steelhead_run_year)
+unique(header_data$chum_run_year)
+unique(header_data$chinook_run_year)
+unique(header_data$carcass_tagging)
+
+# Pull out missing required fields
+missing_req = header_data %>%
+  filter(is.na(survey_date) | is.na(survey_type) | is.na(survey_method)) %>%
+  select(parent_record_id, created_by, survey_date, observers, stream_name_text,
+         reach_text, survey_type, survey_method)
+write.csv(missing_req, "data/missing_data.csv")
 
 
 

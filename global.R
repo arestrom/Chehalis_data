@@ -3,9 +3,14 @@
 #
 # Notes for Lea...form related
 #  1. Should change logins for consistency, so created_by can be pulled from start portion.
-#     Could be underscore or .
+#     Could be underscore or . If data entry is listed as "real_time" can I just use observer?
+#     It looks like observer is always just one person....better than using VAR...
 #  2. Ask if first and last names should be used for observers. I prefer just
 #     last name.
+#  3. Why is run year defined at header level?
+#  4. Can data_source always be assigned to WDFW? Is a data_source_unit needed?
+#  5. If required data are missing...may want to just assign a default value,
+#     upload, then output a file with problematic data?
 #
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
