@@ -208,14 +208,7 @@ strt = Sys.time()
 header_data = get_header_data(profile_id, parent_form_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
-# Process stream and reach data
-chk_stream_name = header_data %>%
-  filter(nchar(stream_name) < 36L) %>%
-  mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
-  mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
-  select(parent_record_id, observers, stream_name, stream_name_text, new_stream_name,
-         reach, reach_text, new_reach, code_reach, gps_loc_lower, gps_loc_upper,
-         llid, no_llid)
+
 
 
 
