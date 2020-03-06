@@ -5,3 +5,5 @@ sg_lite.sqlite
 MissingReaches.xlsx
 MissingStreams.xlsx
 ~$MissingStreams.xlsx
+missing_data.csv
+missing_data.xlsx
