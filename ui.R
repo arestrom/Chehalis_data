@@ -207,6 +207,20 @@ ui = dashboardPagePlus(
                 )
               )
       ),
+      tabItem(tabName = "cloud_sync",
+              fluidRow(
+                br(),
+                br(),
+                boxPlus(
+                  title = "Sync local sqlite to cloud DB (ToDo)",
+                  closable = FALSE,
+                  collapsible = TRUE,
+                  solidHeader = FALSE,
+                  collapsed = FALSE,
+                  width = 12
+                )
+              )
+      ),
       tabItem(tabName = "reports",
               fluidRow(
                 br(),

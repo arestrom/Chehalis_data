@@ -4,9 +4,8 @@
 # Notes for Lea...form related
 #  1. Should change logins for consistency, so created_by can be pulled from start portion.
 #     Could be underscore or .
-#  2. Disallow surveying streams that have not yet been entered...or manually edit in iform
-#     front-end afterwards. Then require coordinates for any new endpoints. Can create new
-#     stream in database, then add to form and manually update stream_name field.
+#  2. Ask if first and last names should be used for observers. I prefer just
+#     last name.
 #
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
@@ -122,6 +121,9 @@
 #     or streams entered to local.
 # 43. Look into using busy spinner with loading datatable in mobile operations
 # 44. Disable button to write new surveys in mobile_import if streams or reaches missing.
+# 45. Need to update newly added stream geometry and waterbodies to sqlite DB. Currently
+#     data are only in local version of spawning_ground. Later, update to prod.
+#     Wait till I get response from Nick and Lea to run updates.
 #
 # AS 2020-02-26
 #==============================================================

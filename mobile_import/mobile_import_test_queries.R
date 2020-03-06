@@ -106,7 +106,7 @@ missing_stream_vals = new_surveys %>%
   mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
   mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
   select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
-         lower_coords, upper_coords) %>%
+         reach, lower_coords, upper_coords) %>%
   distinct()
 
 # Pull out only needed data

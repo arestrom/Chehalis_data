@@ -72,7 +72,7 @@ missing_stream_vals = reactive({
     mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
     mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
     select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
-           lower_coords, upper_coords) %>%
+           reach, lower_coords, upper_coords) %>%
     distinct()
   return(missing_streams)
 })
@@ -155,11 +155,13 @@ output$missing_streams = renderDT({
                                survey_date = "",
                                stream_name = "",
                                stream_name_text = "",
+                               reach = "",
                                lower_coords = "",
                                upper_coords = "")
   datatable(missing_stream_data,
             colnames = c('Parent form ID', 'Survey date', 'Stream id',
-                         'Stream name', 'Lower coords', 'Upper coords'),
+                         'Stream name', 'Reach info', 'Lower coords',
+                         'Upper coords'),
             extensions = 'Buttons',
             options = list(dom = 'Blftp',
                            pageLength = 5,
@@ -222,7 +224,7 @@ observeEvent(input$check_for_new_surveys, {
   progress = Progress$new(session, min = 1, max = 3)
   on.exit(progress$close())
   # Just output message without bar for now
-  progress$set(message = 'Contacting server',
+  progress$set(message = 'Contacting mobile data server',
                detail = 'One moment please...')
   for (i in 1:3) {
     progress$set(value = i)
