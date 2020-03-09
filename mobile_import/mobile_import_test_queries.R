@@ -132,15 +132,6 @@ missing_reach_vals = new_surveys %>%
          reach, reach_text, lower_coords, upper_coords) %>%
   distinct()
 
-# New access token
-access_token = NULL
-while (is.null(access_token)) {
-  access_token = iformr::get_iform_access_token(
-    server_name = "wdfw",
-    client_key_name = "r6production_key",
-    client_secret_name = "r6production_secret")
-}
-
 # Get header data
 get_header_data = function(profile_id, parent_form_page_id, start_id, access_token) {
   # Define fields
@@ -180,14 +171,16 @@ get_header_data = function(profile_id, parent_form_page_id, start_id, access_tok
       target_species == "Chinook" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",
       target_species == "Chum" ~ "69d1348b-7e8e-4232-981a-702eda20c9b1",
       !target_species %in% c("Chinook", "Chum") ~ target_species)) %>%
+    mutate(created_by = stringi::stri_replace_all_fixed(observers, "@dfw.wa.gov", "")) %>%
     mutate(observers = stringi::stri_replace_all_fixed(observers, "@dfw.wa.gov", "")) %>%
     mutate(observers = stringi::stri_replace_all_fixed(observers, ".", " ")) %>%
     mutate(observers = stringi::stri_trans_totitle(observers)) %>%
-    select(parent_record_id, survey_uuid, created_datetime, created_by, created_device_id,
-           data_entry_type, target_species, survey_date, survey_start_datetime, survey_end_datetime,
-           observers, stream_name, stream_name_text, new_stream_name, reach, reach_text, new_reach,
-           survey_type, survey_method, survey_direction, clarity_ft, clarity_code, weather,
-           flow,stream_conditions, no_survey, reachsplit_yn, user_name, end_time, header_comments,
+    select(parent_record_id, survey_uuid, created_datetime, created_by, modified_datetime,
+           modified_by, created_device_id, data_entry_type, target_species, survey_date,
+           survey_start_datetime, survey_end_datetime, observers, stream_name, stream_name_text,
+           new_stream_name, reach, reach_text, new_reach, survey_type, survey_method,
+           survey_direction, clarity_ft, clarity_code, weather, flow,stream_conditions,
+           no_survey, reachsplit_yn, user_name, end_time, header_comments,
            stream_temp, survey_completion_status, chinook_count_type, coho_count_type,
            steelhead_count_type, chum_count_type, gps_loc_lower, gps_loc_upper,
            coho_run_year, steelhead_run_year, chum_run_year, chinook_run_year,
@@ -239,9 +232,57 @@ missing_req = header_data %>%
   filter(is.na(survey_date) | is.na(survey_type) | is.na(survey_method)) %>%
   select(parent_record_id, created_by, survey_date, observers, stream_name_text,
          reach_text, survey_type, survey_method)
-write.csv(missing_req, "data/missing_data.csv")
+#write.csv(missing_req, "data/missing_data.csv")
 
+#======================================================================================================================
+# For now, get rid of data with missing fields so I can develop the remaining functions...JUST FOR NOW !!!!!!!!!!!!!!!!
+#======================================================================================================================
 
+# Pull stream_ids
+del_stream_id = missing_stream_vals %>%
+  select(parent_form_survey_id) %>%
+  distinct()
+
+# Pull reach_ids
+del_reach_id = missing_reach_vals %>%
+  select(parent_form_survey_id) %>%
+  distinct()
+
+# Combine
+del_id = bind_rows(del_stream_id, del_reach_id) %>%
+  distinct() %>%
+  pull(parent_form_survey_id)
+
+# Filter to header_data with no missing stream or reach_id for now
+header_data = header_data %>%
+  filter(!parent_record_id %in% del_id) %>%
+  filter(!is.na(survey_method)) %>%
+  mutate(survey_uuid = if_else(is.na(survey_uuid), remisc::get_uuid(1L), survey_uuid))
+
+# Check
+any(is.na(header_data$survey_uuid))
+any(header_data$survey_uuid == "")
+unique(nchar(header_data$survey_uuid))
+
+#==================== End of trim section=============================================================================
+
+# Generate survey and associated tables
+survey_prep = header_data %>%
+  mutate(data_source_id = "c40563fa-efce-4cac-a2e3-6223a5e24030") %>%                           # WDFW
+  mutate(data_source_unit_id = "e2d51ceb-398c-49cb-9aa5-d20a839e9ad9") %>%                      # Not applicable
+  mutate(data_review_status_id = "b0ea75d4-7e77-4161-a533-5b3fce38ac2a") %>%                    # Preliminary
+  mutate(data_submitter_last_name = observers) %>%
+  mutate(modified_by = if_else(created_datetime == modified_datetime, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(substr(modified_by, 1, 3) %in% c("VAR", "FW0"), NA_character_, modified_by)) %>%
+  mutate(modified_by = stringi::stri_replace_all_fixed(modified_by, ".", "_")) %>%
+  mutate(modified_by = remisc::get_text_item(modified_by, 1, "_")) %>%
+  mutate(modified_datetime = if_else(created_datetime == modified_datetime, NA_character_, modified_datetime)) %>%
+  select(survey_id = survey_uuid, survey_datetime = survey_date, data_source_id,
+         data_source_unit_id, survey_method, data_review_status_id,
+         stream_name, reach, survey_completion_status_id = survey_completion_status,
+         incomplete_survey_type_id = no_survey, survey_start_datetime,
+         survey_end_datetime, observers, data_submitter_last_name,
+         created_datetime, created_by, modified_datetime, modified_by)
 
 
 
