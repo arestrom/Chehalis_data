@@ -11,6 +11,7 @@
 #  4. Can data_source always be assigned to WDFW? Is a data_source_unit needed?
 #  5. If required data are missing...may want to just assign a default value,
 #     upload, then output a file with problematic data?
+#  6. Can I just use observers for data_submitter...I am for now.
 #
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
