@@ -1,5 +1,5 @@
 #===========================================================================
-# Combine stream segments with duplicate LLIDs into one continuous segment
+# Identify differences in geoms between DB and official LLID layer
 #
 # Notes:
 #  1.
@@ -15,6 +15,7 @@ rm(list = ls(all.names = TRUE))
 # Load libraries
 library(DBI)
 library(RPostgres)
+#library(tidyverse)
 library(dplyr)
 library(remisc)
 library(tidyr)
@@ -22,7 +23,6 @@ library(sf)
 library(stringi)
 library(lubridate)
 library(glue)
-library(iformr)
 library(odbc)
 
 # Set options
@@ -102,17 +102,54 @@ llid_chehalis = read_sf("data/llid_chehalis.gpkg", layer = "llid_chehalis", crs 
 
 # Process for subsetting
 llid_chehalis = llid_chehalis %>%
-  select(llid = LLID, gnis_name = GNIS_STREAMNAME, llid_name = LLID_STREAMNAME, geom)
+  rename(geometry = geom) %>%
+  select(llid = LLID, gnis_name = GNIS_STREAMNAME, llid_name = LLID_STREAMNAME, geometry)
 
-# # Get Leslie's cat_llid layer
-# cat_llid = read_sf("C:/data/RStudio/spawn_survey_data/data/cat_llid.gpkg", layer = "cat_llid.gpkg", crs = 2927)
-# # Write chehalis subset to local
-# cat_llid_chehalis = cat_llid %>%
-#   filter(wria_code %in% c("22", "23"))
-# #unique(cat_llid_chehalis$wria_code)
-# write_sf(cat_llid_chehalis, "data/cat_llid_chehalis.gpkg")
-# Get Leslie's latest llid data
-cat_llid_chehalis = read_sf("data/cat_llid_chehalis.gpkg", layer = "cat_llid_chehalis", crs = 2927)
+# Trim to only LLIDs currently in DB
+ll_id = unique(streams_st$llid)
+llid_chehalis = llid_chehalis %>%
+  filter(llid %in% ll_id)
+
+# Pull out attributes from streams to add to llid
+add_cols = streams_st %>%
+  select(waterbody_id, waterbody_name, waterbody_display_name,
+         llid, cat_code, stream_id, gid) %>%
+  st_drop_geometry()
+
+# Add columns to llid
+llid_chehalis = llid_chehalis %>%
+  left_join(add_cols, by = "llid")
+
+# Trim to match streams
+llid_chehalis = llid_chehalis %>%
+  select(waterbody_id, waterbody_name, waterbody_display_name,
+         llid, cat_code, stream_id, gid, geometry)
+
+# Combine
+all_streams = rbind(streams_st, llid_chehalis)
+
+# Flatten using distinct
+strt = Sys.time()
+all_streams = all_streams %>%
+  distinct(., .keep_all = TRUE) %>%
+  arrange(waterbody_display_name)
+nd = Sys.time(); nd - strt
+
+# Arrange
+changed_streams = all_streams %>%
+  st_drop_geometry() %>%
+  group_by(waterbody_id) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq > 1L) %>%
+  select(waterbody_id) %>%
+  distinct() %>%
+  pull(waterbody_id)
+
+check_streams = all_streams %>%
+  filter(waterbody_id %in% changed_streams) %>%
+  arrange(waterbody_display_name)
+
 
 #===========================================================================================
 # Correct one stream at a time...Replace multiple segments with one contiguous.
