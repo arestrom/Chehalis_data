@@ -158,33 +158,7 @@ get_header_data = function(profile_id, parent_form_page_id, start_id, access_tok
     access_token = access_token,
     field_string = field_string,
     since_id = start_id)
-
-  # Rename id to parent_record_id for more explicit joins to subform data...convert dates, etc.
-  survey_records = parent_records %>%
-    rename(parent_record_id = id, survey_uuid = headerid) %>%
-    mutate(created_datetime = iformr::idate_time(created_date)) %>%
-    mutate(modified_datetime = iformr::idate_time(modified_date)) %>%
-    mutate(survey_start_datetime = as.POSIXct(paste0(survey_date, " ", start_time), tz = "America/Los_Angeles")) %>%
-    mutate(survey_end_datetime = as.POSIXct(paste0(survey_date, " ", end_time), tz = "America/Los_Angeles")) %>%
-    # Temporary fix for target species!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    mutate(target_species = case_when(
-      target_species == "Chinook" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",
-      target_species == "Chum" ~ "69d1348b-7e8e-4232-981a-702eda20c9b1",
-      !target_species %in% c("Chinook", "Chum") ~ target_species)) %>%
-    mutate(created_by = stringi::stri_replace_all_fixed(observers, "@dfw.wa.gov", "")) %>%
-    mutate(observers = stringi::stri_replace_all_fixed(observers, "@dfw.wa.gov", "")) %>%
-    mutate(observers = stringi::stri_replace_all_fixed(observers, ".", " ")) %>%
-    mutate(observers = stringi::stri_trans_totitle(observers)) %>%
-    select(parent_record_id, survey_uuid, created_datetime, created_by, modified_datetime,
-           modified_by, created_device_id, data_entry_type, target_species, survey_date,
-           survey_start_datetime, survey_end_datetime, observers, stream_name, stream_name_text,
-           new_stream_name, reach, reach_text, new_reach, survey_type, survey_method,
-           survey_direction, clarity_ft, clarity_code, weather, flow,stream_conditions,
-           no_survey, reachsplit_yn, user_name, end_time, header_comments,
-           stream_temp, survey_completion_status, chinook_count_type, coho_count_type,
-           steelhead_count_type, chum_count_type, gps_loc_lower, gps_loc_upper,
-           coho_run_year, steelhead_run_year, chum_run_year, chinook_run_year,
-           carcass_tagging, code_reach)
+  return(parent_records)
 }
 
 # New access token
@@ -200,6 +174,42 @@ while (is.null(access_token)) {
 strt = Sys.time()
 header_data = get_header_data(profile_id, parent_form_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
+
+# Check some date and time values
+any(is.na(header_data$survey_date))
+chk_date = header_data %>%
+  filter(is.na(survey_date))
+# TEMPORARY FIX !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+header_data = header_data %>%
+  filter(!is.na(survey_date))
+
+# Process dates etc
+# Rename id to parent_record_id for more explicit joins to subform data...convert dates, etc.
+header_data = header_data %>%
+  rename(parent_record_id = id, survey_uuid = headerid) %>%
+  mutate(created_datetime = iformr::idate_time(created_date)) %>%
+  mutate(modified_datetime = iformr::idate_time(modified_date)) %>%
+  mutate(survey_start_datetime = as.POSIXct(paste0(survey_date, " ", start_time), tz = "America/Los_Angeles")) %>%
+  mutate(survey_end_datetime = as.POSIXct(paste0(survey_date, " ", end_time), tz = "America/Los_Angeles")) %>%
+  # Temporary fix for target species!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  mutate(target_species = case_when(
+    target_species == "Chinook" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",
+    target_species == "Chum" ~ "69d1348b-7e8e-4232-981a-702eda20c9b1",
+    !target_species %in% c("Chinook", "Chum") ~ target_species)) %>%
+  mutate(created_by = stringi::stri_replace_all_fixed(observers, "@dfw.wa.gov", "")) %>%
+  mutate(observers = stringi::stri_replace_all_fixed(observers, "@dfw.wa.gov", "")) %>%
+  mutate(observers = stringi::stri_replace_all_fixed(observers, ".", " ")) %>%
+  mutate(observers = stringi::stri_trans_totitle(observers)) %>%
+  select(parent_record_id, survey_uuid, created_datetime, created_by, modified_datetime,
+         modified_by, created_device_id, data_entry_type, target_species, survey_date,
+         survey_start_datetime, survey_end_datetime, observers, stream_name, stream_name_text,
+         new_stream_name, reach, reach_text, new_reach, survey_type, survey_method,
+         survey_direction, clarity_ft, clarity_code, weather, flow,stream_conditions,
+         no_survey, reachsplit_yn, user_name, end_time, header_comments,
+         stream_temp, survey_completion_status, chinook_count_type, coho_count_type,
+         steelhead_count_type, chum_count_type, gps_loc_lower, gps_loc_upper,
+         coho_run_year, steelhead_run_year, chum_run_year, chinook_run_year,
+         carcass_tagging, code_reach)
 
 # Check some values
 unique(header_data$observers)
@@ -266,23 +276,115 @@ unique(nchar(header_data$survey_uuid))
 
 #==================== End of trim section=============================================================================
 
+# Generate created and modified data
+header_data = header_data %>%
+  mutate(modified_by = if_else(created_datetime == modified_datetime, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(substr(modified_by, 1, 3) %in% c("VAR", "FW0"), NA_character_, modified_by)) %>%
+  mutate(modified_by = stringi::stri_replace_all_fixed(modified_by, ".", "_")) %>%
+  mutate(modified_by = remisc::get_text_item(modified_by, 1, "_")) %>%
+  mutate(modified_datetime = if_else(created_datetime == modified_datetime, NA_character_, modified_datetime))
+
+# Survey =========================================
+
 # Generate survey and associated tables
 survey_prep = header_data %>%
   mutate(data_source_id = "c40563fa-efce-4cac-a2e3-6223a5e24030") %>%                           # WDFW
   mutate(data_source_unit_id = "e2d51ceb-398c-49cb-9aa5-d20a839e9ad9") %>%                      # Not applicable
   mutate(data_review_status_id = "b0ea75d4-7e77-4161-a533-5b3fce38ac2a") %>%                    # Preliminary
   mutate(data_submitter_last_name = observers) %>%
-  mutate(modified_by = if_else(created_datetime == modified_datetime, NA_character_, modified_by)) %>%
-  mutate(modified_by = if_else(substr(modified_by, 1, 3) %in% c("VAR", "FW0"), NA_character_, modified_by)) %>%
-  mutate(modified_by = stringi::stri_replace_all_fixed(modified_by, ".", "_")) %>%
-  mutate(modified_by = remisc::get_text_item(modified_by, 1, "_")) %>%
-  mutate(modified_datetime = if_else(created_datetime == modified_datetime, NA_character_, modified_datetime)) %>%
   select(survey_id = survey_uuid, survey_datetime = survey_date, data_source_id,
          data_source_unit_id, survey_method, data_review_status_id,
          stream_name, reach, survey_completion_status_id = survey_completion_status,
          incomplete_survey_type_id = no_survey, survey_start_datetime,
          survey_end_datetime, observers, data_submitter_last_name,
          created_datetime, created_by, modified_datetime, modified_by)
+
+# Survey comment ================================
+
+# Pull out survey_comment data
+comment_prep = header_data %>%
+  mutate(survey_id = survey_uuid) %>%
+  mutate(area_surveyed_id = NA_character_) %>%
+  mutate(fish_abundance_condition_id = NA_character_) %>%
+  mutate(stream_condition_id = NA_character_) %>%
+  mutate(stream_flow_type_id = flow) %>%
+  mutate(survey_count_condition_id = NA_character_) %>%
+  mutate(survey_direction_id = survey_direction) %>%
+  mutate(survey_timing_id = NA_character_) %>%
+  mutate(visibility_condition_id = NA_character_) %>%
+  mutate(visibility_type_id = stream_conditions) %>%
+  mutate(weather_type_id = weather) %>%
+  mutate(comment_text = header_comments) %>%
+  select(survey_id, area_surveyed_id, fish_abundance_condition_id,
+         stream_condition_id, stream_flow_type_id, survey_count_condition_id,
+         survey_direction_id, survey_timing_id, visibility_condition_id,
+         visibility_type_id, weather_type_id, comment_text, created_datetime,
+         created_by, modified_datetime, modified_by) %>%
+  distinct()
+
+# Get rid of empty rows
+comment_prep = comment_prep %>%
+  mutate(comment_text = trimws(comment_text)) %>%
+  mutate(del_row = if_else(
+    is.na(stream_flow_type_id) &
+    is.na(survey_direction_id) &
+    is.na(visibility_type_id) &
+    is.na(weather_type_id) &
+    (is.na(comment_text) | comment_text == ""), "yes", "no"))
+
+# Check...for curiosity
+table(comment_prep$del_row, useNA = "ifany")
+
+# Remove empty rows
+comment_prep = comment_prep %>%
+  filter(del_row == "no") %>%
+  select(-del_row)
+
+# Check for missing or duplicated survey_ids
+any(is.na(comment_prep$survey_id))
+any(duplicated(comment_prep$survey_id))
+
+# Pull out duplicated comment_prep rows
+dup_survey_id = comment_prep %>%
+  group_by(survey_id) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq > 1L) %>%
+  select(survey_id) %>%
+  distinct() %>%
+  pull(survey_id)
+
+chk_dup_comment = comment_prep %>%
+  filter(survey_id %in% dup_survey_id) %>%
+  arrange(survey_id)
+
+# Finalize
+comment_prep = comment_prep %>%
+  mutate(survey_comment_id = remisc::get_uuid(nrow(comment_prep))) %>%
+
+
+# Survey intent ================================
+
+intent_prep = header_data %>%
+  select(survey_id)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
