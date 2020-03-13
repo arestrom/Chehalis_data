@@ -1,5 +1,5 @@
 ####################################################################
-#Download Region 6 iForm db
+#Download Region 6 iForm db....
 ###################################################################
 
 # Load libraries
@@ -27,7 +27,7 @@ options(digits=14)
  dbPath <- "S:\\Reg6\\FP\\Lea Ronne\\R6_Spawning_Ground_Surveys.accdb"
 
 #Define funtion that loops trough form records in case greater than 1000 records
-get_all_records = function(server_name, profile_id, page_id, fields = "fields", 
+get_all_records = function(server_name, profile_id, page_id, fields = "fields",
                            limit = 1000, user_offset, access_token, field_string, starting_id) {
   since_id = starting_id
   since_fields = paste0("id:<(>\"", since_id, "\"),", field_string)
@@ -57,7 +57,7 @@ get_all_records = function(server_name, profile_id, page_id, fields = "fields",
 
 # Generate API token. Should persist through session unless very slow.
 # Loop through token process until valid token recieved
-# Occasional 'Bad Request (HTTP 400)' error occurs randomly 
+# Occasional 'Bad Request (HTTP 400)' error occurs randomly
 access_token = NULL
 while (is.null(access_token)) {
   access_token = get_iform_access_token(
@@ -97,7 +97,7 @@ fields = glue::glue("id,parent_record_id,parent_page_id,parent_element_id,create
                     "fish_sex,carcass_condition,carc_tag_1,carc_tag_2,spawn_condition,length_measurement_cm,",
                     "cwt_detected,pittag_detected,pit_tag_number,cwt_label,dna_number,scale_card_number,",
                     "scale_card_position_number,encounter_comments,fish_condition,mark_status_1,mark_status_2,scan_cwt")
-          
+
 # Collapse vector of column names into a single string
 form_fields <- paste(fields, collapse = ',')
 
