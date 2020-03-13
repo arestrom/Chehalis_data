@@ -132,8 +132,10 @@
 #     Wait till I get response from Nick and Lea to run updates.
 # 46. Change stream drop-down code to use display_name not full waterbody_name
 # 47. Create reactive that zooms to stream in wria_map when stream is selected
+# 48. Change required fields in reach_point to omit river_mile. We should start
+#     weaning off RMs and go with codes, descriptors and coords instead.
 #
-# AS 2020-02-26
+# AS 2020-03-13
 #==============================================================
 
 # Load libraries
