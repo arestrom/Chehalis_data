@@ -2,14 +2,18 @@
 # Identify differences in geoms between DB and official LLID layer
 #
 # Notes:
-#  1. To get the latest LLID data...open geolib LLID_ROUTES in qgis. Then
+#  1. To get the latest LLID data from geolib...open geolib LLID_ROUTES in qgis. Then
 #     export as a geopackage. Set CRS to 2927 first. Default settings will
 #     work. Takes a few minutes to download. Then use code below to trim
 #     to WRIAs 22 and 23.
+#  2. Some substantial changes occurred on 2020-03-12. One of the most dramatic was
+#     Sherwood Creek, which was essentially split into Hensen Creek for the lower
+#     portion and Sherwood Creek for part of the upper portion. So RMs will no
+#     longer be meaningful and should be replaced by coordinates and point descriptors.
 #
-#  Completed: 2020-03-11
+#  Completed: 2020-03-12
 #
-# AS 2020-03-10
+# AS 2020-03-12
 #===========================================================================
 
 # Clear workspace
@@ -27,6 +31,7 @@ library(lubridate)
 library(glue)
 library(odbc)
 library(units)
+library(openxlsx)
 
 # Set options
 options(digits=14)
@@ -62,17 +67,17 @@ pg_con_local = function(dbname, port = '5432') {
   con
 }
 
-# Get table of valid units
-units_table = valid_udunits(quiet = TRUE)
+# # Get table of valid units
+# units_table = valid_udunits(quiet = TRUE)
 
 #=========================================================================
-# Import all stream data from sg where two or more segments exist per llid
+# Get stream data from SG
 #=========================================================================
 
 # Define query to get needed data
 qry = glue("select distinct wb.waterbody_id, wb.waterbody_name, wb.waterbody_display_name, ",
            "wb.latitude_longitude_id as llid, wb.stream_catalog_code as cat_code, ",
-           "st.stream_id, st.gid, st.geom as geometry ",
+           "st.stream_id, st.gid, st.geom ",
            "from waterbody_lut as wb ",
            "left join stream as st on wb.waterbody_id = st.waterbody_id ",
            "left join location as loc on wb.waterbody_id = loc.waterbody_id ",
@@ -96,45 +101,74 @@ dup_streams = streams_st %>%
   distinct() %>%
   inner_join(streams_st, by = "llid")
 
-# # Query to get wria data
-# qry = glue("select wria_code, wria_description as wria_name, geom as geometry ",
-#            "from wria_lut")
-#
-# # Run the query
-# db_con = pg_con_local(dbname = "spawning_ground")
-# wria_st = st_read(db_con, query = qry)
-# dbDisconnect(db_con)
-#
-# # Check epsg
-# st_crs(wria_st)$epsg
-#
-# # Get Arleta's latest llid data....see notes above.
-# llid_st = read_sf("data/LLID_ROUTES.gpkg", layer = "LLID_ROUTES", crs = 2927)
+#=========================================================================
+# Get WRIA data
+#=========================================================================
+
+# Query to get wria data
+qry = glue("select wria_code, wria_description as wria_name, geom as geometry ",
+           "from wria_lut")
+# Run the query
+db_con = pg_con_local(dbname = "spawning_ground")
+wria_st = st_read(db_con, query = qry)
+dbDisconnect(db_con)
+st_crs(wria_st)$epsg
+
+#=========================================================================
+# Get stream data from Leslie's latest
+#=========================================================================
+
+# # Get Leslies latest gdb...as of 2020-03-12
+# cat_llid_st = read_sf("data/wdfwStreamCatalogGeometry.gdb", layer = "StreamCatalogLine", crs = 2927)
+# st_crs(cat_llid_st)$epsg
+# # Write chehalis subset to local
+# cat_llid_chehalis = cat_llid_st %>%
+#   st_zm() %>%
+#   st_join(wria_st) %>%
+#   filter(wria_code %in% c("22", "23"))
+# # Pull out what I need
+# cat_llid_chehalis = cat_llid_chehalis %>%
+#   rename(geometry = Shape) %>%
+#   select(cat_code = StreamCatalogID, cat_name = StreamCatalogName, llid = LLID,
+#          llid_name = LLIDName, comment = Comment, orientation = OrientID)
+# #unique(llid_chehalis$wria_code)
+# write_sf(cat_llid_chehalis, "data/cat_llid_chehalis_2020-03-12.gpkg")
+# Get Lestie's latest llid data
+cat_llid_chehalis = read_sf("data/cat_llid_chehalis_2020-03-12.gpkg",
+                            layer = "cat_llid_chehalis_2020-03-12", crs = 2927)
+
+#=========================================================================
+# Get stream data from Arleta's latest
+#=========================================================================
+
+# # Get Arleta's latest llid data....see notes above....but this time from a gdb
+# llid_st = read_sf("data/LLID20200311.gdb", layer = "LLID_routes", crs = 2927)
 # # Write chehalis subset to local
 # llid_chehalis = llid_st %>%
+#   st_zm() %>%
 #   st_join(wria_st) %>%
 #   filter(wria_code %in% c("22", "23"))
 # # Process for subsetting
 # llid_chehalis = llid_chehalis %>%
-#   rename(geometry = geom) %>%
-#   select(objectid = OBJECTID, llid = LLID, gnis_name = GNIS_STREAMNAME, llid_name = LLID_STREAMNAME,
+#   rename(geometry = Shape) %>%
+#   select(llid = LLID, gnis_name = GNIS_STREAMNAME, llid_name = LLID_STREAMNAME,
 #          wria_code, wria_name, geometry)
 # #unique(llid_chehalis$wria_code)
-# write_sf(llid_chehalis, "data/llid_chehalis_2020-02-11.gpkg")
+# write_sf(llid_chehalis, "data/llid_chehalis_2020-03-12.gpkg")
 # Get Arleta's latest llid data
-llid_chehalis = read_sf("data/llid_chehalis_2020-02-11.gpkg", layer = "llid_chehalis_2020-02-11", crs = 2927)
+llid_chehalis = read_sf("data/llid_chehalis_2020-03-12.gpkg",
+                        layer = "llid_chehalis_2020-03-12", crs = 2927)
 
 # Trim to only LLIDs currently in DB
 ll_id = unique(streams_st$llid)
 llid_chehalis = llid_chehalis %>%
   filter(llid %in% ll_id) %>%
-  rename(geometry = geom) %>%
   arrange(llid_name)
 
 # Pull out cases where LLID is duplicated...only Chehalis...not a problem....just one in streams_st
 dup_llid = llid_chehalis %>%
   st_drop_geometry() %>%
-  select(objectid, llid) %>%
+  select(llid) %>%
   group_by(llid) %>%
   mutate(n_seq = row_number()) %>%
   ungroup() %>%
@@ -146,24 +180,75 @@ dup_llid = llid_chehalis %>%
 # Pull out attributes from streams to add to llid
 add_cols = streams_st %>%
   select(waterbody_id, waterbody_name, waterbody_display_name,
-         llid, cat_code, stream_id, gid) %>%
+         llid, st_cat_code = cat_code, stream_id, gid) %>%
   st_drop_geometry()
 
 # Add columns to llid
 llid_chehalis = llid_chehalis %>%
   left_join(add_cols, by = "llid")
 
+#===========================================================================================
+# Check for needed updates to cat_codes and names, based on data from both Arleta and Leslie
+#===========================================================================================
+
+# Add cat_llid
+cat_llid = cat_llid_chehalis %>%
+  st_drop_geometry() %>%
+  select(cat_code, cat_name, llid, llid_name) %>%
+  filter(nchar(llid) == 13L) %>%
+  filter(nchar(cat_code) >= 7L) %>%
+  filter(!cat_code %in% c("LEHMAN CR", "tr.ibcoded", "22.-003??")) %>%
+  mutate(cat_name = if_else(cat_name == "UNNAMED TRIBUTARY", NA_character_, cat_name)) %>%
+  arrange(llid, cat_name) %>%
+  distinct() %>%
+  group_by(llid) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq == 1) %>%
+  select(llid, cat_code, cat_llid_name = llid_name)
+
+# Add cat_code to llid
+llid_chehalis = llid_chehalis %>%
+  left_join(cat_llid, by = "llid")
+
 # Trim to match streams
 llid_chehalis = llid_chehalis %>%
   mutate(src = "latest_llid") %>%
   select(src, waterbody_id, waterbody_name, waterbody_display_name,
-         llid, cat_code, stream_id, gid, geometry)
+         llid, st_cat_code, cat_code, cat_llid_name, stream_id, gid, geom)
+
+# Pull out cases where cat codes do not agree....may need to update waterbody_lut
+check_cat_codes = llid_chehalis %>%
+  st_drop_geometry() %>%
+  filter(!is.na(cat_code)) %>%
+  filter(!st_cat_code == cat_code)
+
+# # Output with styling
+# num_cols = ncol(check_cat_codes)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "Chehalis_CheckCatCodes.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "CheckCatCodes", gridLines = TRUE)
+# writeData(wb, sheet = 1, check_cat_codes, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+#========= End of cat_code checks ====================================
+
+# Trim to match streams
+llid_chehalis = llid_chehalis %>%
+  select(-cat_code) %>%
+  select(src, waterbody_id, waterbody_name, waterbody_display_name,
+         llid, cat_code = st_cat_code, stream_id, gid, geom)
 
 # Add source to streams_st
 streams_st = streams_st %>%
   mutate(src = "stream_table") %>%
   select(src, waterbody_id, waterbody_name, waterbody_display_name,
-         llid, cat_code, stream_id, gid, geometry)
+         llid, cat_code, stream_id, gid, geom)
 
 # Combine
 all_streams = rbind(streams_st, llid_chehalis)
@@ -199,10 +284,10 @@ check_streams = all_streams %>%
 if (nrow(check_streams) > 0 ) {
   # Add line length info to identify streams that should be checked closer
   check_streams = check_streams %>%
-    mutate(stream_feet = as.numeric(st_length(geometry))) %>%
+    mutate(stream_feet = as.numeric(st_length(geom))) %>%
     #mutate(stream_miles = round(as.numeric(units::set_units(stream_feet, "US_survey_mile")), 5)) %>%
     select(src, waterbody_id, waterbody_name, waterbody_display_name,
-           llid, cat_code, stream_id, stream_feet, gid, geometry)
+           llid, cat_code, stream_id, stream_feet, gid, geom)
 
   # Compare differences
   chk_length = check_streams %>%
@@ -218,7 +303,6 @@ if (nrow(check_streams) > 0 ) {
   # Pull out new stream geometry
   updated_geo = check_streams %>%
     filter(src == "latest_llid") %>%
-    rename(geom = geometry) %>%
     mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
     mutate(created_by = Sys.getenv("USERNAME")) %>%
     mutate(modified_datetime = as.POSIXct(NA)) %>%

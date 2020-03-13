@@ -136,29 +136,43 @@ llid_chehalis = read_sf("data/llid_chehalis_2020-03-12.gpkg",
                         layer = "llid_chehalis_2020-03-12", crs = 2927)
 
 #===========================================================================================
-# Correct one stream at a time...Replace multiple segments with one contiguous.
+# Pull out needed LLIDs from Arletas layer
 #===========================================================================================
 
-#======== Bear Creek =============================
+#======== Henson Creek =============================
+
+# This is the lower portion of Sherwood Creek. Only the upper < half remains as Sherwood Creek
 
 # Set stream llid
-ll_id = '1227706466618'
+ll_id = '1234888470075'
 
 # Get stream...verify names first
 st_llid = llid_chehalis %>%
   filter(llid == ll_id)
 
+# Get info from cat_llid
+st_cat = cat_llid_chehalis %>%
+  filter(llid == ll_id)
+
 # Check crs
 st_crs(st_llid)$epsg
 
-# Get corresponding waterbody_id
-wb_id = dup_streams %>%
-  filter(llid == ll_id) %>%
-  select(waterbody_id) %>%
-  distinct() %>%
-  pull(waterbody_id)
+# Check if the waterbody_id already exists in stream table
+wb_id = streams_st %>%
+  filter(llid == ll_id)
 
-# wb_id = "bf5d304e-06e8-416f-a3c9-46c2f7fc299c"
+# Create new entry in waterbody_lut
+wb = tibble(waterbody_id = remisc::get_uuid(1L),
+            waterbody_name = "Henson Creek",
+            waterbody_display_name = "Henson Creek")
+
+
+
+
+# STOPPED HERE....WAITING ON RESPONSE FROM ARLETA......................................
+
+
+
 
 # Get first corresponding gid
 gid = dup_streams %>%

@@ -130,6 +130,8 @@
 # 45. Need to update newly added stream geometry and waterbodies to sqlite DB. Currently
 #     data are only in local version of spawning_ground. Later, update to prod.
 #     Wait till I get response from Nick and Lea to run updates.
+# 46. Change stream drop-down code to use display_name not full waterbody_name
+# 47. Create reactive that zooms to stream in wria_map when stream is selected
 #
 # AS 2020-02-26
 #==============================================================
