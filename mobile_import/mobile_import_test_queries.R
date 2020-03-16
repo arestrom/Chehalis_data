@@ -346,10 +346,10 @@ comment_prep = comment_prep %>%
   mutate(comment_text = trimws(comment_text)) %>%
   mutate(del_row = if_else(
     is.na(stream_flow_type_id) &
-    is.na(survey_direction_id) &
-    is.na(visibility_type_id) &
-    is.na(weather_type_id) &
-    (is.na(comment_text) | comment_text == ""), "yes", "no"))
+      is.na(survey_direction_id) &
+      is.na(visibility_type_id) &
+      is.na(weather_type_id) &
+      (is.na(comment_text) | comment_text == ""), "yes", "no"))
 
 # Check...for curiosity
 table(comment_prep$del_row, useNA = "ifany")
@@ -486,7 +486,6 @@ any(is.na(intent_prep$created_datetime))
 any(is.na(intent_prep$created_by))
 
 # Survey intent ================================
-
 
 
 
