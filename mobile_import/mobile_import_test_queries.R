@@ -1,7 +1,7 @@
 #===============================================================================
 # Verify queries work
 #
-# AS 2020-02-25
+# AS 2020-03-16
 #===============================================================================
 
 # Load libraries
@@ -12,6 +12,7 @@ library(tibble)
 library(glue)
 library(iformr)
 library(stringi)
+library(tidyr)
 
 # Set data for query
 # Profile ID
@@ -170,18 +171,18 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test
+# Test...currently 1414 records
 strt = Sys.time()
 header_data = get_header_data(profile_id, parent_form_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
 # Check some date and time values
 any(is.na(header_data$survey_date))
-chk_date = header_data %>%
-  filter(is.na(survey_date))
-# TEMPORARY FIX !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-header_data = header_data %>%
-  filter(!is.na(survey_date))
+# chk_date = header_data %>%
+#   filter(is.na(survey_date))
+# # TEMPORARY FIX !!!!!!!!!!!!
+# header_data = header_data %>%
+#   filter(!is.na(survey_date))
 
 # Process dates etc
 # Rename id to parent_record_id for more explicit joins to subform data...convert dates, etc.
@@ -191,7 +192,7 @@ header_data = header_data %>%
   mutate(modified_datetime = iformr::idate_time(modified_date)) %>%
   mutate(survey_start_datetime = as.POSIXct(paste0(survey_date, " ", start_time), tz = "America/Los_Angeles")) %>%
   mutate(survey_end_datetime = as.POSIXct(paste0(survey_date, " ", end_time), tz = "America/Los_Angeles")) %>%
-  # Temporary fix for target species!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # Temporary fix for target species...mostly key values...but a couple with names !!!!!!!
   mutate(target_species = case_when(
     target_species == "Chinook" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",
     target_species == "Chum" ~ "69d1348b-7e8e-4232-981a-702eda20c9b1",
@@ -237,7 +238,7 @@ unique(header_data$chum_run_year)
 unique(header_data$chinook_run_year)
 unique(header_data$carcass_tagging)
 
-# Pull out missing required fields
+# Pull out missing required fields....now zero
 missing_req = header_data %>%
   filter(is.na(survey_date) | is.na(survey_type) | is.na(survey_method)) %>%
   select(parent_record_id, created_by, survey_date, observers, stream_name_text,
@@ -265,14 +266,32 @@ del_id = bind_rows(del_stream_id, del_reach_id) %>%
 
 # Filter to header_data with no missing stream or reach_id for now
 header_data = header_data %>%
-  filter(!parent_record_id %in% del_id) %>%
-  filter(!is.na(survey_method)) %>%
-  mutate(survey_uuid = if_else(is.na(survey_uuid), remisc::get_uuid(1L), survey_uuid))
+  filter(!parent_record_id %in% del_id)
 
 # Check
 any(is.na(header_data$survey_uuid))
 any(header_data$survey_uuid == "")
 unique(nchar(header_data$survey_uuid))
+
+# Generate new survey_id where missing...pull into separate datasets
+no_survey_id = header_data %>%
+  filter(is.na(survey_uuid))
+
+with_survey_id = header_data %>%
+  filter(!is.na(survey_uuid))
+
+# Add uuid
+no_survey_id = no_survey_id %>%
+  mutate(survey_uuid = remisc::get_uuid(nrow(no_survey_id)))
+
+# Combine
+header_data = rbind(no_survey_id, with_survey_id)
+
+# Check
+any(is.na(header_data$survey_uuid))
+any(header_data$survey_uuid == "")
+unique(nchar(header_data$survey_uuid))
+any(duplicated(header_data$survey_uuid))
 
 #==================== End of trim section=============================================================================
 
@@ -344,29 +363,139 @@ comment_prep = comment_prep %>%
 any(is.na(comment_prep$survey_id))
 any(duplicated(comment_prep$survey_id))
 
-# Pull out duplicated comment_prep rows
-dup_survey_id = comment_prep %>%
-  group_by(survey_id) %>%
-  mutate(n_seq = row_number()) %>%
-  ungroup() %>%
-  filter(n_seq > 1L) %>%
-  select(survey_id) %>%
-  distinct() %>%
-  pull(survey_id)
-
-chk_dup_comment = comment_prep %>%
-  filter(survey_id %in% dup_survey_id) %>%
-  arrange(survey_id)
-
 # Finalize
 comment_prep = comment_prep %>%
   mutate(survey_comment_id = remisc::get_uuid(nrow(comment_prep))) %>%
-
+  select(survey_comment_id, survey_id, area_surveyed_id, fish_abundance_condition_id,
+         stream_condition_id, stream_flow_type_id, survey_count_condition_id,
+         survey_direction_id, survey_timing_id, visibility_condition_id,
+         visibility_type_id, weather_type_id, comment_text, created_datetime,
+         created_by, modified_datetime, modified_by)
 
 # Survey intent ================================
 
+# Pull out survey_intent data
 intent_prep = header_data %>%
-  select(survey_id)
+  mutate(survey_id = survey_uuid) %>%
+  select(survey_id, target_species, chinook_count_type, coho_count_type,
+         steelhead_count_type, chum_count_type, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Check target_species
+unique(intent_prep$target_species)
+
+# Add target species names for reference...just curiosity
+qry = glue("select species_id as target_species, common_name as target_species_name ",
+           "from species_lut")
+# Checkout connection
+con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+#con = poolCheckout(pool)
+species_list = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Add to intent_pred
+intent_prep = intent_prep %>%
+  left_join(species_list, by = "target_species")
+
+# Check
+unique(intent_prep$target_species_name)
+
+# Split and combine
+chinook_intent = intent_prep %>%
+  mutate(common_name = "Chinook salmon") %>%
+  select(survey_id, common_name, target_species_name, count_type = chinook_count_type,
+         created_datetime, created_by, modified_datetime, modified_by)
+
+# Split and combine
+coho_intent = intent_prep %>%
+  mutate(common_name = "Coho salmon") %>%
+  select(survey_id, common_name, target_species_name, count_type = coho_count_type,
+         created_datetime, created_by, modified_datetime, modified_by)
+
+# Split and combine
+sthd_intent = intent_prep %>%
+  mutate(common_name = "Steelhead trout") %>%
+  select(survey_id, common_name, target_species_name, count_type = steelhead_count_type,
+         created_datetime, created_by, modified_datetime, modified_by)
+
+# Split and combine
+chum_intent = intent_prep %>%
+  mutate(common_name = "Chum salmon") %>%
+  select(survey_id, common_name, target_species_name, count_type = chum_count_type,
+         created_datetime, created_by, modified_datetime, modified_by)
+
+# Combine
+intent_prep = rbind(chinook_intent, coho_intent, sthd_intent, chum_intent) %>%
+  filter(!count_type == "no_survey") %>%
+  arrange(survey_id)
+
+# Add id for count_type
+unique(intent_prep$count_type)
+
+# From option list R6_Count_Type_2
+# full_survey, lives_and_deads_only, redds_only, lives_only, deads_only, no_survey
+
+
+# Create df for conversion to intent categories
+intent_categories = tibble(count_type = c("full_survey", "lives_and_deads_only", "lives_only", "redds_only", "deads_only"),
+                           count_categories = c("Live, Carcass, Redd", "Live, Carcass", "Live", "Redd", "Carcass"))
+
+# Join to intent_prep
+intent_prep = intent_prep %>%
+  left_join(intent_categories, by = "count_type")
+
+# Check for missing categories
+any(is.na(intent_prep$count_categories))
+
+# Create new rows for count_categories
+intent_prep = intent_prep %>%
+  separate_rows(., count_categories, sep = ",") %>%
+  mutate(count_categories = trimws(count_categories)) %>%
+  arrange(survey_id, common_name)
+
+# Check
+unique(intent_prep$count_categories)
+
+# Get species_ids to add to intent_prep
+species_ids = species_list %>%
+  select(species_id = target_species, common_name = target_species_name)
+
+# Get count_type_ids to add to intent_prep
+qry = glue("select count_type_id, count_type_code as count_categories ",
+           "from count_type_lut")
+# Checkout connection
+con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+#con = poolCheckout(pool)
+count_type_ids = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Pull out needed data
+intent_prep = intent_prep %>%
+  mutate(survey_intent_id = remisc::get_uuid(nrow(intent_prep))) %>%
+  left_join(species_ids, by = "common_name") %>%
+  left_join(count_type_ids, by = "count_categories") %>%
+  select(survey_intent_id, survey_id, species_id, count_type_id,
+         created_datetime, created_by, modified_datetime, modified_by)
+
+# Check
+any(is.na(intent_prep$survey_intent_id))
+any(is.na(intent_prep$survey_id))
+any(is.na(intent_prep$species_id))
+any(is.na(intent_prep$count_type_id))
+any(is.na(intent_prep$created_datetime))
+any(is.na(intent_prep$created_by))
+
+# Survey intent ================================
+
+
+
+
+
+
+
+
+
+
 
 
 
