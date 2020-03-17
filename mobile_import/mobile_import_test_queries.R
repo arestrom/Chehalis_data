@@ -13,6 +13,7 @@ library(glue)
 library(iformr)
 library(stringi)
 library(tidyr)
+library(lubridate)
 
 # Set data for query
 # Profile ID
@@ -188,10 +189,14 @@ any(is.na(header_data$survey_date))
 # Rename id to parent_record_id for more explicit joins to subform data...convert dates, etc.
 header_data = header_data %>%
   rename(parent_record_id = id, survey_uuid = headerid) %>%
-  mutate(created_datetime = iformr::idate_time(created_date)) %>%
-  mutate(modified_datetime = iformr::idate_time(modified_date)) %>%
+  mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date))) %>%
+  mutate(modified_datetime = as.POSIXct(iformr::idate_time(modified_date))) %>%
   mutate(survey_start_datetime = as.POSIXct(paste0(survey_date, " ", start_time), tz = "America/Los_Angeles")) %>%
   mutate(survey_end_datetime = as.POSIXct(paste0(survey_date, " ", end_time), tz = "America/Los_Angeles")) %>%
+  mutate(created_datetime = with_tz(created_datetime, tzone = "UTC")) %>%
+  mutate(modified_datetime = with_tz(modified_datetime, tzone = "UTC")) %>%
+  mutate(survey_start_datetime = with_tz(survey_start_datetime, tzone = "UTC")) %>%
+  mutate(survey_end_datetime = with_tz(survey_end_datetime, tzone = "UTC")) %>%
   # Temporary fix for target species...mostly key values...but a couple with names !!!!!!!
   mutate(target_species = case_when(
     target_species == "Chinook" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",
@@ -301,7 +306,7 @@ header_data = header_data %>%
   mutate(modified_by = if_else(substr(modified_by, 1, 3) %in% c("VAR", "FW0"), NA_character_, modified_by)) %>%
   mutate(modified_by = stringi::stri_replace_all_fixed(modified_by, ".", "_")) %>%
   mutate(modified_by = remisc::get_text_item(modified_by, 1, "_")) %>%
-  mutate(modified_datetime = if_else(created_datetime == modified_datetime, NA_character_, modified_datetime))
+  mutate(modified_datetime = if_else(created_datetime == modified_datetime, as.POSIXct(NA), modified_datetime))
 
 # Survey =========================================
 
@@ -485,7 +490,28 @@ any(is.na(intent_prep$count_type_id))
 any(is.na(intent_prep$created_datetime))
 any(is.na(intent_prep$created_by))
 
-# Survey intent ================================
+# Waterbody measurements ================================
+
+# Check stream_temp column
+unique(header_data$stream_temp)
+
+# Pull out waterbody_meas data
+wb_meas = header_data %>%
+  mutate(stream_flow_measurement_cfs = NA_integer_) %>%
+  mutate(start_water_temperature_datetime = as.POSIXct(NA)) %>%
+  mutate(start_water_temperature_celsius = NA_real_) %>%
+  mutate(end_water_temperature_datetime = as.POSIXct(NA)) %>%
+  mutate(end_water_temperature_celsius = NA_real_) %>%
+  mutate(waterbody_ph = NA_real_) %>%
+  filter(!is.na(clarity_ft)) %>%
+  select(survey_id = survey_uuid, water_clarity_type_id = clarity_code,
+         clarity_ft, stream_flow_measurement_cfs, start_water_temperature_datetime,
+         start_water_temperature_celsius, end_water_temperature_datetime,
+         end_water_temperature_celsius, waterbody_ph, created_datetime,
+         created_by, modified_datetime, modified_by) %>%
+  distinct()
+
+
 
 
 
