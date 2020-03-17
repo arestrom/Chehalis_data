@@ -183,7 +183,7 @@ get_header_data = function(profile_id, parent_form_page_id, start_id, access_tok
   fields = glue::glue("created_date, created_by, created_device_id, modified_date, modified_by, ",
                       "data_entry_type, target_species, survey_date, start_time, observers, ",
                       "stream_name, stream_name_text, new_stream_name, reach, reach_text, new_reach, survey_type, ",
-                      "survey_method, survey_direction, clarity_ft, clarity_code, weather, flow,stream_conditions, ",
+                      "survey_method, survey_direction, clarity_ft, clarity_code, weather, flow, stream_conditions, ",
                       "no_survey, reachsplit_yn, user_name, headerid, end_time, header_comments, stream_temp, ",
                       "survey_completion_status, chinook_count_type, coho_count_type, steelhead_count_type, ",
                       "chum_count_type, gps_loc_lower, gps_loc_upper, coho_run_year, steelhead_run_year, ",
