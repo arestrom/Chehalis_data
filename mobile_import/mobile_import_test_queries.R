@@ -18,11 +18,86 @@ library(lubridate)
 # Set data for query
 # Profile ID
 profile_id = 417821L
-# Parent form id
-parent_form_page_id = 3363255L
+since_id = 0L
+
+#===== Get page_ids of forms =======================
+
+# Form names
+parent_form_name = "r6_stream_surveys"
+other_obs_form_name = "r6_stream_surveys_other_observation"
+
+# Get access token
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
+}
+
+# Get the parent form id
+parent_form_page_id = iformr::get_page_id(
+  server_name = "wdfw",
+  profile_id = profile_id,
+  page_name = parent_form_name,
+  access_token = access_token)
+
+# Check
+parent_form_page_id
+
+# Get the parent form id
+other_obs_page_id = iformr::get_page_id(
+  server_name = "wdfw",
+  profile_id = profile_id,
+  page_name = other_obs_form_name,
+  access_token = access_token)
+
+# Check
+other_obs_page_id
+
+#========================================================================
+# Check for new surveys and missing stream and reach
+#========================================================================
 
 # Get counts and date-range of surveys ready to download
-count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
+get_core_survey_data = function(profile_id, parent_form_page_id, start_id, access_token) {
+  # Define fields...just parent_id and survey_id this time
+  fields = glue::glue("headerid, survey_date, stream_name, ",
+                      "stream_name_text, new_stream_name, reach, ",
+                      "reach_text, new_reach, gps_loc_lower, ",
+                      "gps_loc_upper")
+  # Order by id ascending and get all records after start_id
+  field_string = glue('id:<(>"{start_id}"), {fields}')
+  # Loop through all survey records
+  core_data = iformr::get_all_records(
+    server_name = "wdfw",
+    profile_id = profile_id,
+    page_id = parent_form_page_id,
+    fields = "fields",
+    limit = 1000,
+    offset = 0,
+    access_token = access_token,
+    field_string = field_string,
+    since_id = since_id)
+  return(core_data)
+}
+
+# Get access token
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
+}
+
+# Test: Currently 1425 records....can use start_id in tandem with parent_record_id from DB in the future to filter
+strt = Sys.time()
+current_surveys = get_core_survey_data(profile_id, parent_form_page_id, start_id = 0L, access_token)
+nd = Sys.time(); nd - strt
+
+# Filter to data not already in DB
+get_survey_counts = function(dat) {
   # Define query for new mobile surveys
   qry = glue("select distinct s.survey_id ",
              "from survey as s")
@@ -32,27 +107,8 @@ count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   existing_surveys = DBI::dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
   #poolReturn(con)
-  # Define fields...just parent_id and survey_id this time
-  fields = paste0("id, headerid, survey_date, stream_name, ",
-                  "stream_name_text, new_stream_name, reach, ",
-                  "reach_text, new_reach, gps_loc_lower, ",
-                  "gps_loc_upper")
-  start_id = 0L
-  # Get list of all survey_ids and parent_form iform ids on server
-  field_string <- paste0("id:<(>\"", start_id, "\"),", fields)
-  # Loop through all survey records
-  parent_ids = iformr::get_all_records(
-    server_name = "wdfw",
-    profile_id = profile_id,
-    page_id = parent_form_page_id,
-    fields = "fields",
-    limit = 1000,
-    offset = 0,
-    access_token = access_token,
-    field_string = field_string,
-    since_id = start_id)
   # Keep only records where headerid is not in survey_id
-  new_survey_data = parent_ids %>%
+  new_survey_data = dat %>%
     select(parent_form_survey_id = id, survey_id = headerid, survey_date,
            stream_name, stream_name_text, new_stream_name, reach, reach_text,
            new_reach, gps_loc_lower, gps_loc_upper) %>%
@@ -62,18 +118,8 @@ count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   return(new_survey_data)
 }
 
-access_token = NULL
-while (is.null(access_token)) {
-  access_token = iformr::get_iform_access_token(
-    server_name = "wdfw",
-    client_key_name = "r6production_key",
-    client_secret_name = "r6production_secret")
-}
-
-# Test
-strt = Sys.time()
-new_surveys = count_new_surveys(profile_id, parent_form_page_id, access_token)
-nd = Sys.time(); nd - strt
+# Get rid of existing surveys...can omit in the future
+new_surveys = get_survey_counts(current_surveys)
 
 # Pull out only needed data
 new_survey_counts = new_surveys %>%
@@ -85,9 +131,6 @@ new_survey_counts = new_surveys %>%
   mutate(end_date = max(as.Date(survey_date))) %>%
   select(n_surveys, first_id, start_date, last_id, end_date) %>%
   distinct()
-
-# Get start_id
-start_id = new_survey_counts$first_id
 
 # Pull out only needed data
 missing_stream_vals = new_surveys %>%
@@ -137,7 +180,7 @@ missing_reach_vals = new_surveys %>%
 # Get header data
 get_header_data = function(profile_id, parent_form_page_id, start_id, access_token) {
   # Define fields
-  fields = glue::glue("id, created_date, created_by, created_device_id, modified_date, modified_by, ",
+  fields = glue::glue("created_date, created_by, created_device_id, modified_date, modified_by, ",
                       "data_entry_type, target_species, survey_date, start_time, observers, ",
                       "stream_name, stream_name_text, new_stream_name, reach, reach_text, new_reach, survey_type, ",
                       "survey_method, survey_direction, clarity_ft, clarity_code, weather, flow,stream_conditions, ",
@@ -145,10 +188,8 @@ get_header_data = function(profile_id, parent_form_page_id, start_id, access_tok
                       "survey_completion_status, chinook_count_type, coho_count_type, steelhead_count_type, ",
                       "chum_count_type, gps_loc_lower, gps_loc_upper, coho_run_year, steelhead_run_year, ",
                       "chum_run_year, chinook_run_year, carcass_tagging, code_reach")
-  # Collapse vector of column names into a single string
-  fields = paste0(fields, collapse = ',')
-  # Get list of all survey_ids and parent_form iform ids on server
-  field_string <- paste0("id:<(>\"", start_id, "\"),", fields)
+  # Order by id ascending and get all records after start_id
+  field_string = glue('id:<(>"{start_id}"), {fields}')
   # Loop through all survey records
   parent_records = iformr::get_all_records(
     server_name = "wdfw",
@@ -159,7 +200,7 @@ get_header_data = function(profile_id, parent_form_page_id, start_id, access_tok
     offset = 0,
     access_token = access_token,
     field_string = field_string,
-    since_id = start_id)
+    since_id = since_id)
   return(parent_records)
 }
 
@@ -173,6 +214,8 @@ while (is.null(access_token)) {
 }
 
 # Test...currently 1414 records
+# Get start_id
+start_id = new_survey_counts$first_id -1
 strt = Sys.time()
 header_data = get_header_data(profile_id, parent_form_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -269,6 +312,7 @@ del_id = bind_rows(del_stream_id, del_reach_id) %>%
   distinct() %>%
   pull(parent_form_survey_id)
 
+# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Filter to header_data with no missing stream or reach_id for now
 header_data = header_data %>%
   filter(!parent_record_id %in% del_id)
@@ -277,6 +321,7 @@ header_data = header_data %>%
 any(is.na(header_data$survey_uuid))
 any(header_data$survey_uuid == "")
 unique(nchar(header_data$survey_uuid))
+min(header_data$parent_record_id)
 
 # Generate new survey_id where missing...pull into separate datasets
 no_survey_id = header_data %>%
@@ -297,6 +342,7 @@ any(is.na(header_data$survey_uuid))
 any(header_data$survey_uuid == "")
 unique(nchar(header_data$survey_uuid))
 any(duplicated(header_data$survey_uuid))
+min(header_data$parent_record_id)
 
 #==================== End of trim section=============================================================================
 
@@ -322,6 +368,9 @@ survey_prep = header_data %>%
          incomplete_survey_type_id = no_survey, survey_start_datetime,
          survey_end_datetime, observers, data_submitter_last_name,
          created_datetime, created_by, modified_datetime, modified_by)
+
+# Identify the upper and lower end point location_ids
+
 
 # Survey comment ================================
 
@@ -496,7 +545,7 @@ any(is.na(intent_prep$created_by))
 unique(header_data$stream_temp)
 
 # Pull out waterbody_meas data
-wb_meas = header_data %>%
+waterbody_meas_prep = header_data %>%
   mutate(stream_flow_measurement_cfs = NA_integer_) %>%
   mutate(start_water_temperature_datetime = as.POSIXct(NA)) %>%
   mutate(start_water_temperature_celsius = NA_real_) %>%
@@ -504,15 +553,97 @@ wb_meas = header_data %>%
   mutate(end_water_temperature_celsius = NA_real_) %>%
   mutate(waterbody_ph = NA_real_) %>%
   filter(!is.na(clarity_ft)) %>%
+  mutate(water_clarity_meter = as.numeric(clarity_ft) * 0.3048) %>%
+  mutate(water_clarity_meter = round(water_clarity_meter, digits = 2)) %>%
   select(survey_id = survey_uuid, water_clarity_type_id = clarity_code,
-         clarity_ft, stream_flow_measurement_cfs, start_water_temperature_datetime,
+         water_clarity_meter, stream_flow_measurement_cfs, start_water_temperature_datetime,
          start_water_temperature_celsius, end_water_temperature_datetime,
          end_water_temperature_celsius, waterbody_ph, created_datetime,
          created_by, modified_datetime, modified_by) %>%
   distinct()
 
+# Check
+any(is.na(waterbody_meas_prep$survey_id))
+any(is.na(waterbody_meas_prep$water_clarity_type_id))   # Ok if TRUE
+any(is.na(waterbody_meas_prep$water_clarity_meter))
+
+# Mobile survey form ================================
+
+# Pull out data
+mobile_survey_form_prep = header_data %>%
+  mutate(mobile_survey_form_id = remisc::get_uuid(nrow(header_data))) %>%
+  mutate(parent_form_name = parent_form_name) %>%
+  mutate(parent_form_id = parent_form_page_id) %>%
+  select(mobile_survey_form_id, survey_id = survey_uuid,
+         parent_form_survey_id = parent_record_id,
+         parent_form_survey_guid = survey_uuid, parent_form_name,
+         parent_form_id, created_datetime, created_by,
+         modified_datetime, modified_by) %>%
+  arrange(parent_form_survey_id)
+
+# Check
+any(is.na(mobile_survey_form_prep$survey_id))
+any(is.na(mobile_survey_form_prep$parent_form_survey_id))
+any(is.na(mobile_survey_form_prep$parent_form_survey_guid))
+
+#======================================================================================================================
+# Other observations
+#======================================================================================================================
+
+# Function to get other observations
+get_other_obs = function(profile_id, other_obs_page_id, start_id, access_token) {
+  # Define fields
+  fields = glue::glue("parent_page_id, parent_element_id, created_date, ",
+                      "created_by, created_location, created_device_id, modified_date, ",
+                      "modified_by, modified_location, modified_device_id, server_modified_date, ",
+                      "observation_type, miscellaneous_observation_name, known_total_barrier, ",
+                      "barrier_descrip, barrier_ht, barrier_ht_meas_est, pp_depth_of_barrier, ",
+                      "barrier_pp_depth_meas_est, observation_details, observation_location, ",
+                      "observation_gps_warning_select, garmin_waypoint, garmin_waypoint_accuracy, ",
+                      "gps_latitude, gps_longitude,gps_accuracy, gps_elevation, comments, ",
+                      "headerid_fkey, sgs_observationid, observation_row, observation_name, ",
+                      "poor_accuracy_counter, poor_accuracy_counter_2")
+  # Order by id ascending and get all records after start_id
+  field_string = glue('id:<, parent_record_id(>"{start_id}"), {fields}')
+  # Loop through all survey records
+  other_obs = iformr::get_all_records(
+    server_name = "wdfw",
+    profile_id = profile_id,
+    page_id = other_obs_page_id,
+    fields = "fields",
+    limit = 1000,
+    offset = 0,
+    access_token = access_token,
+    field_string = field_string,
+    since_id = since_id)
+  return(other_obs)
+}
+
+# New access token
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
+}
+
+# Set start_id as the minimum parent_record_id minus one
+start_id = min(header_data$parent_record_id) - 1
+
+# Test...currently 324 records
+strt = Sys.time()
+other_obs = get_other_obs(profile_id, other_obs_page_id, start_id, access_token)
+nd = Sys.time(); nd - strt
+
+# Dump any records that are not in header_data
+# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Filter to header_data with no missing stream or reach_id for now
+other_obs = other_obs %>%
+  filter(!parent_record_id %in% del_id)
+
+
 # Next...no need to worry about mobile_device
-# mobile_survey_form
 # other_observation
 
 # Then
