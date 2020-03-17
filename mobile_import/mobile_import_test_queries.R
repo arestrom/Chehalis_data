@@ -511,7 +511,12 @@ wb_meas = header_data %>%
          created_by, modified_datetime, modified_by) %>%
   distinct()
 
+# Next...no need to worry about mobile_device
+# mobile_survey_form
+# other_observation
 
+# Then
+# survey_event
 
 
 
