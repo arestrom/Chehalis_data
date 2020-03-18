@@ -51,6 +51,9 @@ mobile_import_ui = tags$div(
       br(),
       DT::DTOutput("missing_reaches"),
       br(),
+      br(),
+      DT::DTOutput("add_endpoints"),
+      br(),
       br()
     )
   )

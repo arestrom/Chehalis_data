@@ -101,6 +101,69 @@ missing_reach_vals =reactive({
     distinct()
   return(missing_reaches)
 })
+
+# Pull out only needed data
+add_end_points = reactive({
+  add_reach_vals = new_survey_data() %>%
+    filter(nchar(reach) >= 27L) %>%
+    mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
+    mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
+    mutate(low_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
+    mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-")))
+  # Get existing rm_data
+  qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
+             "loc.river_mile_measure as rm ",
+             "from location as loc ",
+             "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
+             "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
+             "where wria_code in ('22', '23')")
+  # Checkout connection
+  con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  #con = poolCheckout(pool)
+  rm_data = DBI::dbGetQuery(con, qry)
+  DBI::dbDisconnect(con)
+  #poolReturn(con)
+  # Dump any data without RMs or llid
+  rm_data = rm_data %>%
+    filter(!is.na(llid) & !is.na(rm))
+  # Pull out lower_rms
+  low_rm_data = rm_data %>%
+    select(lower_end_point_id = location_id, llid, low_rm = rm) %>%
+    distinct()
+  # Pull out upper_rms
+  up_rm_data = rm_data %>%
+    select(upper_end_point_id = location_id, llid, up_rm = rm) %>%
+    distinct()
+  # Join to survey_prep
+  add_reach_vals = add_reach_vals %>%
+    left_join(low_rm_data, by = c("llid", "low_rm")) %>%
+    left_join(up_rm_data, by = c("llid", "up_rm"))
+  # Pull out cases where no match exists
+  no_reach_point = add_reach_vals %>%
+    filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
+    mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
+    mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
+    select(waterbody_id = stream_name, stream_name_text, reach_text,
+           llid, low_rm, up_rm, lower_comment, upper_comment) %>%
+    distinct() %>%
+    arrange(stream_name_text, low_rm, up_rm)
+  # Split and combine
+  no_up = no_reach_point %>%
+    filter(upper_comment == "need_point") %>%
+    select(waterbody_id, stream_name_text, reach_text, llid, river_mile = up_rm)  %>%
+    distinct()
+  # Split and combine
+  no_low = no_reach_point %>%
+    filter(lower_comment == "need_point") %>%
+    select(waterbody_id, stream_name_text, reach_text, llid, river_mile = low_rm)  %>%
+    distinct()
+  # Combine
+  no_end_point = rbind(no_up, no_low) %>%
+    filter(!is.na(river_mile)) %>%
+    arrange(stream_name_text, river_mile)
+  return(no_end_point)
+})
+
 #========================================================
 # New surveys summary datatable
 #========================================================
@@ -218,6 +281,42 @@ output$missing_reaches = renderDT({
 # Create surveys DT proxy object
 missing_reaches_dt_proxy = dataTableProxy(outputId = "missing_reaches")
 
+#========================================================
+# Add endpoints datatable
+#========================================================
+
+# Primary DT datatable for survey_intent
+output$add_endpoints = renderDT({
+  req(input$tabs == "mobile_import")
+  add_endpoints_title = glue("End points that need to be entered to the DB are shown below. Please edit: '{input$mobile_form_select}'")
+  # Generate table
+  add_endpoints_data = tibble(waterbody_id = "None",
+                              stream_name_text = "",
+                              reach_text = "",
+                              llid = "",
+                              river_mile = "")
+  datatable(add_endpoints_data,
+            colnames = c('Waterbody ID', 'Stream name', 'Reach description', 'Latitude Longitude ID',
+                         'River mile'),
+            extensions = 'Buttons',
+            options = list(dom = 'Blftp',
+                           pageLength = 5,
+                           lengthMenu = c(5, 25, 100, 500),
+                           scrollX = T,
+                           buttons = c('excel', 'print'),
+                           initComplete = JS(
+                             "function(settings, json) {",
+                             "$(this.api().table().header()).css({'background-color': '#9eb3d6'});",
+                             "}")),
+            caption = htmltools::tags$caption(
+              style = 'caption-side: top; text-align: left; color: black; width: auto;',
+              htmltools::em(htmltools::strong(missing_reaches_title))))
+})
+
+# Create surveys DT proxy object
+add_endpoints_dt_proxy = dataTableProxy(outputId = "add_endpoints")
+
+
 # Generate counts for new_surveys datatable
 observeEvent(input$check_for_new_surveys, {
   # Set progress bar...estimate 3 seconds
@@ -250,6 +349,11 @@ observeEvent(input$check_for_new_surveys, {
 # Generate values for missing reaches datatable
 observeEvent(input$check_for_new_surveys, {
   replaceData(missing_reaches_dt_proxy, missing_reach_vals())
+}, priority = 5)
+
+# Generate values for missing reaches datatable
+observeEvent(input$check_for_new_surveys, {
+  replaceData(add_endpoints_dt_proxy, add_end_points())
 }, priority = 5)
 
 # #========================================================

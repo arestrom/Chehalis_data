@@ -178,6 +178,162 @@ missing_reach_vals = new_surveys %>%
          reach, reach_text, lower_coords, upper_coords) %>%
   distinct()
 
+# NEW SECTION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Pull out only needed data
+add_reach_vals = new_surveys %>%
+  filter(nchar(reach) >= 27L) %>%
+  mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
+  mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
+  mutate(low_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
+  mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-")))
+
+qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
+           "loc.river_mile_measure as rm ",
+           "from location as loc ",
+           "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
+           "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
+           "where wria_code in ('22', '23')")
+# Checkout connection
+con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+#con = poolCheckout(pool)
+rm_data = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+#poolReturn(con)
+
+# Dump any data without RMs or llid
+rm_data = rm_data %>%
+  filter(!is.na(llid) & !is.na(rm))
+
+# Pull out lower_rms
+low_rm_data = rm_data %>%
+  select(lower_end_point_id = location_id, llid, low_rm = rm) %>%
+  distinct()
+
+# Pull out upper_rms
+up_rm_data = rm_data %>%
+  select(upper_end_point_id = location_id, llid, up_rm = rm) %>%
+  distinct()
+
+# Join to survey_prep
+add_reach_vals = add_reach_vals %>%
+  left_join(low_rm_data, by = c("llid", "low_rm")) %>%
+  left_join(up_rm_data, by = c("llid", "up_rm"))
+
+# Pull out cases where no match exists
+no_reach_point = add_reach_vals %>%
+  filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
+  mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
+  mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
+  select(waterbody_id = stream_name, stream_name_text, reach_text,
+         llid, low_rm, up_rm, lower_comment, upper_comment) %>%
+  distinct() %>%
+  arrange(stream_name_text, low_rm, up_rm)
+
+# Split and combine
+no_up = no_reach_point %>%
+  filter(upper_comment == "need_point") %>%
+  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = up_rm)  %>%
+  distinct()
+
+# Split and combine
+no_low = no_reach_point %>%
+  filter(lower_comment == "need_point") %>%
+  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = low_rm)  %>%
+  distinct()
+
+# Combine
+no_end_point = rbind(no_up, no_low) %>%
+  filter(!is.na(river_mile)) %>%
+  arrange(stream_name_text, river_mile)
+
+# Check if any reach values > 27 characters
+any(nchar(add_reach_vals$reach) > 27)
+
+# # Output with styling
+# num_cols = ncol(no_end_point)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "NoEndPoint.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "NoEndPoint", gridLines = TRUE)
+# writeData(wb, sheet = 1, no_end_point, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+
+#======================================================================================
+# Generate dataset of reaches that have not yet been entered
+#======================================================================================
+
+# Identify the upper and lower end point location_ids
+points_not_entered = new_surveys %>%
+  mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
+  mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
+  mutate(low_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
+  mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-")))
+
+qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
+           "loc.river_mile_measure as rm ",
+           "from location as loc ",
+           "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
+           "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
+           "where wria_code in ('22', '23')")
+# Checkout connection
+con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+#con = poolCheckout(pool)
+rm_data = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+#poolReturn(con)
+
+# Dump any data without RMs or llid
+rm_data = rm_data %>%
+  filter(!is.na(llid) & !is.na(rm))
+
+# Pull out lower_rms
+low_rm_data = rm_data %>%
+  select(lower_end_point_id = location_id, llid, low_rm = rm) %>%
+  distinct()
+
+# Pull out upper_rms
+up_rm_data = rm_data %>%
+  select(upper_end_point_id = location_id, llid, up_rm = rm) %>%
+  distinct()
+
+# Join to survey_prep
+survey_prep = survey_prep %>%
+  left_join(low_rm_data, by = c("llid", "low_rm")) %>%
+  left_join(up_rm_data, by = c("llid", "up_rm"))
+
+# Pull out cases where no match exists
+no_reach_point = survey_prep %>%
+  filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
+  mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
+  mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
+  select(parent_record_id, waterbody_id = stream_name, stream_name_text,
+         reach_text, llid, low_rm, up_rm, lower_comment, upper_comment) %>%
+  distinct() %>%
+  arrange(stream_name_text, low_rm, up_rm)
+
+# Split and combine
+no_up = no_reach_point %>%
+  filter(upper_comment == "need_point") %>%
+  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = up_rm)  %>%
+  distinct()
+
+# Split and combine
+no_low = no_reach_point %>%
+  filter(lower_comment == "need_point") %>%
+  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = low_rm)  %>%
+  distinct()
+
+# Combine
+no_end_point = rbind(no_up, no_low) %>%
+  filter(!is.na(river_mile)) %>%
+  arrange(stream_name_text, river_mile)
+
+
 # Get header data
 get_header_data = function(profile_id, parent_form_page_id, start_id, access_token) {
   # Define fields
@@ -436,19 +592,6 @@ no_low = no_reach_point %>%
 no_end_point = rbind(no_up, no_low) %>%
   filter(!is.na(river_mile)) %>%
   arrange(stream_name_text, river_mile)
-
-# # Output with styling
-# num_cols = ncol(no_end_point)
-# current_date = format(Sys.Date())
-# out_name = paste0("data/", current_date, "_", "NoEndPoint.xlsx")
-# wb <- createWorkbook(out_name)
-# addWorksheet(wb, "NoEndPoint", gridLines = TRUE)
-# writeData(wb, sheet = 1, no_end_point, rowNames = FALSE)
-# ## create and add a style to the column headers
-# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-# saveWorkbook(wb, out_name, overwrite = TRUE)
 
 
 # Finalize survey table
