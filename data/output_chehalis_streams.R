@@ -86,15 +86,15 @@ streams = streams_st %>%
          llid, cat_code) %>%
   distinct()
 
-# Output with styling
-num_cols = ncol(streams)
-current_date = format(Sys.Date())
-out_name = paste0("data/", current_date, "_", "ChehalisStreams.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "ChehalisStreams", gridLines = TRUE)
-writeData(wb, sheet = 1, streams, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
+# # Output with styling
+# num_cols = ncol(streams)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "ChehalisStreams.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "ChehalisStreams", gridLines = TRUE)
+# writeData(wb, sheet = 1, streams, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)

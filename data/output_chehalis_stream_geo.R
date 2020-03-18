@@ -118,6 +118,7 @@ streams_st = streams_st %>%
 # # Write chehalis subset to local
 # # unique(streams_st$wria_code)
 # write_sf(streams_st, "data/chehalis_geo_2020-03-16.gpkg")
+# write_sf(streams_st, "data/chehalis_geo_2020-03-16.gdb") # Does not work....driver issue...No go from QGIS either...Exported .shp
 
 #=========================================================================
 # Get all waterbody data

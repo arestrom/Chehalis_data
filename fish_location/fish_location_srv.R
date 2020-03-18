@@ -231,11 +231,12 @@ observeEvent(input$fish_loc_map, {
                    column(width = 3,
                           actionButton("capture_fish_loc", "Capture carcass location"),
                           tippy("<i style='color:#1a5e86;padding-left:8px', class='fas fa-info-circle'></i>",
-                                tooltip = glue("You can zoom in on the map and drag the marker to the ",
+                                tooltip = glue("<span style='font-size:11px;'>",
+                                               "You can zoom in on the map and drag the marker to the ",
                                                "correct carcass location. Click on the marker to set ",
                                                "the coordinates. Then click on the button to capture ",
                                                "the location and send the coordinates to the data ",
-                                               "entry screen."))),
+                                               "entry screen.<span>"))),
                    column(width = 9,
                           htmlOutput("fish_coordinates"))
                  )

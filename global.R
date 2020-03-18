@@ -134,7 +134,8 @@
 # 47. Create reactive that zooms to stream in wria_map when stream is selected
 # 48. Change required fields in reach_point to omit river_mile. We should start
 #     weaning off RMs and go with codes, descriptors and coords instead.
-#
+# 49. Parse out "add_end_points" reactive code in mobile_import_srv.R to global.
+#     Need to have DB code wrapped in try-catch...with toastr.
 # AS 2020-03-13
 #==============================================================
 

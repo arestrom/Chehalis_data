@@ -51,7 +51,7 @@ new_survey_data = eventReactive(input$check_for_new_surveys, {
   return(new_surveys)
 })
 
-# Reactive to update missing streams dt
+# Reactive for missing streams
 missing_stream_vals = reactive({
   # Pull out only needed data
   missing_streams = new_survey_data() %>%
@@ -77,6 +77,7 @@ missing_stream_vals = reactive({
   return(missing_streams)
 })
 
+# Reactive for missing reaches
 missing_reach_vals =reactive({
   missing_reaches = new_survey_data() %>%
     filter(nchar(reach) < 27L) %>%
@@ -102,7 +103,7 @@ missing_reach_vals =reactive({
   return(missing_reaches)
 })
 
-# Pull out only needed data
+# Reactive for new end-points needed
 add_end_points = reactive({
   add_reach_vals = new_survey_data() %>%
     filter(nchar(reach) >= 27L) %>%
@@ -138,6 +139,11 @@ add_end_points = reactive({
   add_reach_vals = add_reach_vals %>%
     left_join(low_rm_data, by = c("llid", "low_rm")) %>%
     left_join(up_rm_data, by = c("llid", "up_rm"))
+  if ( any(nchar(add_reach_vals$reach) > 27) ) {
+    cat("\nWarning: Some reach entries > 27 characters. Investigate!\n\n")
+  } else {
+    cat("\nAll reach entries exactly 27 characters. Ok to proceed.\n\n")
+  }
   # Pull out cases where no match exists
   no_reach_point = add_reach_vals %>%
     filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
@@ -175,7 +181,7 @@ output$new_surveys = renderDT({
   # Generate table
   new_survey_data = tibble(n_surveys = 0L,
                            first_id = 0L,
-                           start_date = "Click to check",
+                           start_date = "Click the check button",
                            last_id = 0L,
                            end_date = "")
   datatable(new_survey_data,
@@ -214,7 +220,7 @@ output$missing_streams = renderDT({
   #req(input$tabs == "mobile_import")
   missing_streams_title = glue("Missing streams are shown below. Please edit: '{input$mobile_form_select}'")
   # Generate table
-  missing_stream_data = tibble(parent_form_survey_id = "None",
+  missing_stream_data = tibble(parent_form_survey_id = "Click the check button",
                                survey_date = "",
                                stream_name = "",
                                stream_name_text = "",
@@ -252,7 +258,7 @@ output$missing_reaches = renderDT({
   #req(input$tabs == "mobile_import")
   missing_reaches_title = glue("Missing reaches are shown below. Please edit: '{input$mobile_form_select}'")
   # Generate table
-  missing_reach_data = tibble(parent_form_survey_id = "None",
+  missing_reach_data = tibble(parent_form_survey_id = "Click the check button",
                               survey_date = "",
                               stream_name = "",
                               stream_name_text = "",
@@ -288,9 +294,9 @@ missing_reaches_dt_proxy = dataTableProxy(outputId = "missing_reaches")
 # Primary DT datatable for survey_intent
 output$add_endpoints = renderDT({
   #req(input$tabs == "mobile_import")
-  add_endpoints_title = glue("End points that need to be entered to the DB are shown below. Please edit: '{input$mobile_form_select}'")
+  add_endpoints_title = glue("New reach points below need to be entered. Please use the 'Add reach point' interface to add new points")
   # Generate table
-  add_endpoints_data = tibble(waterbody_id = "None",
+  add_endpoints_data = tibble(waterbody_id = "Click the check button",
                               stream_name_text = "",
                               reach_text = "",
                               llid = "",

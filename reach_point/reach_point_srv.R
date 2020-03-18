@@ -202,11 +202,12 @@ observeEvent(input$use_reach_point_map, {
                    column(width = 3,
                           actionButton("capture_reach_point", "Capture reach point"),
                           tippy("<i style='color:#1a5e86;padding-left:8px', class='fas fa-info-circle'></i>",
-                                tooltip = glue("You can zoom in on the map and drag the marker to the ",
+                                tooltip = glue("<span style='font-size:11px;'>",
+                                               "You can zoom in on the map and drag the marker to the ",
                                                "correct reach end-point location. Click on the marker ",
                                                "to set the coordinates. Then click on the button to ",
                                                "capture the location and send the coordinates to the ",
-                                               "data entry screen."))),
+                                               "data entry screen.<span>"))),
                    column(width = 9,
                           htmlOutput("reach_point_coordinates"))
                  )

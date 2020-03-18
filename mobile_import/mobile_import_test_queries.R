@@ -157,7 +157,7 @@ missing_stream_vals = new_surveys %>%
 
 # Pull out only needed data
 missing_reach_vals = new_surveys %>%
-  filter(nchar(reach) < 27L) %>%
+  filter(nchar(reach) < 27L | is.na(reach)) %>%
   mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
   mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
   mutate(stream_name = case_when(
@@ -178,76 +178,79 @@ missing_reach_vals = new_surveys %>%
          reach, reach_text, lower_coords, upper_coords) %>%
   distinct()
 
-# NEW SECTION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#======================================================================================
+# Generate dataset of reaches that have not yet been entered
+#======================================================================================
+
 # Pull out only needed data
-add_reach_vals = new_surveys %>%
-  filter(nchar(reach) >= 27L) %>%
-  mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
-  mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
-  mutate(low_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
-  mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-")))
+add_end_points = function(new_surveys) {
+  add_reach_vals = new_surveys %>%
+    filter(nchar(reach) >= 27L & !is.na(reach)) %>%
+    mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
+    mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
+    mutate(low_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
+    mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-")))
+  # Get existing rm_data
+  qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
+             "loc.river_mile_measure as rm ",
+             "from location as loc ",
+             "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
+             "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
+             "where wria_code in ('22', '23')")
+  # Checkout connection
+  con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  #con = poolCheckout(pool)
+  rm_data = DBI::dbGetQuery(con, qry)
+  DBI::dbDisconnect(con)
+  #poolReturn(con)
+  # Dump any data without RMs or llid
+  rm_data = rm_data %>%
+    filter(!is.na(llid) & !is.na(rm))
+  # Pull out lower_rms
+  low_rm_data = rm_data %>%
+    select(lower_end_point_id = location_id, llid, low_rm = rm) %>%
+    distinct()
+  # Pull out upper_rms
+  up_rm_data = rm_data %>%
+    select(upper_end_point_id = location_id, llid, up_rm = rm) %>%
+    distinct()
+  # Join to survey_prep
+  add_reach_vals = add_reach_vals %>%
+    left_join(low_rm_data, by = c("llid", "low_rm")) %>%
+    left_join(up_rm_data, by = c("llid", "up_rm"))
+  if ( any(nchar(add_reach_vals$reach) > 27) ) {
+    cat("\nWarning: Some reach entries > 27 characters. Investigate!\n\n")
+  } else {
+    cat("\nAll reach entries exactly 27 characters. Ok to proceed.\n\n")
+  }
+  # Pull out cases where no match exists
+  no_reach_point = add_reach_vals %>%
+    filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
+    mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
+    mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
+    select(parent_form_survey_id, waterbody_id = stream_name, stream_name_text, reach_text,
+           llid, low_rm, up_rm, lower_comment, upper_comment) %>%
+    distinct() %>%
+    arrange(stream_name_text, low_rm, up_rm)
+  # Split and combine
+  no_up = no_reach_point %>%
+    filter(upper_comment == "need_point") %>%
+    select(parent_form_survey_id, waterbody_id, stream_name_text, reach_text, llid, river_mile = up_rm)  %>%
+    distinct()
+  # Split and combine
+  no_low = no_reach_point %>%
+    filter(lower_comment == "need_point") %>%
+    select(parent_form_survey_id, waterbody_id, stream_name_text, reach_text, llid, river_mile = low_rm)  %>%
+    distinct()
+  # Combine
+  no_end_point = rbind(no_up, no_low) %>%
+    filter(!is.na(river_mile)) %>%
+    arrange(stream_name_text, river_mile)
+  return(no_end_point)
+}
 
-qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
-           "loc.river_mile_measure as rm ",
-           "from location as loc ",
-           "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
-           "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
-           "where wria_code in ('22', '23')")
-# Checkout connection
-con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-#con = poolCheckout(pool)
-rm_data = DBI::dbGetQuery(con, qry)
-DBI::dbDisconnect(con)
-#poolReturn(con)
-
-# Dump any data without RMs or llid
-rm_data = rm_data %>%
-  filter(!is.na(llid) & !is.na(rm))
-
-# Pull out lower_rms
-low_rm_data = rm_data %>%
-  select(lower_end_point_id = location_id, llid, low_rm = rm) %>%
-  distinct()
-
-# Pull out upper_rms
-up_rm_data = rm_data %>%
-  select(upper_end_point_id = location_id, llid, up_rm = rm) %>%
-  distinct()
-
-# Join to survey_prep
-add_reach_vals = add_reach_vals %>%
-  left_join(low_rm_data, by = c("llid", "low_rm")) %>%
-  left_join(up_rm_data, by = c("llid", "up_rm"))
-
-# Pull out cases where no match exists
-no_reach_point = add_reach_vals %>%
-  filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
-  mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
-  mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
-  select(waterbody_id = stream_name, stream_name_text, reach_text,
-         llid, low_rm, up_rm, lower_comment, upper_comment) %>%
-  distinct() %>%
-  arrange(stream_name_text, low_rm, up_rm)
-
-# Split and combine
-no_up = no_reach_point %>%
-  filter(upper_comment == "need_point") %>%
-  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = up_rm)  %>%
-  distinct()
-
-# Split and combine
-no_low = no_reach_point %>%
-  filter(lower_comment == "need_point") %>%
-  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = low_rm)  %>%
-  distinct()
-
-# Combine
-no_end_point = rbind(no_up, no_low) %>%
-  filter(!is.na(river_mile)) %>%
-  arrange(stream_name_text, river_mile)
-
-# Check if any reach values > 27 characters
-any(nchar(add_reach_vals$reach) > 27)
+# Run
+no_end_point = add_end_points(new_surveys)
 
 # # Output with styling
 # num_cols = ncol(no_end_point)
@@ -264,75 +267,8 @@ any(nchar(add_reach_vals$reach) > 27)
 
 
 #======================================================================================
-# Generate dataset of reaches that have not yet been entered
+# Get top-level header data
 #======================================================================================
-
-# Identify the upper and lower end point location_ids
-points_not_entered = new_surveys %>%
-  mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
-  mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
-  mutate(low_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
-  mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-")))
-
-qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
-           "loc.river_mile_measure as rm ",
-           "from location as loc ",
-           "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
-           "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
-           "where wria_code in ('22', '23')")
-# Checkout connection
-con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-#con = poolCheckout(pool)
-rm_data = DBI::dbGetQuery(con, qry)
-DBI::dbDisconnect(con)
-#poolReturn(con)
-
-# Dump any data without RMs or llid
-rm_data = rm_data %>%
-  filter(!is.na(llid) & !is.na(rm))
-
-# Pull out lower_rms
-low_rm_data = rm_data %>%
-  select(lower_end_point_id = location_id, llid, low_rm = rm) %>%
-  distinct()
-
-# Pull out upper_rms
-up_rm_data = rm_data %>%
-  select(upper_end_point_id = location_id, llid, up_rm = rm) %>%
-  distinct()
-
-# Join to survey_prep
-survey_prep = survey_prep %>%
-  left_join(low_rm_data, by = c("llid", "low_rm")) %>%
-  left_join(up_rm_data, by = c("llid", "up_rm"))
-
-# Pull out cases where no match exists
-no_reach_point = survey_prep %>%
-  filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
-  mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
-  mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
-  select(parent_record_id, waterbody_id = stream_name, stream_name_text,
-         reach_text, llid, low_rm, up_rm, lower_comment, upper_comment) %>%
-  distinct() %>%
-  arrange(stream_name_text, low_rm, up_rm)
-
-# Split and combine
-no_up = no_reach_point %>%
-  filter(upper_comment == "need_point") %>%
-  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = up_rm)  %>%
-  distinct()
-
-# Split and combine
-no_low = no_reach_point %>%
-  filter(lower_comment == "need_point") %>%
-  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = low_rm)  %>%
-  distinct()
-
-# Combine
-no_end_point = rbind(no_up, no_low) %>%
-  filter(!is.na(river_mile)) %>%
-  arrange(stream_name_text, river_mile)
-
 
 # Get header data
 get_header_data = function(profile_id, parent_form_page_id, start_id, access_token) {
@@ -464,8 +400,13 @@ del_reach_id = missing_reach_vals %>%
   select(parent_form_survey_id) %>%
   distinct()
 
+# Pull reach_ids
+del_end_id = no_end_point %>%
+  select(parent_form_survey_id) %>%
+  distinct()
+
 # Combine
-del_id = bind_rows(del_stream_id, del_reach_id) %>%
+del_id = bind_rows(del_stream_id, del_reach_id, del_end_id) %>%
   distinct() %>%
   pull(parent_form_survey_id)
 
@@ -519,11 +460,15 @@ survey_prep = header_data %>%
   mutate(data_source_unit_id = "e2d51ceb-398c-49cb-9aa5-d20a839e9ad9") %>%                      # Not applicable
   mutate(data_review_status_id = "b0ea75d4-7e77-4161-a533-5b3fce38ac2a") %>%                    # Preliminary
   mutate(data_submitter_last_name = observers) %>%
+  # Set incomplete_survey type to not_applicable if survey was marked as completed...otherwise use no_survey key
+  mutate(incomplete_survey_type_id = case_when(
+    is.na(survey_completion_status ~ "cde5d9fb-bb33-47c6-9018-177cd65d15f5",)
+    survey_completion_status == "d192b32e-0e4f-4719-9c9c-dec6593b1977", "cde5d9fb-bb33-47c6-9018-177cd65d15f5", no_survey)) %>%
   select(parent_record_id, stream_name, stream_name_text, reach_text,
          survey_id = survey_uuid, survey_datetime = survey_date, data_source_id,
          data_source_unit_id, survey_method, data_review_status_id,
          stream_name, reach, survey_completion_status_id = survey_completion_status,
-         incomplete_survey_type_id = no_survey, survey_start_datetime,
+         incomplete_survey_type_id, survey_start_datetime,
          survey_end_datetime, observers, data_submitter_last_name,
          created_datetime, created_by, modified_datetime, modified_by)
 
@@ -569,30 +514,15 @@ survey_prep = survey_prep %>%
 # Pull out cases where no match exists
 no_reach_point = survey_prep %>%
   filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
-  mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
-  mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
-  select(parent_record_id, waterbody_id = stream_name, stream_name_text,
-         reach_text, llid, low_rm, up_rm, lower_comment, upper_comment) %>%
   distinct() %>%
   arrange(stream_name_text, low_rm, up_rm)
 
-# Split and combine
-no_up = no_reach_point %>%
-  filter(upper_comment == "need_point") %>%
-  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = up_rm)  %>%
-  distinct()
-
-# Split and combine
-no_low = no_reach_point %>%
-  filter(lower_comment == "need_point") %>%
-  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = low_rm)  %>%
-  distinct()
-
-# Combine
-no_end_point = rbind(no_up, no_low) %>%
-  filter(!is.na(river_mile)) %>%
-  arrange(stream_name_text, river_mile)
-
+# Warn if any missing
+if ( nrow(no_reach_point) > 0L ) {
+  cat("\nWARNING: Some end-points still missing. Do not pass go!\n\n")
+} else {
+  cat("\nAll end-points now present. Ok to proceed.\n\n")
+}
 
 # Finalize survey table
 survey_prep = survey_prep %>%
