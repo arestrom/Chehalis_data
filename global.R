@@ -215,7 +215,7 @@ pool = pool::dbPool(RSQLite::SQLite(), dbname = "data/sg_lite.sqlite", host = "l
 # Define functions =============================================================
 
 #==========================================================================
-# Get centroid of waterbody to use in interactive map
+# Get centroid of waterbody to use in interactive maps
 #==========================================================================
 
 # Stream centroid query
