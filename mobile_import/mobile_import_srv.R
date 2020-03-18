@@ -170,7 +170,7 @@ add_end_points = reactive({
 
 # Primary DT datatable for survey_intent
 output$new_surveys = renderDT({
-  req(input$tabs == "mobile_import")
+  #req(input$tabs == "mobile_import")
   new_surveys_title = glue("Count of new surveys for: '{input$mobile_form_select}'")
   # Generate table
   new_survey_data = tibble(n_surveys = 0L,
@@ -195,7 +195,7 @@ new_surveys_dt_proxy = dataTableProxy(outputId = "new_surveys")
 
 # Disable Sync button initially and if missing streams or reaches are found
 observe({
-  req(input$tabs == "mobile_import")
+  #req(input$tabs == "mobile_import")
   if ( input$check_for_new_surveys == 0L ) {
     shinyjs::disable("import_mobile")
   } else if ( nrow(missing_stream_vals()) > 0L | nrow(missing_reach_vals()) > 0L ) {
@@ -211,7 +211,7 @@ observe({
 
 # Primary DT datatable for survey_intent
 output$missing_streams = renderDT({
-  req(input$tabs == "mobile_import")
+  #req(input$tabs == "mobile_import")
   missing_streams_title = glue("Missing streams are shown below. Please edit: '{input$mobile_form_select}'")
   # Generate table
   missing_stream_data = tibble(parent_form_survey_id = "None",
@@ -249,7 +249,7 @@ missing_streams_dt_proxy = dataTableProxy(outputId = "missing_streams")
 
 # Primary DT datatable for survey_intent
 output$missing_reaches = renderDT({
-  req(input$tabs == "mobile_import")
+  #req(input$tabs == "mobile_import")
   missing_reaches_title = glue("Missing reaches are shown below. Please edit: '{input$mobile_form_select}'")
   # Generate table
   missing_reach_data = tibble(parent_form_survey_id = "None",
@@ -287,7 +287,7 @@ missing_reaches_dt_proxy = dataTableProxy(outputId = "missing_reaches")
 
 # Primary DT datatable for survey_intent
 output$add_endpoints = renderDT({
-  req(input$tabs == "mobile_import")
+  #req(input$tabs == "mobile_import")
   add_endpoints_title = glue("End points that need to be entered to the DB are shown below. Please edit: '{input$mobile_form_select}'")
   # Generate table
   add_endpoints_data = tibble(waterbody_id = "None",
@@ -310,7 +310,7 @@ output$add_endpoints = renderDT({
                              "}")),
             caption = htmltools::tags$caption(
               style = 'caption-side: top; text-align: left; color: black; width: auto;',
-              htmltools::em(htmltools::strong(missing_reaches_title))))
+              htmltools::em(htmltools::strong(add_endpoints_title))))
 })
 
 # Create surveys DT proxy object
