@@ -14,6 +14,7 @@ library(iformr)
 library(stringi)
 library(tidyr)
 library(lubridate)
+library(openxlsx)
 
 # Set data for query
 # Profile ID
@@ -362,7 +363,8 @@ survey_prep = header_data %>%
   mutate(data_source_unit_id = "e2d51ceb-398c-49cb-9aa5-d20a839e9ad9") %>%                      # Not applicable
   mutate(data_review_status_id = "b0ea75d4-7e77-4161-a533-5b3fce38ac2a") %>%                    # Preliminary
   mutate(data_submitter_last_name = observers) %>%
-  select(survey_id = survey_uuid, survey_datetime = survey_date, data_source_id,
+  select(parent_record_id, stream_name, stream_name_text, reach_text,
+         survey_id = survey_uuid, survey_datetime = survey_date, data_source_id,
          data_source_unit_id, survey_method, data_review_status_id,
          stream_name, reach, survey_completion_status_id = survey_completion_status,
          incomplete_survey_type_id = no_survey, survey_start_datetime,
@@ -370,6 +372,108 @@ survey_prep = header_data %>%
          created_datetime, created_by, modified_datetime, modified_by)
 
 # Identify the upper and lower end point location_ids
+survey_prep = survey_prep %>%
+  mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
+  mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
+  mutate(low_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
+  mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-")))
+
+qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
+           "loc.river_mile_measure as rm ",
+           "from location as loc ",
+           "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
+           "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
+           "where wria_code in ('22', '23')")
+# Checkout connection
+con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+#con = poolCheckout(pool)
+rm_data = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+#poolReturn(con)
+
+# Dump any data without RMs or llid
+rm_data = rm_data %>%
+  filter(!is.na(llid) & !is.na(rm))
+
+# Pull out lower_rms
+low_rm_data = rm_data %>%
+  select(lower_end_point_id = location_id, llid, low_rm = rm) %>%
+  distinct()
+
+# Pull out upper_rms
+up_rm_data = rm_data %>%
+  select(upper_end_point_id = location_id, llid, up_rm = rm) %>%
+  distinct()
+
+# Join to survey_prep
+survey_prep = survey_prep %>%
+  left_join(low_rm_data, by = c("llid", "low_rm")) %>%
+  left_join(up_rm_data, by = c("llid", "up_rm"))
+
+# Pull out cases where no match exists
+no_reach_point = survey_prep %>%
+  filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
+  mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
+  mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
+  select(parent_record_id, waterbody_id = stream_name, stream_name_text,
+         reach_text, llid, low_rm, up_rm, lower_comment, upper_comment) %>%
+  distinct() %>%
+  arrange(stream_name_text, low_rm, up_rm)
+
+# Split and combine
+no_up = no_reach_point %>%
+  filter(upper_comment == "need_point") %>%
+  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = up_rm)  %>%
+  distinct()
+
+# Split and combine
+no_low = no_reach_point %>%
+  filter(lower_comment == "need_point") %>%
+  select(waterbody_id, stream_name_text, reach_text, llid, river_mile = low_rm)  %>%
+  distinct()
+
+# Combine
+no_end_point = rbind(no_up, no_low) %>%
+  filter(!is.na(river_mile)) %>%
+  arrange(stream_name_text, river_mile)
+
+# # Output with styling
+# num_cols = ncol(no_end_point)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "NoEndPoint.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "NoEndPoint", gridLines = TRUE)
+# writeData(wb, sheet = 1, no_end_point, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+
+# Finalize survey table
+survey_prep = survey_prep %>%
+  mutate(observer_last_name = remisc::get_text_item(observers, 2, " ")) %>%
+  mutate(data_submitter_last_name = remisc::get_text_item(data_submitter_last_name, 2, " ")) %>%
+  select(survey_id, survey_datetime, data_source_id, data_source_unit_id,
+         survey_method_id = survey_method, data_review_status_id,
+         upper_end_point_id, lower_end_point_id, survey_completion_status_id,
+         incomplete_survey_type_id, survey_start_datetime,
+         survey_end_datetime, observer_last_name, data_submitter_last_name,
+         created_datetime, created_by, modified_datetime, modified_by)
+
+# Check
+any(is.na(survey_prep$survey_id))
+any(is.na(survey_prep$survey_datetime))
+any(is.na(survey_prep$data_source_id))
+any(is.na(survey_prep$data_source_unit_id))
+any(is.na(survey_prep$data_review_status_id))
+any(is.na(survey_prep$upper_end_point_id))
+any(is.na(survey_prep$lower_end_point_id))
+any(is.na(survey_prep$survey_completion_status_id))
+any(is.na(survey_prep$incomplete_survey_type_id))
+any(is.na(survey_prep$created_datetime))
+any(is.na(survey_prep$created_by))
 
 
 # Survey comment ================================
@@ -641,6 +745,8 @@ nd = Sys.time(); nd - strt
 # Filter to header_data with no missing stream or reach_id for now
 other_obs = other_obs %>%
   filter(!parent_record_id %in% del_id)
+
+
 
 
 # Next...no need to worry about mobile_device
