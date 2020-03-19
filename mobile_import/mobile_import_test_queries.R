@@ -461,9 +461,8 @@ survey_prep = header_data %>%
   mutate(data_review_status_id = "b0ea75d4-7e77-4161-a533-5b3fce38ac2a") %>%                    # Preliminary
   mutate(data_submitter_last_name = observers) %>%
   # Set incomplete_survey type to not_applicable if survey was marked as completed...otherwise use no_survey key
-  mutate(incomplete_survey_type_id = case_when(
-    is.na(survey_completion_status ~ "cde5d9fb-bb33-47c6-9018-177cd65d15f5",)
-    survey_completion_status == "d192b32e-0e4f-4719-9c9c-dec6593b1977", "cde5d9fb-bb33-47c6-9018-177cd65d15f5", no_survey)) %>%
+  mutate(incomplete_survey_type_id = if_else(survey_completion_status == "d192b32e-0e4f-4719-9c9c-dec6593b1977",
+                                             "cde5d9fb-bb33-47c6-9018-177cd65d15f5", no_survey)) %>%
   select(parent_record_id, stream_name, stream_name_text, reach_text,
          survey_id = survey_uuid, survey_datetime = survey_date, data_source_id,
          data_source_unit_id, survey_method, data_review_status_id,
@@ -603,6 +602,12 @@ comment_prep = comment_prep %>%
          visibility_type_id, weather_type_id, comment_text, created_datetime,
          created_by, modified_datetime, modified_by)
 
+# Check
+any(is.na(comment_prep$survey_comment_id))
+any(is.na(comment_prep$survey_id))
+any(is.na(comment_prep$created_datetime))
+any(is.na(comment_prep$created_by))
+
 # Survey intent ================================
 
 # Pull out survey_intent data
@@ -732,6 +737,7 @@ waterbody_meas_prep = header_data %>%
   filter(!is.na(clarity_ft)) %>%
   mutate(water_clarity_meter = as.numeric(clarity_ft) * 0.3048) %>%
   mutate(water_clarity_meter = round(water_clarity_meter, digits = 2)) %>%
+  mutate(clarity_code = if_else(is.na(clarity_code), "282d8ea4-4e78-4c4d-be05-dfd7fa457c09", clarity_code)) %>%
   select(survey_id = survey_uuid, water_clarity_type_id = clarity_code,
          water_clarity_meter, stream_flow_measurement_cfs, start_water_temperature_datetime,
          start_water_temperature_celsius, end_water_temperature_datetime,
@@ -741,7 +747,7 @@ waterbody_meas_prep = header_data %>%
 
 # Check
 any(is.na(waterbody_meas_prep$survey_id))
-any(is.na(waterbody_meas_prep$water_clarity_type_id))   # Ok if TRUE
+any(is.na(waterbody_meas_prep$water_clarity_type_id))
 any(is.na(waterbody_meas_prep$water_clarity_meter))
 
 # Mobile survey form ================================
@@ -820,6 +826,8 @@ other_obs = other_obs %>%
   filter(!parent_record_id %in% del_id)
 
 
+
+# STOPPED HERE .....
 
 
 # Next...no need to worry about mobile_device
