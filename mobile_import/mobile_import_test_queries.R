@@ -823,7 +823,12 @@ nd = Sys.time(); nd - strt
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Filter to header_data with no missing stream or reach_id for now
 other_obs = other_obs %>%
-  filter(!parent_record_id %in% del_id)
+  filter(!parent_record_id %in% del_id) %>%
+  mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date))) %>%
+  mutate(modified_datetime = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_datetime = with_tz(created_datetime, tzone = "UTC")) %>%
+  mutate(modified_datetime = with_tz(modified_datetime, tzone = "UTC"))
+
 
 
 
