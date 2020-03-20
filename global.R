@@ -12,6 +12,8 @@
 #  5. If required data are missing...may want to just assign a default value,
 #     upload, then output a file with problematic data?
 #  6. Can I just use observers for data_submitter...I am for now.
+#  7. What is Clarity Pool in other_observations? How to describe in LUT?
+#  8. What is new_survey_bottom and new_survey_top? How to describe in LUT?
 #
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
@@ -136,7 +138,13 @@
 #     weaning off RMs and go with codes, descriptors and coords instead.
 # 49. Parse out "add_end_points" reactive code in mobile_import_srv.R to global.
 #     Need to have DB code wrapped in try-catch...with toastr.
-# AS 2020-03-13
+# 50. Need to add an other_observations and barrier accordians at the survey level...along
+#     with interface to add or edit location.
+# 51. After adding new streams and lut values needed by Lea's team...reload
+#     sqlite db with completely fresh set of values. Then propogate to other
+#     DBs...archive and prod.
+#
+# AS 2020-03-19
 #==============================================================
 
 # Load libraries

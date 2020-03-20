@@ -26,6 +26,7 @@ since_id = 0L
 # Form names
 parent_form_name = "r6_stream_surveys"
 other_obs_form_name = "r6_stream_surveys_other_observation"
+other_pics_form_name = "r6_stream_surveys_other_pics"
 
 # Get access token
 access_token = NULL
@@ -55,6 +56,16 @@ other_obs_page_id = iformr::get_page_id(
 
 # Check
 other_obs_page_id
+
+# Get the parent form id
+other_pics_page_id = iformr::get_page_id(
+  server_name = "wdfw",
+  profile_id = profile_id,
+  page_name = other_pics_form_name,
+  access_token = access_token)
+
+# Check
+other_pics_page_id
 
 #========================================================================
 # Check for new surveys and missing stream and reach
@@ -814,29 +825,172 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 324 records
+# Test...currently 325 records
 strt = Sys.time()
 other_obs = get_other_obs(profile_id, other_obs_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
 # Dump any records that are not in header_data
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now
+# Filter to header_data with no missing stream or reach_id for now. 175 records after filter
 other_obs = other_obs %>%
-  filter(!parent_record_id %in% del_id) %>%
+  filter(!parent_record_id %in% del_id)
+
+# Set start_id as the minimum parent_record_id minus one
+start_id = min(other_obs$id) - 1
+
+# Function to get other observation pictures
+get_other_pictures = function(profile_id, other_pics_page_id, start_id, access_token) {
+  fields = glue::glue("parent_page_id, parent_element_id, created_date, created_by, ",
+                      "created_location, created_device_id, modified_date, modified_by, ",
+                      "modified_location, modified_device_id, server_modified_date, ",
+                      "pics, comments")
+  # Order by id ascending and get all records after start_id
+  field_string = glue('id:<, parent_record_id(>"{start_id}"), {fields}')
+  # Loop through all survey records
+  other_pics = iformr::get_all_records(
+    server_name = "wdfw",
+    profile_id = profile_id,
+    page_id = other_pics_page_id,
+    fields = "fields",
+    limit = 1000,
+    offset = 0,
+    access_token = access_token,
+    field_string = field_string,
+    since_id = since_id)
+  return(other_pics)
+}
+
+# Test...currently 161 records
+strt = Sys.time()
+other_pictures = get_other_pictures(profile_id, other_pics_page_id, start_id, access_token)
+nd = Sys.time(); nd - strt
+
+# Format other obs
+other_obs = other_obs %>%
   mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date))) %>%
   mutate(modified_datetime = as.POSIXct(iformr::idate_time(modified_date))) %>%
   mutate(created_datetime = with_tz(created_datetime, tzone = "UTC")) %>%
-  mutate(modified_datetime = with_tz(modified_datetime, tzone = "UTC"))
+  mutate(modified_datetime = with_tz(modified_datetime, tzone = "UTC")) %>%
+  mutate(obs_lat = as.numeric(gps_latitude)) %>%
+  mutate(obs_lon = as.numeric(gps_longitude)) %>%
+  mutate(obs_acc = as.numeric(gps_accuracy))
+
+# Add survey_id to other_obs....use survey_id from header_data
+s_id = header_data %>%
+  select(parent_record_id, survey_id = survey_uuid,
+         head_create_by = created_by, head_mod_by = modified_by) %>%
+  distinct()
+
+# Check
+any(is.na(s_id$parent_record_id))
+any(is.na(s_id$survey_id))
+
+# Join to other_obs
+other_obs = other_obs %>%
+  left_join(s_id, by = "parent_record_id")
+
+# Check
+any(is.na(other_obs$survey_id))
+
+# Add survey_id to other_pictures....use survey_id from other_obs
+sp_id = other_obs %>%
+  select(parent_record_id = id, survey_id,
+         head_create_by, head_mod_by) %>%
+  distinct()
+
+# Check
+any(is.na(sp_id$parent_record_id))
+any(is.na(sp_id$survey_id))
+
+# Dump any records that are not in the filtered other_obs dataset
+# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+other_obs_id = unique(other_obs$id)
+# Filter to header_data with no missing stream or reach_id for now. 64 records after filter
+other_pictures = other_pictures %>%
+  filter(parent_record_id %in% other_obs_id)
+
+# Join survey_id to other_pictures
+other_pictures = other_pictures %>%
+  left_join(sp_id, by = "parent_record_id")
+
+# Pull out barrier info
+barrier_prep  = other_obs %>%
+  filter(!is.na(known_total_barrier)) %>%
+  mutate(barrier_observed_datetime = as.POSIXct(NA)) %>%
+  mutate(barrier_height_meter = as.numeric(barrier_ht) * 0.3048) %>%
+  mutate(plunge_pool_depth_meter = as.numeric(pp_depth_of_barrier) * 0.3048) %>%
+  # Barrier description is required...obs_details are not
+  mutate(physical_desc = paste0("Physical description: ", barrier_descrip)) %>%
+  mutate(observation_details = trimws(observation_details)) %>%
+  mutate(barrier_details = if_else(!is.na(observation_details) &
+                                     !observation_details == "",
+                                   paste0("Details: ", observation_details), NA_character_)) %>%
+  mutate(comment_text = if_else(!is.na(barrier_details),
+                                paste0(physical_desc, "; ", barrier_details),
+                                physical_desc)) %>%
+  select(survey_id, obs_lat, obs_lon, obs_acc = gps_accuracy,
+         barrier_type = observation_type, barrier_observed_datetime,
+         barrier_height_meter, barrier_ht_type = barrier_ht_meas_est,
+         plunge_pool_depth_meter, pp_depth_type = barrier_pp_depth_meas_est,
+         comment_text, created_datetime, created_by = head_create_by,
+         modified_datetime, modified_by = head_mod_by) %>%
+  distinct()
+
+# Convert types to ids
+barrier_prep = barrier_prep %>%
+  mutate(fish_barrier_id = remisc::get_uuid(nrow(barrier_prep))) %>%
+  mutate(barrier_location_id = remisc::get_uuid(nrow(barrier_prep))) %>%
+  mutate(barrier_type_id = case_when(
+    barrier_type == "waterfall" ~ "0731c4c4-810d-4de6-9649-e0db43207eb3",
+    barrier_type == "gradient" ~ "9f6d5a70-c524-4bd5-a4ae-24d4e161469b",
+    barrier_type == "culvert" ~ "4dbe30db-52d5-42b6-ad96-541e657d8374",
+    barrier_type == "dam" ~ "71f60180-d53f-45ec-8cae-1c484f899530",
+    barrier_type == "screen" ~ "21b16ab6-8f54-4dee-b66a-ff97b7a21895",
+    barrier_type == "log_jam" ~ "c440240e-ac6b-488e-a920-2578082ee2c9",
+    barrier_type == "beaver_dam" ~ "25250be2-6c97-4a77-9d1d-df123c32e7ca",
+    is.na(barrier_type) ~ as.character(barrier_type),
+    TRUE ~ as.character(barrier_type))) %>%
+  mutate(barrier_height_type_id = case_when(
+    barrier_ht_type == "measured" ~ "6352ee46-9d51-4849-919c-4ad37acf2150",
+    barrier_ht_type == "estimated" ~ "95e6627b-93c9-4e94-b89b-d1e1789ae699",
+    is.na(barrier_ht_type) ~ as.character(barrier_ht_type),
+    TRUE ~ as.character(barrier_ht_type))) %>%
+  mutate(plunge_pool_depth_type_id = case_when(
+    pp_depth_type == "measured" ~ "6352ee46-9d51-4849-919c-4ad37acf2150",
+    pp_depth_type == "estimated" ~ "95e6627b-93c9-4e94-b89b-d1e1789ae699",
+    is.na(pp_depth_type) ~ as.character(pp_depth_type),
+    TRUE ~ as.character(pp_depth_type))) %>%
+  select(fish_barrier_id, survey_id, barrier_location_id, obs_lat, obs_lon,
+         obs_acc, barrier_type_id, barrier_observed_datetime, barrier_height_meter,
+         barrier_height_type_id, plunge_pool_depth_meter, plunge_pool_depth_type_id,
+         comment_text, created_datetime, created_by, modified_datetime,
+         modified_by)
+
+# Pull out other obs data...include location info
+other_obs = other_obs %>%
+  filter(is.na(known_total_barrier))
+
+other_obs = other_obs %>%
+  mutate(other_observation_id = remisc::get_uuid(nrow(other_obs))) %>%
+  mutate(observation_type_id = case_when(
+    observation_type == "miscellaneous_observation" ~ "30b93c02-1e8e-4c2a-b316-c961def4955d",
+    observation_type == "Japanese Knotweed" ~ "51ec0a5c-23eb-417a-bab6-fa4dd69209d6",
+    observation_type == "Clarity Pool" ~ "38f359db-e7ca-4bb2-8d98-db9885bf5794",
+    observation_type == "new_survey_bottom" ~ ""
+  ))
 
 
-
-
-# STOPPED HERE .....
+# STOPPED HERE .....NEED INPUT FROM LEA.....
 
 
 # Next...no need to worry about mobile_device
 # other_observation
+# fish_barrier
+# obs_location
+# obs_coords
+# barrier_location
+# barrier_coords
 
 # Then
 # survey_event
