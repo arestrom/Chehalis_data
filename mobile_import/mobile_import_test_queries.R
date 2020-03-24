@@ -27,6 +27,7 @@ since_id = 0L
 parent_form_name = "r6_stream_surveys"
 other_obs_form_name = "r6_stream_surveys_other_observation"
 other_pics_form_name = "r6_stream_surveys_other_pics"
+dead_fish_form_name = "r6_stream_surveys_deads"
 
 # Get access token
 access_token = NULL
@@ -47,7 +48,7 @@ parent_form_page_id = iformr::get_page_id(
 # Check
 parent_form_page_id
 
-# Get the parent form id
+# Get the other obs form id
 other_obs_page_id = iformr::get_page_id(
   server_name = "wdfw",
   profile_id = profile_id,
@@ -57,7 +58,7 @@ other_obs_page_id = iformr::get_page_id(
 # Check
 other_obs_page_id
 
-# Get the parent form id
+# Get the other pics form id
 other_pics_page_id = iformr::get_page_id(
   server_name = "wdfw",
   profile_id = profile_id,
@@ -66,6 +67,16 @@ other_pics_page_id = iformr::get_page_id(
 
 # Check
 other_pics_page_id
+
+# Get the dead fish form id
+dead_fish_page_id = iformr::get_page_id(
+  server_name = "wdfw",
+  profile_id = profile_id,
+  page_name = dead_fish_form_name,
+  access_token = access_token)
+
+# Check
+dead_fish_page_id
 
 #========================================================================
 # Check for new surveys and missing stream and reach
@@ -103,7 +114,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test: Currently 1425 records....can use start_id in tandem with parent_record_id from DB in the future to filter
+# Test: Currently 1486 records....can use start_id in tandem with parent_record_id from DB in the future to filter
 strt = Sys.time()
 current_surveys = get_core_survey_data(profile_id, parent_form_page_id, start_id = 0L, access_token)
 nd = Sys.time(); nd - strt
@@ -317,7 +328,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1414 records
+# Test...currently 1486 records
 # Get start_id
 start_id = new_survey_counts$first_id -1
 strt = Sys.time()
@@ -825,14 +836,14 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 325 records
+# Test...currently 326 records
 strt = Sys.time()
 other_obs = get_other_obs(profile_id, other_obs_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
 # Dump any records that are not in header_data
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 175 records after filter
+# Filter to header_data with no missing stream or reach_id for now. 176 records after filter
 other_obs = other_obs %>%
   filter(!parent_record_id %in% del_id)
 
@@ -861,7 +872,7 @@ get_other_pictures = function(profile_id, other_pics_page_id, start_id, access_t
   return(other_pics)
 }
 
-# Test...currently 161 records
+# Test...currently 162 records
 strt = Sys.time()
 other_pictures = get_other_pictures(profile_id, other_pics_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -906,7 +917,7 @@ any(is.na(sp_id$survey_id))
 # Dump any records that are not in the filtered other_obs dataset
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 other_obs_id = unique(other_obs$id)
-# Filter to header_data with no missing stream or reach_id for now. 64 records after filter
+# Filter to header_data with no missing stream or reach_id for now. 65 records after filter
 other_pictures = other_pictures %>%
   filter(parent_record_id %in% other_obs_id)
 
@@ -971,34 +982,125 @@ barrier_prep = barrier_prep %>%
 other_obs = other_obs %>%
   filter(is.na(known_total_barrier))
 
+# Process
 other_obs = other_obs %>%
   mutate(other_observation_id = remisc::get_uuid(nrow(other_obs))) %>%
+  mutate(observation_location_id = remisc::get_uuid(nrow(other_obs))) %>%
   mutate(observation_type_id = case_when(
     observation_type == "miscellaneous_observation" ~ "30b93c02-1e8e-4c2a-b316-c961def4955d",
     observation_type == "Japanese Knotweed" ~ "51ec0a5c-23eb-417a-bab6-fa4dd69209d6",
     observation_type == "Clarity Pool" ~ "38f359db-e7ca-4bb2-8d98-db9885bf5794",
-    observation_type == "new_survey_bottom" ~ ""
-  ))
+    observation_type == "new_survey_bottom" ~ "a171d5a0-aba8-4c31-90e9-c4c5e60a8051",
+    observation_type == "new_survey_top" ~ "08bca0d8-1c27-4d34-abeb-0f38e6a774ff",
+    observation_type == "landowner_denial" ~ "9feb413d-2d14-4d26-a5c6-152645f91f5f",
+    observation_type == "access_point" ~ "f1630571-06ef-4c29-a6df-f71072397337",
+    observation_type == "forest_gate" ~ "dc037ad0-1d65-45bd-9445-e8ce54a82007",
+    observation_type == "lowno_flow" ~ "6a27edc0-ac8c-4fe4-befa-bf88c1692d48",
+    observation_type == "high_water_line" ~ "623acb24-ae3c-4c32-9be4-9e64ac0aa342")) %>%
+  mutate(observation_datetime = as.POSIXct(NA)) %>%
+  mutate(observation_count = NA_integer_) %>%
+  select(other_observation_id, survey_id, observation_location_id, obs_lat, obs_lon,
+         obs_acc, observation_type_id, observation_datetime, observation_count,
+         created_datetime, created_by = head_create_by, modified_datetime,
+         modified_by = head_mod_by)
+
+# Pull out location table data for both fish_barrier and other_observations
+barrier_location = barrier_prep %>%
+  select(survey_id, location_id = barrier_location_id,
+         lat = obs_lat, lon = obs_lon, acc = obs_acc,
+         created_datetime, created_by, modified_datetime,
+         modified_by)
+
+obs_location = other_obs %>%
+  select(survey_id, location_id = observation_location_id,
+         lat = obs_lat, lon = obs_lon, acc = obs_acc,
+         created_datetime, created_by, modified_datetime,
+         modified_by)
+
+# Combine....wait to process until all location data for all surveys are combined !!!
+header_location = rbind(barrier_location, obs_location)
+
+#======================================================================================================================
+# Import from dead fish subform
+#======================================================================================================================
+
+# Function to get dead fish records....No nested subforms
+get_dead = function(profile_id, dead_fish_page_id, start_id, access_token) {
+  # Define fields
+  fields = glue::glue("parent_page_id, parent_element_id, created_date, created_by, ",
+                      "created_location, created_device_id, modified_date, modified_by, ",
+                      "modified_location, modified_device_id, server_modified_date, ",
+                      "species_fish, run_type, number_fish, clip_status, fish_sex, ",
+                      "carcass_condition, carc_tag_1, carc_tag_2, spawn_condition, ",
+                      "length_measurement_cm, cwt_detected, cwt_label, dna_number, ",
+                      "scale_card_number, scale_card_position_number, encounter_comments, ",
+                      "fish_condition, mark_status_1, mark_status_2, scan_cwt")
+  # Order by id ascending and get all records after start_id
+  field_string = glue('id:<, parent_record_id(>"{start_id}"), {fields}')
+  # Loop through all survey records
+  dead_fish = iformr::get_all_records(
+    server_name = "wdfw",
+    profile_id = profile_id,
+    page_id = dead_fish_page_id,
+    fields = "fields",
+    limit = 1000,
+    offset = 0,
+    access_token = access_token,
+    field_string = field_string,
+    since_id = since_id)
+  return(dead_fish)
+}
+
+# New access token
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
+}
+
+# Set start_id as the minimum parent_record_id minus one
+start_id = min(header_data$parent_record_id) - 1
+
+# Test...currently 2639 records
+strt = Sys.time()
+dead = get_dead(profile_id, dead_fish_page_id, start_id, access_token)
+nd = Sys.time(); nd - strt
+
+# Dump any records that are not in header_data
+# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Filter to header_data with no missing stream or reach_id for now. 2539 records after filter
+dead = dead %>%
+  filter(!parent_record_id %in% del_id)
+
+# Rule: If fish_count > 1 add comments to survey_event table...otherwise add to individual_fish table
+
+# Get higher level survey_event fields from header table
+header_se = header_data %>%
+  select(parent_record_id, survey_id = survey_uuid, data_entry_type,
+         survey_design_type_id = survey_type, coho_run_year,
+         steelhead_run_year, chum_run_year, chinook_run_year,
+         head_created_by = created_by, head_mod_by = modified_by)
+
+# Pull out survey_event data. Calculate cwt_detection method later...Chum = NA, blank = unknown, other = uuid
+dead_se = dead %>%
+  select(parent_record_id, species_fish, run_type, number_fish,
+         encounter_comments, created_date, modified_date)
+
+# Pull out fish_encounter data....calculate maturity later...from sex
+dead_fe = dead %>%
+  mutate(fish_status_id = "b185dc5d-6b15-4b5b-a54e-3301aec0270f") %>%        # Dead fish
+  mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%
+  select(parent_record_id, created_date, created_location,
+         modified_date, modified_location, fish_status_id, fish_sex,
+         origin_id, cwt_detected, clip_status, )
 
 
-# STOPPED HERE .....NEED INPUT FROM LEA.....
 
 
-# Next...no need to worry about mobile_device
-# other_observation
-# fish_barrier
-# obs_location
-# obs_coords
-# barrier_location
-# barrier_coords
-
-# Then
-# survey_event
-
-
-
-
-
+# Not sure how to store carcass_condition the way it's being used..Ask Lea tomorrow.
+# Should go into fish_mark table....
 
 
 

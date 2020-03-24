@@ -12,8 +12,11 @@
 #  5. If required data are missing...may want to just assign a default value,
 #     upload, then output a file with problematic data?
 #  6. Can I just use observers for data_submitter...I am for now.
-#  7. What is Clarity Pool in other_observations? How to describe in LUT?
-#  8. What is new_survey_bottom and new_survey_top? How to describe in LUT?
+#  7. What is Clarity Pool in other_observations?
+#     Answer: Standardized location where pool clarity is measured...from Region 5
+#  8. What is new_survey_bottom and new_survey_top?
+#     Answer: Used by Region 5 to designate new upper and lower end-points.
+#             Ask Reg 5 if this is needed in database...where to store?
 #
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
