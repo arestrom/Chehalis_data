@@ -1090,19 +1090,85 @@ dead_se = dead %>%
 
 # Pull out fish_encounter data....calculate maturity later...from sex
 dead_fe = dead %>%
-  mutate(fish_status_id = "b185dc5d-6b15-4b5b-a54e-3301aec0270f") %>%        # Dead fish
-  mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%
+  mutate(fish_status_id = "b185dc5d-6b15-4b5b-a54e-3301aec0270f") %>%            # Dead fish
+  mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%                # Unknown
+  mutate(fish_behavior_type_id = "70454429-724e-4ccf-b8a6-893cafba356a") %>%     # Not applicable...dead fish
+  mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...not in form
+  mutate(previously_counted_indicator = 0L) %>%
   select(parent_record_id, created_date, created_location,
          modified_date, modified_location, fish_status_id, fish_sex,
-         origin_id, cwt_detected, clip_status, )
+         origin_id, cwt_detected, clip_status, fish_behavior_type_id,
+         mortality_type_id, fish_count = number_fish, previously_counted_indicator)
 
+# Pull out fish mark data
+fish_mark = dead %>%
+  select(parent_record_id, created_date, modified_date, species_fish,
+         number_fish, carcass_condition, carc_tag_1, carc_tag_2,
+         mark_status_1, mark_status_2)
 
+# Correct and add species common name
+unique(fish_mark$species_fish)
+fish_mark = fish_mark %>%
+  mutate(species_fish = if_else(species_fish == "Chum", "69d1348b-7e8e-4232-981a-702eda20c9b1", species_fish)) %>%
+  mutate(common_name = case_when(
+    species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1" ~ "Chum",
+    species_fish == "e42aa0fc-c591-4fab-8481-55b0df38dcb1" ~ "Chinook",
+    species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304" ~ "Coho",
+    species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1" ~ "Sthd",
+    TRUE ~ species_fish)) %>%
+  mutate(mark_status_one = case_when(
+    mark_status_1 == "7118fcda-8804-4285-bc1f-5d5c33048d4e" ~ "Unknown",
+    mark_status_1 == "f03eae60-91db-42ba-ba41-623d919262b6" ~ "Applied",
+    mark_status_1 == "777753af-df58-4ca3-b4dd-696c52632e36" ~ "Not applicable",
+    mark_status_1 == "68e174c7-ea47-4084-a567-bd33b241f94e" ~ "Observed",
+    mark_status_1 == "cb1dfe91-a782-4cbf-83c9-299137a5df6e" ~ "Not present",
+    TRUE ~ mark_status_1)) %>%
+  mutate(mark_status_two = case_when(
+    mark_status_2 == "7118fcda-8804-4285-bc1f-5d5c33048d4e" ~ "Unknown",
+    mark_status_2 == "f03eae60-91db-42ba-ba41-623d919262b6" ~ "Applied",
+    mark_status_2 == "777753af-df58-4ca3-b4dd-696c52632e36" ~ "Not applicable",
+    mark_status_2 == "68e174c7-ea47-4084-a567-bd33b241f94e" ~ "Observed",
+    mark_status_2 == "cb1dfe91-a782-4cbf-83c9-299137a5df6e" ~ "Not present",
+    TRUE ~ mark_status_2))
 
+# Pull out cases where mark status is not applicable to check for species
+chk_mark_species = fish_mark %>%
+  filter(mark_status_one == "Not applicable" | mark_status_two == "Not applicable")
+unique(chk_mark_species$common_name)
+all(is.na(chk_mark_species$carcass_condition))
+any(is.na(fish_mark$mark_status_1))
+any(is.na(fish_mark$mark_status_2))
 
-# Not sure how to store carcass_condition the way it's being used..Ask Lea tomorrow.
-# Should go into fish_mark table....
+# Trim to only marked fish...went from 2539 rows to 2207 rows..correct: chk_mark_species: 332 rows
+fish_mark = fish_mark %>%
+  filter(!mark_status_one == "Not applicable" | !mark_status_two == "Not applicable")
 
+# Pull out just unique cases for Lea to construct a rule
+fish_mark_rule = fish_mark %>%
+  select(mark_status_1, mark_status_2, common_name, number_fish, carcass_condition,
+         carc_tag_1, carc_tag_2, mark_status_one, mark_status_two) %>%
+  mutate(number_fish = if_else(number_fish > 1L, "more than one", "one")) %>%
+  mutate(carc_tag_1 = if_else(!is.na(carc_tag_1) & !carc_tag_1 == "" & as.integer(carc_tag_1) > 0,
+                              "tag_number_present", "no_tag_number")) %>%
+  mutate(carc_tag_2 = if_else(!is.na(carc_tag_2) & !carc_tag_2 == "" & as.integer(carc_tag_2) > 0,
+                              "tag_number_present", "no_tag_number")) %>%
+  distinct() %>%
+  mutate(`fish_capture_status?` = NA_character_) %>%
+  mutate(`disposition?` = NA_character_) %>%
+  arrange(number_fish, mark_status_one, mark_status_two)
 
+# Output with styling
+num_cols = ncol(fish_mark_rule)
+current_date = format(Sys.Date())
+out_name = paste0("data/", current_date, "_", "FishMarkRule.xlsx")
+wb <- createWorkbook(out_name)
+addWorksheet(wb, "FishMarkRule", gridLines = TRUE)
+writeData(wb, sheet = 1, fish_mark_rule, rowNames = FALSE)
+## create and add a style to the column headers
+headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+saveWorkbook(wb, out_name, overwrite = TRUE)
 
 
 
