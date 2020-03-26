@@ -28,6 +28,7 @@ parent_form_name = "r6_stream_surveys"
 other_obs_form_name = "r6_stream_surveys_other_observation"
 other_pics_form_name = "r6_stream_surveys_other_pics"
 dead_fish_form_name = "r6_stream_surveys_deads"
+live_fish_form_name = "r6_stream_surveys_lives"
 
 # Get access token
 access_token = NULL
@@ -77,6 +78,16 @@ dead_fish_page_id = iformr::get_page_id(
 
 # Check
 dead_fish_page_id
+
+# Get the dead fish form id
+live_fish_page_id = iformr::get_page_id(
+  server_name = "wdfw",
+  profile_id = profile_id,
+  page_name = live_fish_form_name,
+  access_token = access_token)
+
+# Check
+live_fish_page_id
 
 #========================================================================
 # Check for new surveys and missing stream and reach
@@ -328,7 +339,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1486 records
+# Test...currently 1512 records
 # Get start_id
 start_id = new_survey_counts$first_id -1
 strt = Sys.time()
@@ -836,7 +847,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 326 records
+# Test...currently 327 records
 strt = Sys.time()
 other_obs = get_other_obs(profile_id, other_obs_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -872,7 +883,7 @@ get_other_pictures = function(profile_id, other_pics_page_id, start_id, access_t
   return(other_pics)
 }
 
-# Test...currently 162 records
+# Test...currently 163 records
 strt = Sys.time()
 other_pictures = get_other_pictures(profile_id, other_pics_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -1074,6 +1085,14 @@ nd = Sys.time(); nd - strt
 dead = dead %>%
   filter(!parent_record_id %in% del_id)
 
+# Process dates
+dead = dead %>%
+  mutate(created_date = as.POSIXct(iformr::idate_time(created_date))) %>%
+  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
+  mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
+
+
 # Rule: If fish_count > 1 add comments to survey_event table...otherwise add to individual_fish table
 
 # Get higher level survey_event fields from header table
@@ -1083,10 +1102,15 @@ header_se = header_data %>%
          steelhead_run_year, chum_run_year, chinook_run_year,
          head_created_by = created_by, head_mod_by = modified_by)
 
+#============ survey_event ==========================
+
 # Pull out survey_event data. Calculate cwt_detection method later...Chum = NA, blank = unknown, other = uuid
 dead_se = dead %>%
   select(parent_record_id, species_fish, run_type, number_fish,
-         encounter_comments, created_date, modified_date)
+         encounter_comments, created_date, created_by, modified_date,
+         modified_by)
+
+#============ fish_encounter ========================
 
 # Pull out fish_encounter data....calculate maturity later...from sex
 dead_fe = dead %>%
@@ -1095,16 +1119,18 @@ dead_fe = dead %>%
   mutate(fish_behavior_type_id = "70454429-724e-4ccf-b8a6-893cafba356a") %>%     # Not applicable...dead fish
   mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...not in form
   mutate(previously_counted_indicator = 0L) %>%
-  select(parent_record_id, created_date, created_location,
-         modified_date, modified_location, fish_status_id, fish_sex,
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, fish_status_id, fish_sex,
          origin_id, cwt_detected, clip_status, fish_behavior_type_id,
          mortality_type_id, fish_count = number_fish, previously_counted_indicator)
 
+#============== fish_capture_event and fish_mark =============
+
 # Pull out fish mark data
 fish_mark = dead %>%
-  select(parent_record_id, created_date, modified_date, species_fish,
-         number_fish, carcass_condition, carc_tag_1, carc_tag_2,
-         mark_status_1, mark_status_2)
+  select(parent_record_id, created_date, created_by, modified_date,
+         modified_by, species_fish, number_fish, carcass_condition,
+         carc_tag_1, carc_tag_2, mark_status_1, mark_status_2)
 
 # Correct and add species common name
 unique(fish_mark$species_fish)
@@ -1143,36 +1169,177 @@ any(is.na(fish_mark$mark_status_2))
 fish_mark = fish_mark %>%
   filter(!mark_status_one == "Not applicable" | !mark_status_two == "Not applicable")
 
-# Pull out just unique cases for Lea to construct a rule
-fish_mark_rule = fish_mark %>%
-  select(mark_status_1, mark_status_2, common_name, number_fish, carcass_condition,
-         carc_tag_1, carc_tag_2, mark_status_one, mark_status_two) %>%
-  mutate(number_fish = if_else(number_fish > 1L, "more than one", "one")) %>%
-  mutate(carc_tag_1 = if_else(!is.na(carc_tag_1) & !carc_tag_1 == "" & as.integer(carc_tag_1) > 0,
-                              "tag_number_present", "no_tag_number")) %>%
-  mutate(carc_tag_2 = if_else(!is.na(carc_tag_2) & !carc_tag_2 == "" & as.integer(carc_tag_2) > 0,
-                              "tag_number_present", "no_tag_number")) %>%
-  distinct() %>%
-  mutate(`fish_capture_status?` = NA_character_) %>%
-  mutate(`disposition?` = NA_character_) %>%
-  arrange(number_fish, mark_status_one, mark_status_two)
+# # Pull out just unique cases for Lea to construct a rule
+# fish_mark_rule = fish_mark %>%
+#   select(mark_status_1, mark_status_2, common_name, number_fish, carcass_condition,
+#          carc_tag_1, carc_tag_2, mark_status_one, mark_status_two) %>%
+#   mutate(number_fish = if_else(number_fish > 1L, "more than one", "one")) %>%
+#   mutate(carc_tag_1 = if_else(!is.na(carc_tag_1) & !carc_tag_1 == "" & as.integer(carc_tag_1) > 0,
+#                               "tag_number_present", "no_tag_number")) %>%
+#   mutate(carc_tag_2 = if_else(!is.na(carc_tag_2) & !carc_tag_2 == "" & as.integer(carc_tag_2) > 0,
+#                               "tag_number_present", "no_tag_number")) %>%
+#   distinct() %>%
+#   mutate(`fish_capture_status?` = NA_character_) %>%
+#   mutate(`disposition?` = NA_character_) %>%
+#   arrange(number_fish, mark_status_one, mark_status_two)
+#
+# # Output with styling
+# num_cols = ncol(fish_mark_rule)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "FishMarkRule.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "FishMarkRule", gridLines = TRUE)
+# writeData(wb, sheet = 1, fish_mark_rule, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
-# Output with styling
-num_cols = ncol(fish_mark_rule)
-current_date = format(Sys.Date())
-out_name = paste0("data/", current_date, "_", "FishMarkRule.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "FishMarkRule", gridLines = TRUE)
-writeData(wb, sheet = 1, fish_mark_rule, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
+# # Pull out only cases Lea indicated could not be correct: 4-5 Not Tagged + both mark_status == Unknown.
+# fish_mark_incorrect = fish_mark %>%
+#   select(parent_record_id, mark_status_1, mark_status_2, common_name,
+#          number_fish, carcass_condition, carc_tag_1, carc_tag_2,
+#          mark_status_one, mark_status_two) %>%
+#   filter(carcass_condition == "4_5 Not Tagged" & mark_status_one == "Unknown" & mark_status_two == "Unknown") %>%
+#   arrange(parent_record_id)
+#
+# # Output with styling
+# num_cols = ncol(fish_mark_incorrect)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "FishMarkIncorrect.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "FishMarkIncorrect", gridLines = TRUE)
+# writeData(wb, sheet = 1, fish_mark_incorrect, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
+# Generate data needed for both fish_capture_event and fish_mark
+fish_mark = fish_mark %>%
+  mutate(mark_type_id = "89111757-5bb5-469d-9ea0-e9596064b5dc") %>%                # Opercle tag
+  mutate(mark_orientation_id = "fcc3fe36-cfa6-481a-8790-879e6616fb09") %>%         # Not applicable
+  mutate(mark_placement_id = "f0a2cdcf-012a-4468-b223-c7cd0eb2ee58") %>%           # Not applicable
+  mutate(mark_size_id = "44459930-c7d0-4b1a-8f60-71a992e574c4") %>%                # Not applicable
+  mutate(mark_color_id = "66076cfd-f4a2-4ec8-861a-346e41c626b5") %>%               # Not applicable
+  mutate(mark_shape_id = "469c9ba7-3288-404e-9c75-d9b8d9a7600b") %>%               # Not applicable
+  mutate(fish_capture_status_id = case_when(
+    mark_status_one == "Not present" | mark_status_two == "Not present" ~ "v03f32160-6426-4c41-a088-3580a7d1a0c5",
+    mark_status_one == "Unknown" & mark_status_two == "Unknown" ~ "105ce6c3-1d14-4ca0-8730-bb72527295e5",
+    mark_status_one == "Applied" | mark_status_two == "Applied" ~ "03f32160-6426-4c41-a088-3580a7d1a0c5",
+    TRUE ~ "105ce6c3-1d14-4ca0-8730-bb72527295e5")) %>%
+  mutate(disposition_type_id = "24b51215-f7ea-4480-ba7d-436144969ac3") %>%         # Carcass returned
+  mutate(disposition_id = "dd6d0cab-1cc8-4b07-af93-5cd0be1a7a7f")                  # Not applicable
 
+# Check
+unique(fish_mark$fish_capture_status_id)
 
+# Add needed header data
+fish_mark = fish_mark %>%
+  left_join(header_se, by = "parent_record_id")
 
+# Pull out fish_capture_event
+fish_capture_event = fish_mark %>%
+  mutate(disposition_location_id = NA_character_) %>%
+  select(parent_record_id, fish_capture_status_id, disposition_type_id,
+         disposition_id, disposition_location_id, created_datetime = created_date,
+         created_by, head_created_by, modified_datetime = modified_date,
+         modified_by, head_mod_by)
+
+# Pull out fish mark data separate and combine
+fish_mark_one = fish_mark %>%
+  select(parent_record_id, mark_type_id, mark_status_id = mark_status_1,
+         mark_orientation_id, mark_placement_id, mark_size_id, mark_color_id,
+         mark_shape_id, tag_number = carc_tag_1, created_datetime = created_date,
+         created_by, head_created_by, modified_datetime = modified_date,
+         modified_by, head_mod_by)
+fish_mark_two = fish_mark %>%
+  select(parent_record_id, mark_type_id, mark_status_id = mark_status_2,
+         mark_orientation_id, mark_placement_id, mark_size_id, mark_color_id,
+         mark_shape_id, tag_number = carc_tag_2, created_datetime = created_date,
+         created_by, head_created_by, modified_datetime = modified_date,
+         modified_by, head_mod_by)
+# Combine
+fish_mark_prep = rbind(fish_mark_one, fish_mark_two) %>%
+  mutate(tag_number = trimws(tag_number)) %>%
+  mutate(tag_number = if_else(tag_number == "", NA_character_, tag_number))
+
+#============ individual_fish =============================================
+
+# Pull out individual_fish data
+dead_ind = dead %>%
+  filter(number_fish == 1L) %>%
+  select(parent_record_id, fish_condition_type_id = fish_condition, length_measurement_cm,
+         spawn_condition_type_id = spawn_condition, cwt_snout_sample_number = cwt_label,
+         genetic_sample_number = dna_number, scale_sample_card_number = scale_card_number,
+         scale_sample_position_number = scale_card_position_number, encounter_comments,
+         created_date, created_by, modified_date, modified_by)
+
+#======================================================================================================================
+# Import from live fish subform
+#======================================================================================================================
+
+# Function to get dead fish records....No nested subforms
+get_live = function(profile_id, live_fish_page_id, start_id, access_token) {
+  # Define fields
+  fields = glue::glue("parent_page_id, parent_element_id, created_date, created_by, ",
+                      "created_location, created_device_id, modified_date, modified_by, ",
+                      "modified_location, modified_device_id, server_modified_date, ",
+                      "species_fish, run_type, live_type, unk_unknown, ",
+                      "unknown_mark_unknown_sex_count, mark_sex_status_multiselect, ",
+                      "um_male, unmarked_male_count, um_female, unmarked_female_count, ",
+                      "um_jack, unmarked_jack_count, um_unknown, unmarked_unknown_sex_count, ",
+                      "unk_male, unknown_mark_male_count, unk_female, ",
+                      "unknown_mark_female_count, unk_jack, unknown_mark_jack_count, ",
+                      "ad_male, ad_male_count, ad_female, ad_female_count, ad_jack, ",
+                      "ad_jack_count, ad_unknown, ad_mark_unknown_sex_count")
+  # Order by id ascending and get all records after start_id
+  field_string = glue('id:<, parent_record_id(>"{start_id}"), {fields}')
+  # Loop through all survey records
+  live_fish = iformr::get_all_records(
+    server_name = "wdfw",
+    profile_id = profile_id,
+    page_id = live_fish_page_id,
+    fields = "fields",
+    limit = 1000,
+    offset = 0,
+    access_token = access_token,
+    field_string = field_string,
+    since_id = since_id)
+  return(live_fish)
+}
+
+# New access token
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
+}
+
+# Set start_id as the minimum parent_record_id minus one
+start_id = min(header_data$parent_record_id) - 1
+
+# Test...currently 2639 records
+strt = Sys.time()
+live = get_live(profile_id, live_fish_page_id, start_id, access_token)
+nd = Sys.time(); nd - strt
+
+# Dump any records that are not in header_data
+# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Filter to header_data with no missing stream or reach_id for now. 2539 records after filter
+live = live %>%
+  filter(!parent_record_id %in% del_id)
+
+# Process dates
+live = live %>%
+  mutate(created_date = as.POSIXct(iformr::idate_time(created_date))) %>%
+  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
+  mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
 
 
 
