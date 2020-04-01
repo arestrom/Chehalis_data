@@ -4,10 +4,9 @@
 #
 # Notes on sqlite, spatialite:
 #
-#  1. Joe Thorley used BLOB for geometry...check how to read, write, manipulate, and display using sf.
-#     I should probably always just write as binary object...avoids select into queries.
-#     He also stored dates as REAL not TEXT...what are benefits of real vs text? Faster?
-#     Any chances of rounding? Truncation.
+#  1. Joe Thorley uses BLOB for geometry He also stores dates as REAL not TEXT
+#     Question: What are benefits of real vs text? Faster? Any chances of rounding?
+#     Truncation?
 #  2. See: https://www.sqlitetutorial.net/sqlite-foreign-key/
 #     Need to use: PRAGMA foreign_keys = ON; to make sure constraints are used.
 #     I tested to verify foreign key constraints are possible for current DB
@@ -18,9 +17,11 @@
 #
 #
 # ToDo:
-#  1. Done with this set...may want to add some tables later.
+#  1.
 #
-# AS 2020-02-25
+# Status: All data updated to sqlite from spawning_ground local on 2020-04-01
+#
+# AS 2020-04-01
 #===============================================================================
 
 # Clear workspace
@@ -35,8 +36,8 @@ library(tibble)
 library(lubridate)
 library(sf)
 library(glue)
-library(wkb)
-library(rmapshaper)
+# library(wkb)
+# library(rmapshaper)
 
 # Keep connections pane from opening
 options("connectionObserver" = NULL)
@@ -71,6 +72,131 @@ pg_con_local = function(dbname, port = '5432') {
     port = port)
   con
 }
+
+#======================================================================================================
+# Delete contents of all data tables, then all LUTs....simplest route with multiple updates.
+#======================================================================================================
+
+# Fish encounter data tables
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbExecute(db_con, "delete from fish_length_measurement where fish_length_measurement_id is not null")
+dbExecute(db_con, "delete from individual_fish where individual_fish_id is not null")
+dbExecute(db_con, "delete from fish_capture_event where fish_capture_event_id is not null")
+dbExecute(db_con, "delete from fish_mark where fish_mark_id is not null")
+dbExecute(db_con, "delete from fish_encounter where fish_encounter_id is not null")
+dbDisconnect(db_con)
+
+# Redd encounter data tables
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbExecute(db_con, "delete from individual_redd where individual_redd_id is not null")
+dbExecute(db_con, "delete from redd_substrate where redd_substrate_id is not null")
+dbExecute(db_con, "delete from redd_confidence where redd_confidence_id is not null")
+dbExecute(db_con, "delete from redd_encounter where redd_encounter_id is not null")
+dbDisconnect(db_con)
+
+# Survey event data tables
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbExecute(db_con, "delete from survey_event where survey_event_id is not null")
+dbDisconnect(db_con)
+
+# Survey data tables
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbExecute(db_con, "delete from fish_barrier where fish_barrier_id is not null")
+dbExecute(db_con, "delete from fish_capture where fish_capture_id is not null")
+dbExecute(db_con, "delete from fish_species_presence where fish_species_presence_id is not null")
+dbExecute(db_con, "delete from mobile_survey_form where mobile_survey_form_id is not null")
+dbExecute(db_con, "delete from other_observation where other_observation_id is not null")
+dbExecute(db_con, "delete from survey_comment where survey_comment_id is not null")
+dbExecute(db_con, "delete from survey_intent where survey_intent_id is not null")
+dbExecute(db_con, "delete from waterbody_measurement where waterbody_measurement_id is not null")
+dbExecute(db_con, "delete from survey_mobile_device where survey_mobile_device_id is not null")
+dbExecute(db_con, "delete from mobile_device where mobile_device_id is not null")
+dbExecute(db_con, "delete from survey where survey_id is not null")
+dbDisconnect(db_con)
+
+# Location tables....No need to dump fish_biologist_district, hydrologic_unit, or wria_lut
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbExecute(db_con, "delete from stock_lut where stock_id is not null")
+dbExecute(db_con, "delete from lake where lake_id is not null")
+dbExecute(db_con, "delete from stream where stream_id is not null")
+dbExecute(db_con, "delete from location_source where location_source_id is not null")
+dbExecute(db_con, "delete from location_coordinates where location_coordinates_id is not null")
+dbExecute(db_con, "delete from media_location where media_location_id is not null")
+dbExecute(db_con, "delete from stream_section where stream_section_id is not null")
+dbExecute(db_con, "delete from location where location_id is not null")
+dbExecute(db_con, "delete from waterbody_lut where waterbody_id is not null")
+dbDisconnect(db_con)
+
+# Look-up tables....No need to dump wria_lut
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+dbExecute(db_con, "delete from adipose_clip_status_lut where adipose_clip_status_id is not null")
+dbExecute(db_con, "delete from age_code_lut where age_code_id is not null")
+dbExecute(db_con, "delete from area_surveyed_lut where area_surveyed_id is not null")
+dbExecute(db_con, "delete from barrier_measurement_type_lut where barrier_measurement_type_id is not null")
+dbExecute(db_con, "delete from barrier_type_lut where barrier_type_id is not null")
+dbExecute(db_con, "delete from coordinate_capture_method_lut where coordinate_capture_method_id is not null")
+dbExecute(db_con, "delete from count_type_lut where count_type_id is not null")
+dbExecute(db_con, "delete from cwt_detection_method_lut where cwt_detection_method_id is not null")
+dbExecute(db_con, "delete from cwt_detection_status_lut where cwt_detection_status_id is not null")
+dbExecute(db_con, "delete from cwt_result_type_lut where cwt_result_type_id is not null")
+dbExecute(db_con, "delete from data_review_status_lut where data_review_status_id is not null")
+dbExecute(db_con, "delete from data_source_lut where data_source_id is not null")
+dbExecute(db_con, "delete from data_source_unit_lut where data_source_unit_id is not null")
+dbExecute(db_con, "delete from disposition_lut where disposition_id is not null")
+dbExecute(db_con, "delete from disposition_type_lut where disposition_type_id is not null")
+dbExecute(db_con, "delete from fish_abundance_condition_lut where fish_abundance_condition_id is not null")
+dbExecute(db_con, "delete from fish_behavior_type_lut where fish_behavior_type_id is not null")
+dbExecute(db_con, "delete from fish_capture_status_lut where fish_capture_status_id is not null")
+dbExecute(db_con, "delete from fish_condition_type_lut where fish_condition_type_id is not null")
+dbExecute(db_con, "delete from fish_length_measurement_type_lut where fish_length_measurement_type_id is not null")
+dbExecute(db_con, "delete from fish_presence_type_lut where fish_presence_type_id is not null")
+dbExecute(db_con, "delete from fish_trauma_type_lut where fish_trauma_type_id is not null")
+dbExecute(db_con, "delete from gear_performance_type_lut where gear_performance_type_id is not null")
+dbExecute(db_con, "delete from gill_condition_type_lut where gill_condition_type_id is not null")
+dbExecute(db_con, "delete from incomplete_survey_type_lut where incomplete_survey_type_id is not null")
+dbExecute(db_con, "delete from location_error_correction_type_lut where location_error_correction_type_id is not null")
+dbExecute(db_con, "delete from location_error_type_lut where location_error_type_id is not null")
+dbExecute(db_con, "delete from location_orientation_type_lut where location_orientation_type_id is not null")
+dbExecute(db_con, "delete from location_type_lut where location_type_id is not null")
+dbExecute(db_con, "delete from mark_color_lut where mark_color_id is not null")
+dbExecute(db_con, "delete from mark_orientation_lut where mark_orientation_id is not null")
+dbExecute(db_con, "delete from mark_placement_lut where mark_placement_id is not null")
+dbExecute(db_con, "delete from mark_shape_lut where mark_shape_id is not null")
+dbExecute(db_con, "delete from mark_size_lut where mark_size_id is not null")
+dbExecute(db_con, "delete from mark_status_lut where mark_status_id is not null")
+dbExecute(db_con, "delete from mark_type_lut where mark_type_id is not null")
+dbExecute(db_con, "delete from mark_type_category_lut where mark_type_category_id is not null")
+dbExecute(db_con, "delete from maturity_lut where maturity_id is not null")
+dbExecute(db_con, "delete from media_type_lut where media_type_id is not null")
+dbExecute(db_con, "delete from mobile_device_type_lut where mobile_device_type_id is not null")
+dbExecute(db_con, "delete from mortality_type_lut where mortality_type_id is not null")
+dbExecute(db_con, "delete from observation_type_lut where observation_type_id is not null")
+dbExecute(db_con, "delete from origin_lut where origin_id is not null")
+dbExecute(db_con, "delete from redd_confidence_review_status_lut where redd_confidence_review_status_id is not null")
+dbExecute(db_con, "delete from redd_confidence_type_lut where redd_confidence_type_id is not null")
+dbExecute(db_con, "delete from redd_dewatered_type_lut where redd_dewatered_type_id is not null")
+dbExecute(db_con, "delete from redd_shape_lut where redd_shape_id is not null")
+dbExecute(db_con, "delete from redd_status_lut where redd_status_id is not null")
+dbExecute(db_con, "delete from run_lut where run_id is not null")
+dbExecute(db_con, "delete from sex_lut where sex_id is not null")
+dbExecute(db_con, "delete from spawn_condition_type_lut where spawn_condition_type_id is not null")
+dbExecute(db_con, "delete from species_lut where species_id is not null")
+dbExecute(db_con, "delete from stream_channel_type_lut where stream_channel_type_id is not null")
+dbExecute(db_con, "delete from stream_condition_lut where stream_condition_id is not null")
+dbExecute(db_con, "delete from stream_flow_type_lut where stream_flow_type_id is not null")
+dbExecute(db_con, "delete from substrate_level_lut where substrate_level_id is not null")
+dbExecute(db_con, "delete from substrate_type_lut where substrate_type_id is not null")
+dbExecute(db_con, "delete from survey_completion_status_lut where survey_completion_status_id is not null")
+dbExecute(db_con, "delete from survey_count_condition_lut where survey_count_condition_id is not null")
+dbExecute(db_con, "delete from survey_design_type_lut where survey_design_type_id is not null")
+dbExecute(db_con, "delete from survey_direction_lut where survey_direction_id is not null")
+dbExecute(db_con, "delete from survey_method_lut where survey_method_id is not null")
+dbExecute(db_con, "delete from survey_timing_lut where survey_timing_id is not null")
+dbExecute(db_con, "delete from visibility_condition_lut where visibility_condition_id is not null")
+dbExecute(db_con, "delete from visibility_type_lut where visibility_type_id is not null")
+dbExecute(db_con, "delete from water_clarity_type_lut where water_clarity_type_id is not null")
+dbExecute(db_con, "delete from weather_type_lut where weather_type_id is not null")
+dbDisconnect(db_con)
 
 #======================================================================================================
 # Copy LUTs
@@ -1385,83 +1511,6 @@ rm(list = c("dat"))
 # Location data
 #=================================================================================================
 
-# # Get values from source.
-# pg_con = pg_con_local(dbname = "spawning_ground")
-# dat = dbReadTable(pg_con, 'wria_lut')
-# dbDisconnect(pg_con)
-
-#======= wria_lut ... want simplified version ======================
-
-# Get values from source...for this iteration, want to simplify WRIA
-pg_con = pg_con_local(dbname = "spawning_ground")
-dat = st_read(pg_con, query = "select * from wria_lut where wria_code in ('22', '23')")
-dbDisconnect(pg_con)
-
-# Convert datetime to character
-dat = dat %>%
-  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC"))) %>%
-  select(-gid)
-
-# Check size of object
-object.size(dat)
-
-# Simplify polygons for speed
-wria_polys = dat %>%
-  ms_simplify()
-
-# Check size of object
-object.size(wria_polys)
-# plot(wria_polys)
-
-# Verify crs
-st_crs(wria_polys)$epsg
-
-# Convert back to binary, then hex
-dat = wria_polys %>%
-  mutate(geom = st_as_binary(geom)) %>%
-  mutate(geom = rawToHex(geom)) %>%
-  mutate(geometry = geom) %>%
-  st_drop_geometry() %>%
-  select(wria_id, wria_code, wria_description, geom = geometry,
-         obsolete_flag, obsolete_datetime)
-
-# Check size of object
-object.size(dat)
-
-# Write to sink
-db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-dbWriteTable(db_con, 'wria_lut', dat, row.names = FALSE, append = TRUE)
-dbDisconnect(db_con)
-
-# Clean up
-rm(list = c("dat", "wria_polys"))
-
-# # Test reading in as binary....WORKS PERFECT !!!!!  ========================
-#
-# # Query to get wria data
-# qry = glue("select wria_code, wria_description as wria_name, geom as geometry ",
-#            "from wria_lut")
-#
-# # Run the query
-# db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-# wria_st = st_read(db_con, query = qry, crs = 2927)
-# dbDisconnect(db_con)
-#
-# # Check size of object and crs
-# object.size(wria_st)
-# st_crs(wria_st)$epsg
-#
-# # Simplify polygons for speed
-# wria_st = wria_st %>%
-#   mutate(wria_name = paste0(wria_code, " ", wria_name)) %>%
-#   select(wria_name, geometry)
-#
-# # Verify with plot
-# plot(wria_st)
-#
-# # Clean up
-# rm(list = c("wria_st"))
-
 #=================================================================================================
 # waterbody and stream
 #=================================================================================================
@@ -1510,29 +1559,6 @@ dbDisconnect(db_con)
 
 # Clean up
 rm(list = c("dat", "wb", "st"))
-
-# # Test reading in as binary....WORKS PERFECT !!!!!  ========================
-#
-# # Query to get stream data
-# qry = glue("select wb.waterbody_name as stream_name, st.geom as geometry ",
-#            "from waterbody_lut as wb ",
-#            "inner join stream as st on wb.waterbody_id = st.waterbody_id ",
-#            "where wb.waterbody_name = 'Chehalis River'")
-#
-# # Run the query
-# db_con <- dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-# ch_st = st_read(db_con, query = qry, crs = 2927)
-# dbDisconnect(db_con)
-#
-# # Check size of object and crs
-# object.size(ch_st)
-# st_crs(ch_st)$epsg
-#
-# # Verify with plot
-# plot(ch_st)
-#
-# # Clean up
-# rm(list = c("ch_st"))
 
 #=================================================================================================
 # location and location_coordinates
@@ -1601,7 +1627,7 @@ rm(list = c("dat", "loc", "lc"))
 # Stock
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get stock data
 qry = glue("select distinct st.stock_id, st.waterbody_id, st.species_id, ",
            "st.run_id, st.sasi_stock_number, st.stock_name, ",
            "st.status_code, st.esa_code, st.obsolete_flag, ",
@@ -1633,7 +1659,7 @@ rm(list = c("dat"))
 # Survey
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get survey data
 qry = glue("select distinct s.survey_id, s.survey_datetime, s.data_source_id, ",
            "s.data_source_unit_id, s.survey_method_id, s.data_review_status_id, ",
            "s.upper_end_point_id, s.lower_end_point_id, s.survey_completion_status_id, ",
@@ -1674,7 +1700,7 @@ rm(list = c("dat"))
 # Survey comment
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get survey_comment data
 qry = glue("select distinct sc.survey_comment_id, sc.survey_id, sc.area_surveyed_id, ",
            "sc.fish_abundance_condition_id, sc.stream_condition_id, sc.stream_flow_type_id, ",
            "sc.survey_count_condition_id, sc.survey_direction_id, sc.survey_timing_id, ",
@@ -1712,7 +1738,7 @@ rm(list = c("dat"))
 # Survey intent
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct si.survey_intent_id, si.survey_id, si.species_id, ",
            "si.count_type_id, si.created_datetime, si.created_by, si.modified_datetime, ",
            "si.modified_by ",
@@ -1747,7 +1773,7 @@ rm(list = c("dat"))
 # Mobile survey form
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct m.mobile_survey_form_id, m.survey_id, m.parent_form_survey_id, ",
            "m.parent_form_survey_guid, m.parent_form_name, m.parent_form_id, ",
            "m.created_datetime, m.created_by, m.modified_datetime, m.modified_by ",
@@ -1782,7 +1808,7 @@ rm(list = c("dat"))
 # Survey mobile device
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct m.survey_mobile_device_id, m.survey_id, m.mobile_device_id ",
            "from survey_mobile_device as m ",
            "inner join survey as s on m.survey_id = s.survey_id ",
@@ -1809,7 +1835,7 @@ rm(list = c("dat"))
 # Mobile device
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct m.mobile_device_id, m.mobile_device_type_id, ",
            "m.mobile_equipment_identifier, m.mobile_device_name, m.mobile_device_description, ",
            "m.active_indicator, m.inactive_datetime, m.created_datetime, m.created_by, ",
@@ -1847,7 +1873,7 @@ rm(list = c("dat"))
 # Fish barrier
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct fb.fish_barrier_id, fb.survey_id, fb.barrier_location_id, ",
            "fb.barrier_type_id, fb.barrier_observed_datetime, fb.barrier_height_meter, ",
            "fb.barrier_height_type_id, fb.plunge_pool_depth_meter, fb.plunge_pool_depth_type_id, ",
@@ -1884,7 +1910,7 @@ rm(list = c("dat"))
 # Waterbody measurement
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct wm.waterbody_measurement_id, wm.survey_id, wm.water_clarity_type_id, ",
            "wm.water_clarity_meter, wm.stream_flow_measurement_cfs, wm.start_water_temperature_datetime, ",
            "wm.start_water_temperature_celsius, wm.end_water_temperature_datetime, ",
@@ -1923,7 +1949,7 @@ rm(list = c("dat"))
 # Other observation
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct oo.other_observation_id, oo.survey_id, oo.observation_location_id, ",
            "oo.observation_type_id, oo.observation_datetime, oo.observation_count, ",
            "oo.comment_text, oo.created_datetime, oo.created_by, oo.modified_datetime, ",
@@ -1960,7 +1986,7 @@ rm(list = c("dat"))
 # Fish capture
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct fc.fish_capture_id, fc.survey_id, fc.gear_performance_type_id, ",
            "fc.fish_start_datetime, fc.fish_end_datetime, fc.created_datetime, ",
            "fc.created_by, fc.modified_datetime, fc.modified_by ",
@@ -1997,7 +2023,7 @@ rm(list = c("dat"))
 # Fish species presence
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct fs.fish_species_presence_id, fs.survey_id, ",
            "fs.fish_presence_type_id, fs.comment_text, fs.created_datetime, ",
            "fs.created_by, fs.modified_datetime, fs.modified_by ",
@@ -2032,7 +2058,7 @@ rm(list = c("dat"))
 # Survey event
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct se.survey_event_id, se.survey_id, se.species_id, ",
            "se.survey_design_type_id, se.cwt_detection_method_id, se.run_id, ",
            "se.run_year, se.estimated_percent_fish_seen, se.comment_text, ",
@@ -2068,7 +2094,7 @@ rm(list = c("dat"))
 # Fish encounter
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct fe.fish_encounter_id, fe.survey_event_id, fe.fish_location_id, ",
            "fe.fish_status_id, fe.sex_id, fe.maturity_id, fe.origin_id, fe.cwt_detection_status_id, ",
            "fe.adipose_clip_status_id, fe.fish_behavior_type_id, fe.mortality_type_id, ",
@@ -2107,7 +2133,7 @@ rm(list = c("dat"))
 # Individual fish
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct ind.individual_fish_id, ind.fish_encounter_id, ind.fish_condition_type_id, ",
            "ind.fish_trauma_type_id, ind.gill_condition_type_id, ind.spawn_condition_type_id, ",
            "ind.cwt_result_type_id, ind.age_code_id, ind.percent_eggs_retained, ",
@@ -2148,7 +2174,7 @@ rm(list = c("dat"))
 # Fish length measurement
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct fl.fish_length_measurement_id, fl.individual_fish_id, ",
            "fl.fish_length_measurement_type_id, fl.length_measurement_centimeter, ",
            "fl.created_datetime, fl.created_by, fl.modified_datetime, fl.modified_by ",
@@ -2186,7 +2212,7 @@ rm(list = c("dat"))
 # Fish capture event
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct fc.fish_capture_event_id, fc.fish_encounter_id, ",
            "fc.fish_capture_status_id, fc.disposition_type_id, fc.disposition_id, ",
            "fc.disposition_location_id, fc.created_datetime, fc.created_by, ",
@@ -2224,7 +2250,7 @@ rm(list = c("dat"))
 # Fish mark
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct fm.fish_mark_id, fm.fish_encounter_id, ",
            "fm.mark_type_id, fm.mark_status_id, fm.mark_orientation_id, ",
            "fm.mark_placement_id, fm.mark_size_id, fm.mark_color_id, ",
@@ -2263,7 +2289,7 @@ rm(list = c("dat"))
 # Redd encounter
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct re.redd_encounter_id, re.survey_event_id, ",
            "re.redd_location_id, re.redd_status_id, re.redd_encounter_datetime, ",
            "re.redd_count, re.comment_text, re.created_datetime, ",
@@ -2301,7 +2327,7 @@ rm(list = c("dat"))
 # Individual redd
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct ir.individual_redd_id, ir.redd_encounter_id, ",
            "ir.redd_shape_id, ir.redd_dewatered_type_id, ir.percent_redd_visible, ",
            "ir.redd_length_measure_meter, ir.redd_width_measure_meter, ",
@@ -2342,7 +2368,7 @@ rm(list = c("dat"))
 # Redd substrate
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct rs.redd_substrate_id, rs.redd_encounter_id, ",
            "rs.substrate_level_id, rs.substrate_type_id, rs.substrate_percent, ",
            "rs.created_datetime, rs.created_by, rs.modified_datetime, rs.modified_by ",
@@ -2379,7 +2405,7 @@ rm(list = c("dat"))
 # Redd confidence
 #=================================================================================================
 
-# Get location and location coordinates data relevant to WRIAs 22 and 23
+# Get data
 qry = glue("select distinct rc.redd_confidence_id, rc.redd_encounter_id, ",
            "rc.redd_confidence_type_id, rc.redd_confidence_review_status_id, rc.comment_text, ",
            "rc.created_datetime, rc.created_by, rc.modified_datetime, rc.modified_by ",
