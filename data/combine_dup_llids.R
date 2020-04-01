@@ -76,7 +76,7 @@ qry = glue("select distinct wb.waterbody_id, wb.waterbody_name, wb.waterbody_dis
 
 # Get values from source
 db_con = pg_con_local(dbname = "spawning_ground")
-streams_st = wria_st = st_read(db_con, query = qry)
+streams_st = st_read(db_con, query = qry)
 dbDisconnect(db_con)
 
 # Pull out cases where LLID is duplicated

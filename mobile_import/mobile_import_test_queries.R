@@ -185,8 +185,42 @@ missing_stream_vals = new_surveys %>%
   mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
   mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
   select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
-         reach, lower_coords, upper_coords) %>%
+         llid, no_llid, reach, lower_coords, upper_coords) %>%
   distinct()
+
+# Get waterbody_ids for streams missing from option list, based on match with LLIDs
+qry = glue("select distinct wb.waterbody_id, wb.waterbody_display_name, ",
+           "wb.latitude_longitude_id as llid, st.stream_id as stream_geometry_id ",
+           "from waterbody_lut as wb ",
+           "left join stream as st on wb.waterbody_id = st.waterbody_id ",
+           "order by waterbody_display_name")
+
+# Checkout connection
+con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+#con = poolCheckout(pool)
+streams = dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Combine with missing_stream_vals
+missing_stream_vals = missing_stream_vals %>%
+  left_join(streams, by = "llid") %>%
+  select(parent_form_survey_id, survey_date, stream_name, waterbody_display_name,
+         llid, reach, lower_coords, upper_coords, waterbody_id, stream_geometry_id) %>%
+  distinct() %>%
+  arrange(llid, waterbody_display_name)
+
+# Output with styling
+num_cols = ncol(missing_stream_vals)
+current_date = format(Sys.Date())
+out_name = paste0("data/", current_date, "_", "MissingStreams.xlsx")
+wb <- createWorkbook(out_name)
+addWorksheet(wb, "MissingStreams", gridLines = TRUE)
+writeData(wb, sheet = 1, missing_stream_vals, rowNames = FALSE)
+## create and add a style to the column headers
+headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+saveWorkbook(wb, out_name, overwrite = TRUE)
 
 # Pull out only needed data
 missing_reach_vals = new_surveys %>%
