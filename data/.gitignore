@@ -33,3 +33,6 @@ chehalis_geo_2020-03-16.gpkg
 2020-03-31_NoEndPointToLea.xlsx
 2020-04-01_MissingStreams.xlsx
 ~$2020-04-01_MissingStreams.xlsx
+SGCoords_2020-04-02.xlsx
+SGPointsNoCoords_2020-04-02.xlsx
+output_chehalis_reach_points.R
