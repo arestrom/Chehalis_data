@@ -59,25 +59,30 @@ pg_con_local = function(dbname, port = '5432') {
   con
 }
 
-#=========================================================================
-# Import all stream data from sg where two or more segments exist per llid
-#=========================================================================
+#============================================================================
+# Import all stream data from sg that are in WRIAs 22 or 23
+#============================================================================
 
 # Define query to get needed data
 qry = glue("select distinct wb.waterbody_id, wb.waterbody_name, wb.waterbody_display_name, ",
            "wb.latitude_longitude_id as llid, wb.stream_catalog_code as cat_code, ",
-           "st.stream_id, st.gid, st.geom as geometry ",
+           "wr.wria_code, st.stream_id, st.gid, st.geom as geometry ",
            "from waterbody_lut as wb ",
            "left join stream as st on wb.waterbody_id = st.waterbody_id ",
-           "left join location as loc on wb.waterbody_id = loc.waterbody_id ",
-           "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
-           "where stream_id is not null and wria_code in ('22', '23') ",
+           "inner join wria_lut as wr on st_intersects(st.geom, wr.geom) ",
+           "where stream_id is not null and wr.wria_code in ('22', '23') ",
            "order by waterbody_name")
 
 # Get values from source
 db_con = pg_con_local(dbname = "spawning_ground")
-streams_st = wria_st = st_read(db_con, query = qry)
+sg_streams = st_read(db_con, query = qry)
 dbDisconnect(db_con)
+
+# # Output as a geopackage
+# write_sf(sg_streams, "data/sg_streams_2020-04-02.gpkg")
+
+# # Output sg_streams as a shape file
+# write_sf(sg_streams, dsn = "data/sg_streams_2020-04-02.shp", delete_layer = TRUE)
 
 # Trim to needed columns
 streams = streams_st %>%

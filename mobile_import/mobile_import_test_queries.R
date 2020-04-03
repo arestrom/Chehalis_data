@@ -209,18 +209,18 @@ missing_stream_vals = missing_stream_vals %>%
   distinct() %>%
   arrange(llid, waterbody_display_name)
 
-# Output with styling
-num_cols = ncol(missing_stream_vals)
-current_date = format(Sys.Date())
-out_name = paste0("data/", current_date, "_", "MissingStreams.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "MissingStreams", gridLines = TRUE)
-writeData(wb, sheet = 1, missing_stream_vals, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
+# # Output with styling
+# num_cols = ncol(missing_stream_vals)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "MissingStreams.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "MissingStreams", gridLines = TRUE)
+# writeData(wb, sheet = 1, missing_stream_vals, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
 # Pull out only needed data
 missing_reach_vals = new_surveys %>%
