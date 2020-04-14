@@ -431,15 +431,12 @@ db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, "DROP TABLE stream_temp")
 DBI::dbDisconnect(db_con)
 
-#======== North Fork Johns River =============================        START BACK IN HERE !!!!!!!!!!!!!!!!!!!!!!!!
-
-# Don't have any cleary assigned surveys there, but it should be in there for reference
-# and the possibility surveys were not properly assigned.
+#======== North Fork Johns River =============================
 
 # Set stream llid....from QGIS...Arleta's latest
-ll_id = '1240142468166'
+ll_id = '1239051468595'
 
-# Get stream geometry from Arleta's layer
+# Get stream geometry from Arletas layer
 st_llid = llid_chehalis %>%
   filter(llid == ll_id)
 
@@ -450,7 +447,7 @@ st_crs(st_llid)$epsg
 
 # Get info from cat_llid
 st_cat = cat_llid_chehalis %>%
-  filter(llid == ll_id | stringi::stri_detect_fixed(cat_name, "Andrews", max_count = 1))
+  filter(llid == ll_id | stringi::stri_detect_fixed(cat_name, "Johns", max_count = 1))
 
 # Check if the waterbody_id already exists in stream table
 wb_id = streams_st %>%
@@ -458,18 +455,18 @@ wb_id = streams_st %>%
 
 # Check if the waterbody_id already exists in stream table
 wb_id_2 = streams_st %>%
-  filter(cat_code == "22.1370") %>%
-  filter(stringi::stri_detect_fixed(waterbody_display_name, "Andrews", max_count = 1))
+  #filter(cat_code == "22.1270") %>%
+  filter(stringi::stri_detect_fixed(waterbody_display_name, "Johns", max_count = 1))
 
 #============ Manually inspect in QGIS, then enter new stream data here =====================
 
 # Create new entry in waterbody_lut
 wb = tibble(waterbody_id = remisc::get_uuid(1L),
-            waterbody_name = "Unnamed stream",
-            waterbody_display_name = "Unnamed stream (22.1370)",
+            waterbody_name = "North Fork Johns River",
+            waterbody_display_name = "NF Johns R (22.1270)",
             latitude_longitude_id = ll_id,
-            stream_catalog_code = "22.1370",
-            tributary_to_name = "Andrews Cr",
+            stream_catalog_code = "22.1270",
+            tributary_to_name = "Johns River",
             obsolete_flag = 0L,
             obsolete_datetime = as.POSIXct(NA))
 
@@ -527,6 +524,587 @@ db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, "DROP TABLE stream_temp")
 DBI::dbDisconnect(db_con)
 
+#======== East Fork Hoquiam River =============================
+
+# Set stream llid....from QGIS...Arleta's latest
+ll_id = '1238847469963'
+
+# Get stream geometry from Arletas layer
+st_llid = llid_chehalis %>%
+  filter(llid == ll_id)
+
+# Check crs
+st_crs(st_llid)$epsg
+
+#===== Verify stream is not already in SG based on stream_name or cat_coe ==================
+
+# Get info from cat_llid
+st_cat = cat_llid_chehalis %>%
+  filter(llid == ll_id | stringi::stri_detect_fixed(cat_name, "Hoquiam", max_count = 1))
+
+# Check if the waterbody_id already exists in stream table
+wb_id = streams_st %>%
+  filter(llid == ll_id)
+
+# Check if the waterbody_id already exists in stream table
+wb_id_2 = streams_st %>%
+  filter(cat_code == "22.0138") %>%
+  filter(stringi::stri_detect_fixed(waterbody_display_name, "Hoquiam", max_count = 1))
+
+#============ Manually inspect in QGIS, then enter new stream data here =====================
+
+# Stream is already in waterbody_lut
+new_wb_id = wb_id_2$waterbody_id
+
+# Update waterbody_lut with LLID
+qry = glue::glue("update waterbody_lut ",
+                 "set latitude_longitude_id = '{ll_id}' ",
+                 "where waterbody_id = '{new_wb_id}'")
+
+# Update waterbody_lut
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Waterbody was present, but with wrong LLID. Check if old LLID was associated
+# with a stream. Check manually in attribute table using QGIS.
+# Result: Incorrect in stream table. A fork at very end that goes the wrong
+# direction. Delete from stream
+# Delete query
+qry = glue::glue("delete from stream ",
+                 "where stream_id = 'ee2aeb9a-f3b4-499c-8a7a-9b9437911c67'")
+# Update waterbody_lut
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Get last gid
+qry = glue("select max(gid) as gid from stream")
+# Run query
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Generate new gid
+new_gid = max_gid$gid + 1L
+# gid = 3639L
+
+# Create stream
+stream_st = st_llid %>%
+  mutate(stream_id = remisc::get_uuid(1L)) %>%
+  mutate(waterbody_id = new_wb_id) %>%
+  mutate(gid = new_gid) %>%
+  mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
+  mutate(created_by = Sys.getenv("USERNAME")) %>%
+  mutate(modified_datetime = as.POSIXct(NA)) %>%
+  mutate(modified_by = NA_character_) %>%
+  select(stream_id, waterbody_id, gid, geom, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Write temp table
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = stream_st, dsn = db_con, layer = "stream_temp")
+dbDisconnect(db_con)
+
+# Use select into query to get data into point_location
+qry = glue::glue("INSERT INTO stream ",
+                 "SELECT CAST(stream_id AS UUID), CAST(waterbody_id AS UUID), ",
+                 "gid, geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM stream_temp")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE stream_temp")
+DBI::dbDisconnect(db_con)
+
+#======== Unnamed trib =============================
+
+# Set stream llid....from QGIS...Arleta's latest
+ll_id = '1240164471568'
+
+# Get stream geometry from Arletas layer
+st_llid = llid_chehalis %>%
+  filter(llid == ll_id)
+
+# Check crs
+st_crs(st_llid)$epsg
+
+#===== Verify stream is not already in SG based on stream_name or cat_coe ==================
+
+# Get info from cat_llid
+st_cat = cat_llid_chehalis %>%
+  filter(llid == ll_id | stringi::stri_detect_fixed(cat_name, "Hoquiam", max_count = 1))
+
+# Check if the waterbody_id already exists in stream table
+wb_id = streams_st %>%
+  filter(llid == ll_id)
+
+# Check if the waterbody_id already exists in stream table
+wb_id_2 = streams_st %>%
+  filter(cat_code == "22.0041") %>%
+  filter(stringi::stri_detect_fixed(waterbody_display_name, "Hoquiam", max_count = 1))
+
+#============ Manually inspect in QGIS, then enter new stream data here =====================
+
+# Create new entry in waterbody_lut
+wb = tibble(waterbody_id = remisc::get_uuid(1L),
+            waterbody_name = "Unnamed tributary",
+            waterbody_display_name = "Unnamed trib (22.0041)",
+            latitude_longitude_id = ll_id,
+            stream_catalog_code = "22.0041",
+            tributary_to_name = "Humptulips River",
+            obsolete_flag = 0L,
+            obsolete_datetime = as.POSIXct(NA))
+
+# Write to sink
+db_con = pg_con_local(dbname = "spawning_ground")
+dbWriteTable(db_con, 'waterbody_lut', wb, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Get last gid
+qry = glue("select max(gid) as gid from stream")
+# Run query
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Generate new gid
+new_gid = max_gid$gid + 1L
+# gid = 3639L
+
+# Pull out new waterbody_id
+new_wb_id = wb$waterbody_id
+
+# Create stream
+stream_st = st_llid %>%
+  mutate(stream_id = remisc::get_uuid(1L)) %>%
+  mutate(waterbody_id = new_wb_id) %>%
+  mutate(gid = new_gid) %>%
+  mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
+  mutate(created_by = Sys.getenv("USERNAME")) %>%
+  mutate(modified_datetime = as.POSIXct(NA)) %>%
+  mutate(modified_by = NA_character_) %>%
+  select(stream_id, waterbody_id, gid, geom, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Write temp table
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = stream_st, dsn = db_con, layer = "stream_temp")
+dbDisconnect(db_con)
+
+# Use select into query to get data into point_location
+qry = glue::glue("INSERT INTO stream ",
+                 "SELECT CAST(stream_id AS UUID), CAST(waterbody_id AS UUID), ",
+                 "gid, geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM stream_temp")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE stream_temp")
+DBI::dbDisconnect(db_con)
+
+#======== Unnamed trib =============================
+
+# Set stream llid....from QGIS...Arleta's latest
+ll_id = '1234273471006'
+
+# Get stream geometry from Arletas layer
+st_llid = llid_chehalis %>%
+  filter(llid == ll_id)
+
+# Check crs
+st_crs(st_llid)$epsg
+
+#===== Verify stream is not already in SG based on stream_name or cat_coe ==================
+
+# Get info from cat_llid
+st_cat = cat_llid_chehalis %>%
+  filter(llid == ll_id | stringi::stri_detect_fixed(cat_name, "Hoquiam", max_count = 1))
+
+# Check if the waterbody_id already exists in stream table
+wb_id = streams_st %>%
+  filter(llid == ll_id)
+
+# Check if the waterbody_id already exists in stream table
+wb_id_2 = streams_st %>%
+  filter(cat_code == "22.0041") %>%
+  filter(stringi::stri_detect_fixed(waterbody_display_name, "Hoquiam", max_count = 1))
+
+#============ Manually inspect in QGIS, then enter new stream data here =====================
+
+# Create new entry in waterbody_lut
+wb = tibble(waterbody_id = remisc::get_uuid(1L),
+            waterbody_name = "Unnamed tributary",
+            waterbody_display_name = "Unnamed trib",
+            latitude_longitude_id = ll_id,
+            stream_catalog_code = "22",
+            tributary_to_name = "Comfort Creek",
+            obsolete_flag = 0L,
+            obsolete_datetime = as.POSIXct(NA))
+
+# Write to sink
+db_con = pg_con_local(dbname = "spawning_ground")
+dbWriteTable(db_con, 'waterbody_lut', wb, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Get last gid
+qry = glue("select max(gid) as gid from stream")
+# Run query
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Generate new gid
+new_gid = max_gid$gid + 1L
+# gid = 3639L
+
+# Pull out new waterbody_id
+new_wb_id = wb$waterbody_id
+
+# Create stream
+stream_st = st_llid %>%
+  mutate(stream_id = remisc::get_uuid(1L)) %>%
+  mutate(waterbody_id = new_wb_id) %>%
+  mutate(gid = new_gid) %>%
+  mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
+  mutate(created_by = Sys.getenv("USERNAME")) %>%
+  mutate(modified_datetime = as.POSIXct(NA)) %>%
+  mutate(modified_by = NA_character_) %>%
+  select(stream_id, waterbody_id, gid, geom, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Write temp table
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = stream_st, dsn = db_con, layer = "stream_temp")
+dbDisconnect(db_con)
+
+# Use select into query to get data into point_location
+qry = glue::glue("INSERT INTO stream ",
+                 "SELECT CAST(stream_id AS UUID), CAST(waterbody_id AS UUID), ",
+                 "gid, geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM stream_temp")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE stream_temp")
+DBI::dbDisconnect(db_con)
+
+#======== Unnamed Creek Formerly Satsop R =============================
+
+# Set stream llid....from QGIS...Arleta's latest
+ll_id = '1233664471614'
+
+# Get stream geometry from Arletas layer
+st_llid = llid_chehalis %>%
+  filter(llid == ll_id)
+
+# Check crs
+st_crs(st_llid)$epsg
+
+#===== Verify stream is not already in SG based on stream_name or cat_coe ==================
+
+# Get info from cat_llid
+st_cat = cat_llid_chehalis %>%
+  filter(llid == ll_id | stringi::stri_detect_fixed(cat_name, "Satsop", max_count = 1))
+
+# Check if the waterbody_id already exists in stream table
+wb_id = streams_st %>%
+  filter(llid == ll_id)
+
+# Check if the waterbody_id already exists in stream table
+wb_id_2 = streams_st %>%
+  filter(cat_code == "22.0360") %>%
+  filter(stringi::stri_detect_fixed(waterbody_display_name, "Satsop", max_count = 1))
+
+#============ Manually inspect in QGIS, then enter new stream data here =====================
+
+# Create new entry in waterbody_lut
+wb = tibble(waterbody_id = remisc::get_uuid(1L),
+            waterbody_name = "Unnamed Trib (formerly Satsop R)",
+            waterbody_display_name = "Unnamed trib (22.0360)",
+            latitude_longitude_id = ll_id,
+            stream_catalog_code = "22.0360",
+            tributary_to_name = "EF Satsop R",
+            obsolete_flag = 0L,
+            obsolete_datetime = as.POSIXct(NA))
+
+# Write to sink
+db_con = pg_con_local(dbname = "spawning_ground")
+dbWriteTable(db_con, 'waterbody_lut', wb, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Get last gid
+qry = glue("select max(gid) as gid from stream")
+# Run query
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Generate new gid
+new_gid = max_gid$gid + 1L
+# gid = 3639L
+
+# Pull out new waterbody_id
+new_wb_id = wb$waterbody_id
+
+# Create stream
+stream_st = st_llid %>%
+  mutate(stream_id = remisc::get_uuid(1L)) %>%
+  mutate(waterbody_id = new_wb_id) %>%
+  mutate(gid = new_gid) %>%
+  mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
+  mutate(created_by = Sys.getenv("USERNAME")) %>%
+  mutate(modified_datetime = as.POSIXct(NA)) %>%
+  mutate(modified_by = NA_character_) %>%
+  select(stream_id, waterbody_id, gid, geom, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Write temp table
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = stream_st, dsn = db_con, layer = "stream_temp")
+dbDisconnect(db_con)
+
+# Use select into query to get data into point_location
+qry = glue::glue("INSERT INTO stream ",
+                 "SELECT CAST(stream_id AS UUID), CAST(waterbody_id AS UUID), ",
+                 "gid, geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM stream_temp")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE stream_temp")
+DBI::dbDisconnect(db_con)
+
+#======== Unnamed tributary =============================
+
+# Set stream llid....from QGIS...Arleta's latest
+ll_id = '1239452471587'
+
+# Get stream geometry from Arletas layer
+st_llid = llid_chehalis %>%
+  filter(llid == ll_id)
+
+# Check crs
+st_crs(st_llid)$epsg
+
+#===== Verify stream is not already in SG based on stream_name or cat_coe ==================
+
+# Get info from cat_llid
+st_cat = cat_llid_chehalis %>%
+  filter(llid == ll_id | stringi::stri_detect_fixed(cat_name, "Cloquallum", max_count = 1))
+
+# Check if the waterbody_id already exists in stream table
+wb_id = streams_st %>%
+  filter(llid == ll_id)
+
+# Check if the waterbody_id already exists in stream table
+wb_id_2 = streams_st %>%
+  filter(cat_code == "22.0050") %>%
+  filter(stringi::stri_detect_fixed(waterbody_display_name, "Cloquallum", max_count = 1))
+
+#============ Manually inspect in QGIS, then enter new stream data here =====================
+
+# Create new entry in waterbody_lut
+wb = tibble(waterbody_id = remisc::get_uuid(1L),
+            waterbody_name = "Unnamed Tributary",
+            waterbody_display_name = "Unnamed Trib (22.0050)",
+            latitude_longitude_id = ll_id,
+            stream_catalog_code = "22.0050",
+            tributary_to_name = "Cedar Creek",
+            obsolete_flag = 0L,
+            obsolete_datetime = as.POSIXct(NA))
+
+# Write to sink
+db_con = pg_con_local(dbname = "spawning_ground")
+dbWriteTable(db_con, 'waterbody_lut', wb, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Get last gid
+qry = glue("select max(gid) as gid from stream")
+# Run query
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Generate new gid
+new_gid = max_gid$gid + 1L
+# gid = 3639L
+
+# Pull out new waterbody_id
+new_wb_id = wb$waterbody_id
+
+# Create stream
+stream_st = st_llid %>%
+  mutate(stream_id = remisc::get_uuid(1L)) %>%
+  mutate(waterbody_id = new_wb_id) %>%
+  mutate(gid = new_gid) %>%
+  mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
+  mutate(created_by = Sys.getenv("USERNAME")) %>%
+  mutate(modified_datetime = as.POSIXct(NA)) %>%
+  mutate(modified_by = NA_character_) %>%
+  select(stream_id, waterbody_id, gid, geom, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Write temp table
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = stream_st, dsn = db_con, layer = "stream_temp")
+dbDisconnect(db_con)
+
+# Use select into query to get data into point_location
+qry = glue::glue("INSERT INTO stream ",
+                 "SELECT CAST(stream_id AS UUID), CAST(waterbody_id AS UUID), ",
+                 "gid, geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM stream_temp")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE stream_temp")
+DBI::dbDisconnect(db_con)
+
+# Fix one stream error -------------------------------------------
+
+# The waterbody_id for EF Hoquiam geometry should be:
+wb_id = '4953e2b4-171e-4423-bf8b-e6f4ba1c6d5d'
+# for stream_id:
+st_id = '429c9917-0cc7-4753-8d51-50e32939e0d9'
+
+# Update waterbody_lut with LLID
+qry = glue::glue("update stream ",
+                 "set waterbody_id = '{wb_id}' ",
+                 "where stream_id = '{st_id}'")
+
+# Update waterbody_lut
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+#======== Unnamed tributary =============================
+
+# Set stream llid....from QGIS...Arleta's latest
+ll_id = '1239449471577'
+
+# Get stream geometry from Arletas layer
+st_llid = llid_chehalis %>%
+  filter(llid == ll_id)
+
+# Check crs
+st_crs(st_llid)$epsg
+
+#===== Verify stream is not already in SG based on stream_name or cat_coe ==================
+
+# Get info from cat_llid
+st_cat = cat_llid_chehalis %>%
+  filter(llid == ll_id | stringi::stri_detect_fixed(cat_name, "Cloquallum", max_count = 1))
+
+# Check if the waterbody_id already exists in stream table
+wb_id = streams_st %>%
+  filter(llid == ll_id)
+
+# Check if the waterbody_id already exists in stream table
+wb_id_2 = streams_st %>%
+  filter(cat_code == "22.0049A") %>%
+  filter(stringi::stri_detect_fixed(waterbody_display_name, "Cloquallum", max_count = 1))
+
+#============ Manually inspect in QGIS, then enter new stream data here =====================
+
+# Create new entry in waterbody_lut
+wb = tibble(waterbody_id = remisc::get_uuid(1L),
+            waterbody_name = "Unnamed Tributary",
+            waterbody_display_name = "Unnamed Trib (22.0049A)",
+            latitude_longitude_id = ll_id,
+            stream_catalog_code = "22.0049A",
+            tributary_to_name = "Cedar Creek",
+            obsolete_flag = 0L,
+            obsolete_datetime = as.POSIXct(NA))
+
+# Write to sink
+db_con = pg_con_local(dbname = "spawning_ground")
+dbWriteTable(db_con, 'waterbody_lut', wb, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Get last gid
+qry = glue("select max(gid) as gid from stream")
+# Run query
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Generate new gid
+new_gid = max_gid$gid + 1L
+# gid = 3639L
+
+# Pull out new waterbody_id
+new_wb_id = wb$waterbody_id
+
+# Create stream
+stream_st = st_llid %>%
+  mutate(stream_id = remisc::get_uuid(1L)) %>%
+  mutate(waterbody_id = new_wb_id) %>%
+  mutate(gid = new_gid) %>%
+  mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
+  mutate(created_by = Sys.getenv("USERNAME")) %>%
+  mutate(modified_datetime = as.POSIXct(NA)) %>%
+  mutate(modified_by = NA_character_) %>%
+  select(stream_id, waterbody_id, gid, geom, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Write temp table
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = stream_st, dsn = db_con, layer = "stream_temp")
+dbDisconnect(db_con)
+
+# Use select into query to get data into point_location
+qry = glue::glue("INSERT INTO stream ",
+                 "SELECT CAST(stream_id AS UUID), CAST(waterbody_id AS UUID), ",
+                 "gid, geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM stream_temp")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE stream_temp")
+DBI::dbDisconnect(db_con)
 
 
 
