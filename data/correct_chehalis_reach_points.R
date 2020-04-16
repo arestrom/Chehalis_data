@@ -61,6 +61,45 @@ pg_con_local = function(dbname, port = '5432') {
   con
 }
 
+#=========================================================
+# Function to update location data
+#=========================================================
+
+# Update location descriptions
+update_point_desc = function(x) {
+  db_con = pg_con_local(dbname = "spawning_ground")
+  if( !is.data.frame(x) & !ncol(x) == 3 ) {
+    stop("The input data must be a three column dataframe")
+  }
+  for( i in 1:nrow(x) ) {
+    loc_id = x$location_id[i]
+    loc_desc = x$location_description[i]
+    loc_desc = gsub("'", "''", loc_desc)
+    qry = glue::glue("update location ",
+                     "set location_description = '{loc_desc}' ",
+                     "where location_id = '{loc_id}'")
+    DBI::dbExecute(db_con, qry)
+  }
+  dbDisconnect(db_con)
+}
+
+# Update points that have been moved to new locations in imported data
+update_point = function(x) {
+  db_con = pg_con_local(dbname = "spawning_ground")
+  if( !is.data.frame(x) & !ncol(x) == 7 ) {
+    stop("The input data must be a three column dataframe")
+  }
+  for( i in 1:nrow(x) ) {
+    loc_id = x$location_id[i]
+    loc_geom = st_as_binary(x$geometry[i][[1]], hex = TRUE)
+    qry = glue::glue("update location_coordinates ",
+                     "set geom = ST_SetSRID('{loc_geom}'::geometry, 2927) ",
+                     "where location_id = '{loc_id}'")
+    DBI::dbExecute(db_con, qry)
+  }
+  dbDisconnect(db_con)
+}
+
 #============================================================================
 # Import all stream data from sg that are in WRIAs 22 or 23
 #============================================================================
@@ -131,10 +170,18 @@ waterbody_no_match = nearest_stream %>%
   filter(!rc_wbid == waterbody_id) %>%
   arrange(rc_wbname)
 
-#==========================================================================
-# Inspect cases where waterbody_ids agree. See if any updates needed
-# Result: Looks good...no obvious updates needed
-#==========================================================================
+#===============================================================================================
+# STAGE 1. Pull out cases where new points need to be added.
+# Step 1. Process where waterbodies agree,
+#      2. Manually verify that the waterbody_id provided in gdb should be the one used.
+#      3. Generate tables for new points
+#===============================================================================================
+
+#=====================================================================
+# Inspect cases where waterbody_ids agree.
+#=====================================================================
+
+#== Step 1, Pull out new_points data, inspect comments =======
 
 # Check if all llids agree....These are now Ok
 chk_llid = waterbody_matches %>%
@@ -156,15 +203,17 @@ new_points_one = reach_edits %>%
          river_mile_measure = river_mile, location_name, location_description,
          comments)
 
-# NOTE: Remember to check river_miles for missing values and descriptions
-#       for @ characters....change to At. Do this after combining datasets
-#       one and two
+# Check comments
+unique(new_points_one$comments)
+
+# NOTE: Remember to check river_miles for missing values. Do this after
+# combining datasets one and two
 
 #==========================================================================
-# Inspect cases where waterbody_ids do not agree. Updates wiil be needed.
+# Inspect cases where waterbody_ids do not agree.
 #==========================================================================
 
-#========= Step 1, inspect new end_points ==============
+#== Step 2. Verify WBIDs for new end_points: IDs do not match  ====
 
 # First pull out data where new points need to be added to location table
 new_points_two_seq_id = waterbody_no_match %>%
@@ -214,6 +263,8 @@ new_points_two = new_points_two %>%
          river_mile_measure, location_name, location_description,
          comments)
 
+#========= Step 3. Generate tables for new points that need to be added   ==============
+
 # Create location table entries with new end_points
 new_points = rbind(new_points_one, new_points_two)
 
@@ -246,6 +297,10 @@ new_points = new_points %>%
          waloc_id, created_datetime, created_by, modified_datetime,
          modified_by)
 
+# # THIS TIME ONLY.....Forgot to update RM to zero
+# new_points$river_mile_measure[new_points$seq_id == 654] = 0.0
+# sort(unique(new_points$river_mile_measure))
+
 # Get the current max_gid from the location_coordinates table
 qry = "select max(gid) from location_coordinates"
 db_con = pg_con_local(dbname = "spawning_ground")
@@ -264,14 +319,25 @@ new_coords = new_points %>%
          modified_datetime, modified_by)
 
 #=========================================================================================
-# Get rid of new points from match and no-match
-# Then check comments to look for any updates needed in location table
+# STAGE 2. Make any needed adjustments on existing points
+# Step 1. Get rid of points that were newly added from data that matched.
+#      2. Check comments to look for any updates needed to location table
+#         Possible updates include moving points or edits to descriptions.
+#      3. Get rid of points that were newly added from data that did not match.
+#      4. Add point geoms to no-match data so streams can be verified.
+#      5. For no-match data, verify that rc_wbid should be used. Spot check.
+#      6. Add wbid from location table to check if wbid needs to be updated.
 #=========================================================================================
+
+#=== 1. Get rid of points for matching data without location_id ===============
+#===    these point will be added at the end
 
 # Pull out the cases where wbid match and check more carefully
 waterbody_matches = waterbody_matches %>%
   mutate(location_id = trimws(location_id)) %>%
   filter(!is.na(location_id) & !location_id == "")
+
+#=== 2. Check comments for any needed updates to existing points ==========
 
 # Check on range of tasks needed...manually checked..get rid of "c", and "new".
 unique(waterbody_matches$comments)
@@ -281,29 +347,89 @@ updates_match = waterbody_matches %>%
   filter(!is.na(comments)) %>%
   filter(!comments %in% c("c", "New"))
 
+# Get cases where location description needs to be updated
+location_desc = updates_match %>%
+  filter(comments == "updated location descripton") %>%
+  select(location_id, location_description, comments)
 
+# # Run the update function: DONE !!!!!!!!!!!!!!
+# update_point_desc(location_desc)
 
+# Get cases where point was moved
+point_moved = updates_match %>%
+  filter(comments %in% c("Moved Point", "Moved point to stream layer.")) %>%
+  select(seq_id, location_id, stream_id, river_mile,
+         location_description, comments)
 
+# Pull out seq_ids
+point_moved_id = point_moved %>%
+  pull(seq_id)
 
+# Add geometry
+new_geo = reach_edits %>%
+  filter(seq_id %in% point_moved_id) %>%
+  select(seq_id)
 
+# Join to point_moved
+point_moved = point_moved %>%
+  left_join(new_geo, by = "seq_id")
 
+# # Run the update function: DONE !!!!!!!!!!!!
+# update_point(point_moved)
 
+# Check again for comments
+unique(updates_match$comments)
 
-
-
-
-
-
-
-
+#=== 3. Get rid of points for no-match data without location_id ===============
+#===    these point will be added at the end
 
 # Pull out cases where wbid does not match
 waterbody_no_match = waterbody_no_match %>%
-  filter(!is.na(location_id))
+  mutate(location_id = trimws(location_id)) %>%
+  filter(!is.na(location_id) & !location_id == "")
+
+#=== 5. Add point_geoms from reach_edit to no-match data ====================================
+
+# Get the no-match seq id
+no_match_seq_id = unique(waterbody_no_match$seq_id)
+
+# Pull out geometry data points in Lea's edited data
+edited_points = reach_edits %>%
+  filter(seq_id %in% no_match_seq_id) %>%
+  select(seq_id)
+
+# Join to new_points_two
+waterbody_no_match_geo = waterbody_no_match %>%
+  left_join(edited_points, by = "seq_id") %>%
+  st_as_sf() %>%
+  st_transform(4326) %>%
+  select(seq_id, rc_wbid, waterbody_id, rc_wbname, waterbody_name,
+         rc_llid, llid, rc_cat_code, cat_code, river_mile,
+         location_id, location_name, location_description,
+         comments) %>%
+  arrange(waterbody_name)
+
+
+
+# Use waterbody_id....send these to Lea afterwards
+use_wbid = c(483, 484, 485, 218)
 
 
 
 
+
+
+
+#=== 5. Verify that rc_wbid is correct waterbody ============================
+
+
+
+
+# For both the no_match and matches data that remains after new points are delete,
+# There remains the possibility that waterbody_id's need to be updated. I need to
+# double-check that the rc_wbid agrees with the waterbody_id listed for the specific
+# location_id entered in the locatio table for the point. The current comparison
+# is just based on nearest feature...it is not from the location table.
 
 
 
