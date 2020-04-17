@@ -409,11 +409,30 @@ waterbody_no_match_geo = waterbody_no_match %>%
          comments) %>%
   arrange(waterbody_name)
 
-
-
 # Use waterbody_id....send these to Lea afterwards
-use_wbid = c(483, 484, 485, 218)
+# Notes:
+# 1. Need to adjust line work for Schaeffer Slough GIDs 507, 508
+# 2. SeqID 754, point indicates waterbody_id '43332282-50a3-45c6-96d0-565d03314116', not either of those listed.
+use_wbid = c(483, 484, 485, 218, 842, 494, 495, 496, 497, 498, 499,
+            60, 62,)
 
+# Need to output the rest for Lea to take care of....too many unknowns !!!!
+
+# Output sgs_streams
+st_crs(sg_streams)$epsg
+st_write(sg_streams, "data/sg_streams.shp")
+
+# Output waterbody_mismatch
+waterbody_mismatch = waterbody_no_match_geo %>%
+  st_transform(2927)
+
+# Output sgs_streams
+st_crs(waterbody_mismatch)$epsg
+st_write(waterbody_mismatch, "data/waterbody_mismatch.shp")
+
+
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
