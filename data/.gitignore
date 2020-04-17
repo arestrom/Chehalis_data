@@ -36,3 +36,13 @@ chehalis_geo_2020-03-16.gpkg
 SGCoords_2020-04-02.xlsx
 SGPointsNoCoords_2020-04-02.xlsx
 output_chehalis_reach_points.R
+MissingStreamsFromLea.xlsx
+SG_Lea_Point_Edits.gdb
+sg_streams.dbf
+sg_streams.prj
+sg_streams.shp
+sg_streams.shx
+waterbody_mismatch.dbf
+waterbody_mismatch.prj
+waterbody_mismatch.shp
+waterbody_mismatch.shx
