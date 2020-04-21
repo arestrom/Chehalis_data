@@ -23,27 +23,40 @@ output$fish_orientation_type_select = renderUI({
 # Primary datatable for fish_locations
 #========================================================
 
-# Primary DT datatable for survey_intent
-output$fish_locations = renderDT({
+
+# STOPPED HERE...THIS NEEDS TO BE INSIDE OUTPUT FOR DT. THEN DT GETS UPDATED AFTER EACH
+# EDIT, INSERT, OR DELETE OPERATION. NEEDS ADJUSTMENT !!!!!!!!!!!!!!!!!!!!!!!!
+
+
+# Get fish location data
+fish_location_data = reactive({
   req(input$tabs == "data_entry")
   req(input$surveys_rows_selected)
   req(input$survey_events_rows_selected)
-  fish_location_title = glue("{selected_survey_event_data()$species} carcass locations for {input$stream_select} ",
-                             "from river mile {selected_survey_data()$up_rm} to {selected_survey_data()$lo_rm}, ",
-                             "for the period {format(as.Date(selected_survey_data()$survey_date) - months(3), '%m/%d/%Y')} ",
-                             "to {format(as.Date(selected_survey_data()$survey_date), '%m/%d/%Y')}")
+  # input$insert_fish_location
+  # input$save_fish_loc_edits
+  # input$delete_fish_location
   # Collect parameters
   up_rm = selected_survey_data()$up_rm
   lo_rm = selected_survey_data()$lo_rm
   survey_date = format(as.Date(selected_survey_data()$survey_date))
   species_id = selected_survey_event_data()$species_id
   fish_location_data = get_fish_locations(waterbody_id(), up_rm, lo_rm, survey_date, species_id) %>%
-    select(survey_dt, species, fish_name, fish_status, channel_type, orientation_type,
-           latitude, longitude, horiz_accuracy, location_description,
-           created_dt, created_by, modified_dt, modified_by)
+    select(fish_location_id, survey_dt, species, fish_name, fish_status,
+           channel_type, orientation_type, latitude, longitude, horiz_accuracy,
+           location_description, created_dt, created_by, modified_dt, modified_by)
+  return(fish_location_data)
+})
 
+# Primary DT datatable for survey_intent
+output$fish_locations = renderDT({
+  # Title
+  fish_location_title = glue("{selected_survey_event_data()$species} carcass locations for {input$stream_select} ",
+                             "from river mile {selected_survey_data()$up_rm} to {selected_survey_data()$lo_rm}, ",
+                             "for the period {format(as.Date(selected_survey_data()$survey_date) - months(3), '%m/%d/%Y')} ",
+                             "to {format(as.Date(selected_survey_data()$survey_date), '%m/%d/%Y')}")
   # Generate table
-  datatable(fish_location_data,
+  datatable(fish_location_data(),
             selection = list(mode = 'single'),
             options = list(dom = 'ltp',
                            pageLength = 5,
@@ -133,39 +146,82 @@ selected_fish_coords = reactive({
   if ( is.null(fish_coords) | length(fish_coords$latitude) == 0 | length(fish_coords$longitude) == 0 ) {
     fish_lat = center_lat
     fish_lon = center_lon
-    fish_name = "none"
+    zoom = 12L
   } else {
     fish_lat = fish_coords$latitude
     fish_lon = fish_coords$longitude
-    fish_name = selected_fish_location_data()$fish_name
+    zoom = 16L
   }
   fish_coords = tibble(fish_location_id = fish_location_id,
-                       fish_name = fish_name,
                        fish_lat = fish_lat,
-                       fish_lon = fish_lon)
+                       fish_lon = fish_lon,
+                       zoom = zoom)
   return(fish_coords)
 })
+
+# # Pull out all fish coords...actual fish coordinates
+# all_fish_coords = reactive({
+#   fish_locs = fish_location_data()  %>%
+#     filter(!is.na(latitude) & !is.na(longitude)) %>%
+#     select(fish_location_id, survey_dt, species, fish_name, fish_status,
+#            channel_type, orientation_type, latitude, longitude,
+#            horiz_accuracy, location_description, created_dt,
+#            created_by, modified_dt, modified_by)
+#   print(fish_locs)
+#   return(fish_locs)
+# })
+
+carcass_coords = reactive({
+  fish_locs = fish_location_data()  %>%
+    filter(!is.na(latitude) & !is.na(longitude)) %>%
+    select(fish_location_id, survey_dt, species, fish_name, fish_status,
+           channel_type, orientation_type, latitude, longitude,
+           horiz_accuracy, location_description, created_dt,
+           created_by, modified_dt, modified_by)
+  # print(fish_locs)
+  # print(str(fish_locs))
+  # print(nrow(fish_locs))
+  # print(length(fish_locs$latitude))
+  return(fish_locs)
+})
+
 
 # Output leaflet bidn map....could also use color to indicate species:
 # See: https://rstudio.github.io/leaflet/markers.html
 output$fish_map <- renderLeaflet({
-  fish_loc_data = selected_fish_coords()
-  fish_lat = fish_loc_data$fish_lat
-  fish_lon = fish_loc_data$fish_lon
-  fish_name = fish_loc_data$fish_name
-  fish_location_id = fish_loc_data$fish_location_id
-  m = leaflet() %>%
+  # carcass_locs = all_fish_coords()
+  # if (nrow(carcass_locs) == 0L ) {
+  #   carcass_locs = NULL
+  # }
+  # Generate basemap
+  edit_fish_loc = leaflet() %>%
     setView(
-      lng = selected_stream_centroid()$center_lon,
-      lat = selected_stream_centroid()$center_lat,
-      zoom = 14) %>%
-    # Needed to enable draggable circle-markers
-    addDrawToolbar(circleOptions = NA,
-                   circleMarkerOptions = NA,
-                   markerOptions = NA,
-                   polygonOptions = NA,
-                   rectangleOptions = NA,
-                   polylineOptions = NA) %>%
+      lng = selected_fish_coords()$fish_lon,
+      lat = selected_fish_coords()$fish_lat,
+      zoom = selected_fish_coords()$zoom) %>%
+    addProviderTiles("Esri.WorldImagery", group = "Esri World Imagery") %>%
+    addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
+    addLayersControl(position = 'bottomright',
+                     baseGroups = c("Esri World Imagery", "Open Topo Map"),
+                     overlayGroups = c("Streams"),
+                     options = layersControlOptions(collapsed = TRUE)) %>%
+    # Add edit features
+    leaflet.extras::addDrawToolbar(
+      targetGroup = "carcass_edits",
+      position = "topleft",
+      polylineOptions = FALSE,
+      polygonOptions = FALSE,
+      circleOptions = FALSE,
+      rectangleOptions = FALSE,
+      markerOptions = FALSE,
+      circleMarkerOptions = drawCircleMarkerOptions(
+        color = "#ace600",
+        stroke = TRUE,
+        weight = 2,
+        fillOpacity = 0.5),
+      editOptions = editToolbarOptions(
+        selectedPathOptions = selectedPathOptions()),
+      singleFeature = TRUE) %>%
     addPolylines(
       data = wria_streams(),
       group = "Streams",
@@ -173,44 +229,64 @@ output$fish_map <- renderLeaflet({
       color = "#0000e6",
       label = ~stream_label,
       layerId = ~stream_label,
-      labelOptions = labelOptions(noHide = FALSE)) %>%
-    addCircleMarkers(
-      lng = fish_lon,
-      lat = fish_lat,
-      layerId = fish_location_id,
-      popup = fish_name,
-      radius = 8,
-      color = "red",
-      fillOpacity = 0.5,
-      stroke = FALSE,
-      options = markerOptions(draggable = TRUE,
-                              riseOnHover = TRUE)) %>%
-    addProviderTiles("Esri.WorldImagery", group = "Esri World Imagery") %>%
-    addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
-    addLayersControl(position = 'bottomright',
-                     baseGroups = c("Esri World Imagery", "Open Topo Map"),
-                     overlayGroups = c("Streams"),
-                     options = layersControlOptions(collapsed = TRUE))
-  m
+      labelOptions = labelOptions(noHide = FALSE))
+
+    # Test if carcass_coords has data
+  if ( !nrow(carcass_coords()) > 0L ) {
+    return(edit_fish_loc)
+  } else {
+    edit_fish_loc_two = edit_fish_loc %>%
+      # Add existing data if locations exist
+      addCircleMarkers(
+        lng = carcass_coords()$longitude,
+        lat = carcass_coords()$latitude,
+        popup = carcass_coords()$fish_name,
+        layerId = carcass_coords()$fish_location_id,
+        radius = 8,
+        color = "red",
+        fillOpacity = 0.5,
+        stroke = FALSE,
+        options = markerOptions(draggable = FALSE,
+                                riseOnHover = TRUE))
+    return(edit_fish_loc_two)
+  }
 })
 
-# Create reactive to hold click data
-fish_marker_data = reactive({
-  req(input$fish_map_marker_click)
-  fish_click_data = input$fish_map_marker_click
-  fish_mark_dat = tibble(latitude = round(as.numeric(fish_click_data$lat), digits = 7),
-                         longitude = round(as.numeric(fish_click_data$lng), digits = 7))
-  return(fish_mark_dat)
+# Pull coordinates from the last drawn, or edited marker
+fish_coords = eventReactive(input$fish_map_draw_all_features, {
+  crds = NULL
+  crds = tibble(lat = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[2]]),
+                lon = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[1]]))
+  return(crds)
 })
 
 # Get dataframe of updated locations
 output$fish_coordinates = renderUI({
-  if ( length(input$fish_map_marker_click) == 0L ) {
-    HTML("Drag marker to edit location. Click on marker to set coordinates")
+  input$fish_map_marker_click
+  if ( is.null(fish_coords()) ) {
+    HTML("Place a marker at where the fish was found")
   } else {
-    HTML(glue("Fish location: ", {fish_marker_data()$latitude}, ": ", {fish_marker_data()$longitude}))
+    HTML(glue("Fish location: ", {fish_coords()$lat}, ": ", {fish_coords()$lon}))
   }
 })
+
+# # Create reactive to hold click data
+# fish_marker_data = reactive({
+#   req(input$fish_map_marker_click)
+#   fish_click_data = input$fish_map_marker_click
+#   fish_mark_dat = tibble(latitude = round(as.numeric(fish_click_data$lat), digits = 7),
+#                          longitude = round(as.numeric(fish_click_data$lng), digits = 7))
+#   return(fish_mark_dat)
+# })
+#
+# # Get dataframe of updated locations
+# output$fish_coordinates = renderUI({
+#   if ( length(input$fish_map_marker_click) == 0L ) {
+#     HTML("Drag marker to edit location. Click on marker to set coordinates")
+#   } else {
+#     HTML(glue("Fish location: ", {fish_marker_data()$latitude}, ": ", {fish_marker_data()$longitude}))
+#   }
+# })
 
 # Modal for new redd locations...add or edit a point...write coordinates to lat, lon
 observeEvent(input$fish_loc_map, {
@@ -229,14 +305,14 @@ observeEvent(input$fish_loc_map, {
                  ),
                  fluidRow(
                    column(width = 3,
-                          actionButton("capture_fish_loc", "Capture carcass location"),
+                          actionButton("capture_fish_loc", "Save coordinates"),
                           tippy("<i style='color:#1a5e86;padding-left:8px', class='fas fa-info-circle'></i>",
                                 tooltip = glue("<span style='font-size:11px;'>",
-                                               "You can zoom in on the map and drag the marker to the ",
-                                               "correct carcass location. Click on the marker to set ",
-                                               "the coordinates. Then click on the button to capture ",
-                                               "the location and send the coordinates to the data ",
-                                               "entry screen.<span>"))),
+                                               "You can zoom in on the map and use the cicle tool at ",
+                                               "the upper left to place a marker where you saw the fish. ",
+                                               "You can edit an existing location by placing the marker ",
+                                               "in a new location. You can also drag the marker if needed. ",
+                                               "Then click on the 'Save coordinates' button.<span>"))),
                    column(width = 9,
                           htmlOutput("fish_coordinates"))
                  )
@@ -254,9 +330,8 @@ observeEvent(input$fish_loc_map, {
 
 # Update all input values to values in selected row
 observeEvent(input$capture_fish_loc, {
-  fish_coord_data = fish_marker_data()
-  updateNumericInput(session, "fish_latitude_input", value = fish_coord_data$latitude)
-  updateNumericInput(session, "fish_longitude_input", value = fish_coord_data$longitude)
+  updateNumericInput(session, "fish_latitude_input", value = fish_coords()$lat)
+  updateNumericInput(session, "fish_longitude_input", value = fish_coords()$lon)
   removeModal()
 })
 
