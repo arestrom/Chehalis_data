@@ -253,8 +253,8 @@ output$redd_map <- renderLeaflet({
 # Pull coordinates from the last drawn, or edited marker
 all_redd_coords = eventReactive(input$fish_map_draw_all_features, {
   crds = NULL
-  crds = tibble(lat = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[2]]),
-                lon = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[1]]))
+  crds = tibble(lat = as.numeric(input$redd_map_draw_all_features$features[[1]]$geometry$coordinates[[2]]),
+                lon = as.numeric(input$redd_map_draw_all_features$features[[1]]$geometry$coordinates[[1]]))
   return(crds)
 })
 
@@ -270,7 +270,7 @@ all_redd_coords = eventReactive(input$fish_map_draw_all_features, {
 # Get dataframe of updated locations
 output$redd_coordinates = renderUI({
   input$redd_map_marker_click
-  if ( is.null(all_fish_coords()) ) {
+  if ( is.null(all_redd_coords()) ) {
     HTML("Place a circle markerwhere the redd was found")
   } else {
     HTML(glue("Redd location: ", {all_redd_coords()$lat}, ": ", {all_redd_coords()$lon}))

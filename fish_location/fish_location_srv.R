@@ -110,6 +110,17 @@ observeEvent(input$fish_locations_rows_selected, {
   updateTextAreaInput(session, "fish_location_description_input", value = sfldat$location_description)
 })
 
+# Notify if a row is selected
+loc_selected = reactive({
+  if (!is.null(input$fish_locations_rows_selected) ) {
+    sel = TRUE
+  } else {
+    sel = FALSE
+  }
+  print(sel)
+  return(sel)
+})
+
 #================================================================
 # Get either selected fish coordinates or default stream centroid
 #================================================================
@@ -212,22 +223,25 @@ output$fish_map <- renderLeaflet({
   }
 })
 
-# Pull coordinates from the last drawn, or edited marker
-all_fish_coords = eventReactive(input$fish_map_draw_all_features, {
-  crds = NULL
-  crds = tibble(lat = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[2]]),
-                lon = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[1]]))
-  return(crds)
+# Create a reactive values object for drawn_features
+fish_edit_rv = reactiveValues(lat = NULL, lon = NULL)
+
+# Set rv to NULL on initiation of map
+observeEvent(input$fish_loc_map, {
+  fish_edit_rv$lat = NULL
+  fish_edit_rv$lon = NULL
+}, priority = 9999)
+
+# Assign coordinates from mapedit circle marker
+observeEvent(c(input$fish_map_draw_all_features), {
+  fish_edit_rv$lat = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[2]])
+  fish_edit_rv$lon = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[1]])
 })
 
-# Get dataframe of updated locations
+# Get html output of updated locations
 output$fish_coordinates = renderUI({
-  input$fish_map_marker_click
-  if ( is.null(all_fish_coords()) ) {
-    HTML("Place a circle marker where the fish was found")
-  } else {
-    HTML(glue("Fish location: ", {all_fish_coords()$lat}, ": ", {all_fish_coords()$lon}))
-  }
+  coords_out = HTML(glue("Fish location: ", {fish_edit_rv$lat}, ": ", {fish_edit_rv$lon}))
+  return(coords_out)
 })
 
 # Modal for new redd locations...add or edit a point...write coordinates to lat, lon
@@ -254,7 +268,10 @@ observeEvent(input$fish_loc_map, {
                                                "the upper left to place a marker where you saw the fish. ",
                                                "You can use the edit tool to move the circle marker to a ",
                                                "new location. When done, click on the 'Save coordinates' ",
-                                               "button.<span>"))),
+                                               "button. If no coordinates appear below after placing a ",
+                                               "marker it is because you did not commit a previous ",
+                                               "change. Just click on any row in the 'Fish location' ",
+                                               "or 'Species data' tables to reactivate.<span>"))),
                    column(width = 9,
                           htmlOutput("fish_coordinates"))
                  )
@@ -264,7 +281,7 @@ observeEvent(input$fish_loc_map, {
              )
     )
   )
-})
+}, priority = -1)
 
 #======================================================================
 # Update fish location coordinate inputs to coordinates selected on map
@@ -272,10 +289,16 @@ observeEvent(input$fish_loc_map, {
 
 # Update all input values to values in selected row
 observeEvent(input$capture_fish_loc, {
-  updateNumericInput(session, "fish_latitude_input", value = all_fish_coords()$lat)
-  updateNumericInput(session, "fish_longitude_input", value = all_fish_coords()$lon)
+  updateNumericInput(session, "fish_latitude_input", value = fish_edit_rv$lat)
+  updateNumericInput(session, "fish_longitude_input", value = fish_edit_rv$lon)
   removeModal()
-})
+}, priority = 9999)
+
+# Set rv to NULL
+observeEvent(input$capture_fish_loc, {
+  fish_edit_rv$lat = NULL
+  fish_edit_rv$lon = NULL
+}, priority = -1)
 
 #========================================================
 # Insert operations: reactives, observers and modals
