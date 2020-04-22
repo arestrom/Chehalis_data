@@ -110,17 +110,6 @@ observeEvent(input$fish_locations_rows_selected, {
   updateTextAreaInput(session, "fish_location_description_input", value = sfldat$location_description)
 })
 
-# Notify if a row is selected
-loc_selected = reactive({
-  if (!is.null(input$fish_locations_rows_selected) ) {
-    sel = TRUE
-  } else {
-    sel = FALSE
-  }
-  print(sel)
-  return(sel)
-})
-
 #================================================================
 # Get either selected fish coordinates or default stream centroid
 #================================================================
@@ -187,7 +176,7 @@ output$fish_map <- renderLeaflet({
       rectangleOptions = FALSE,
       markerOptions = FALSE,
       circleMarkerOptions = drawCircleMarkerOptions(
-        color = "#ace600",
+        color = "#0743a3",
         stroke = TRUE,
         weight = 2,
         fillOpacity = 0.5),
@@ -214,7 +203,7 @@ output$fish_map <- renderLeaflet({
         popup = carcass_coords$fish_name,
         layerId = carcass_coords$fish_location_id,
         radius = 8,
-        color = "red",
+        color = "blue",
         fillOpacity = 0.5,
         stroke = FALSE,
         options = markerOptions(draggable = FALSE,
@@ -233,7 +222,7 @@ observeEvent(input$fish_loc_map, {
 }, priority = 9999)
 
 # Assign coordinates from mapedit circle marker
-observeEvent(c(input$fish_map_draw_all_features), {
+observeEvent(input$fish_map_draw_all_features, {
   fish_edit_rv$lat = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[2]])
   fish_edit_rv$lon = as.numeric(input$fish_map_draw_all_features$features[[1]]$geometry$coordinates[[1]])
 })
@@ -244,7 +233,7 @@ output$fish_coordinates = renderUI({
   return(coords_out)
 })
 
-# Modal for new redd locations...add or edit a point...write coordinates to lat, lon
+# Modal for new fish locations...add or edit a point...write coordinates to lat, lon
 observeEvent(input$fish_loc_map, {
   showModal(
     # Verify required fields have data...none can be blank
@@ -270,7 +259,7 @@ observeEvent(input$fish_loc_map, {
                                                "new location. When done, click on the 'Save coordinates' ",
                                                "button. If no coordinates appear below after placing a ",
                                                "marker it is because you did not commit a previous ",
-                                               "change. Just click on any row in the 'Fish location' ",
+                                               "edit. Just click on any row in the 'Fish location' ",
                                                "or 'Species data' tables to reactivate.<span>"))),
                    column(width = 9,
                           htmlOutput("fish_coordinates"))
@@ -360,7 +349,7 @@ output$fish_location_modal_insert_vals = renderDT({
                              "}")))
 })
 
-# Modal for new redd locations
+# Modal for new fish locations
 observeEvent(input$fish_loc_add, {
   new_fish_location_vals = fish_location_create()
   # Collect parameters for existing fish locations
@@ -623,7 +612,7 @@ observeEvent(input$save_fish_loc_edits, {
   lo_rm = selected_survey_data()$lo_rm
   survey_date = format(as.Date(selected_survey_data()$survey_date))
   species_id = selected_survey_event_data()$species_id
-  # Update redd location table
+  # Update fish location table
   post_fish_location_edit_vals = get_fish_locations(waterbody_id(), up_rm, lo_rm, survey_date, species_id) %>%
     select(survey_dt, species, fish_name, fish_status, channel_type, orientation_type,
            latitude, longitude, horiz_accuracy, location_description, created_dt,
@@ -745,7 +734,7 @@ observeEvent(input$fish_loc_delete, {
     ))
 })
 
-# Update redd_location DB and reload location DT....This works and is the model for others
+# Update fish_location DB and reload location DT....This works and is the model for others
 observeEvent(input$delete_fish_location, {
   req(input$surveys_rows_selected)
   req(input$survey_events_rows_selected)
