@@ -110,17 +110,6 @@ observeEvent(input$fish_locations_rows_selected, {
   updateTextAreaInput(session, "fish_location_description_input", value = sfldat$location_description)
 })
 
-# Notify if a row is selected
-loc_selected = reactive({
-  if (!is.null(input$fish_locations_rows_selected) ) {
-    sel = TRUE
-  } else {
-    sel = FALSE
-  }
-  print(sel)
-  return(sel)
-})
-
 #================================================================
 # Get either selected fish coordinates or default stream centroid
 #================================================================
@@ -128,35 +117,10 @@ loc_selected = reactive({
 # Output leaflet bidn map....could also use color to indicate species:
 # See: https://rstudio.github.io/leaflet/markers.html
 output$fish_map <- renderLeaflet({
-  # Get data for centering map ====================================
   req(input$tabs == "data_entry")
   req(input$surveys_rows_selected)
   req(input$survey_events_rows_selected)
-  center_lat = selected_stream_centroid()$center_lat
-  center_lon = selected_stream_centroid()$center_lon
-  # Get location_coordinates data should be nrow == 0 if no coordinates present
-  if (!is.null(input$fish_locations_rows_selected) ) {
-    fish_coords = get_fish_coordinates(selected_fish_location_data()$fish_location_id)
-    fish_location_id = selected_fish_location_data()$fish_location_id
-  } else {
-    fish_coords = NULL
-    fish_location_id = remisc::get_uuid(1L)
-  }
-  if ( is.null(fish_coords) | length(fish_coords$latitude) == 0 |
-       length(fish_coords$longitude) == 0 ) {
-    fish_lat = center_lat
-    fish_lon = center_lon
-    zoom = 12L
-  } else {
-    fish_lat = fish_coords$latitude
-    fish_lon = fish_coords$longitude
-    zoom = 16L
-  }
-  selected_fish_coords = tibble(fish_location_id = fish_location_id,
-                                fish_lat = fish_lat,
-                                fish_lon = fish_lon,
-                                zoom = zoom)
-  # Get data for possibly multiple carcass locations ===========================
+  # Get data for possibly multiple carcass locations and fitting to bounds
   up_rm = selected_survey_data()$up_rm
   lo_rm = selected_survey_data()$lo_rm
   survey_date = format(as.Date(selected_survey_data()$survey_date))
@@ -164,13 +128,30 @@ output$fish_map <- renderLeaflet({
   carcass_coords = get_fish_locations(waterbody_id(), up_rm, lo_rm,
                                       survey_date, species_id) %>%
     filter(!is.na(latitude) & !is.na(longitude)) %>%
-    select(fish_location_id, fish_name, latitude, longitude)
-  # Generate basemap =========================================================
+    mutate(min_lat = min(latitude),
+           min_lon = min(longitude),
+           max_lat = max(latitude),
+           max_lon = max(longitude)) %>%
+    select(fish_location_id, fish_name, latitude, longitude,
+           min_lat, min_lon, max_lat, max_lon)
+  # Get data for setting map bounds ========================
+  if (!is.null(input$fish_locations_rows_selected) ) {
+    bounds = tibble(lng1 = selected_stream_bounds()$min_lon,
+                    lat1 = selected_stream_bounds()$min_lat,
+                    lng2 = selected_stream_bounds()$max_lon,
+                    lat2 = selected_stream_bounds()$max_lat)
+  } else {
+    bounds = tibble(lng1 = carcass_coords$min_lon[1],
+                    lat1 = carcass_coords$min_lat[1],
+                    lng2 = carcass_coords$max_lon[1],
+                    lat2 = carcass_coords$max_lat[1])
+  }
+  # Generate basemap ======================================
   edit_fish_loc = leaflet() %>%
-    setView(
-      lng = selected_fish_coords$fish_lon,
-      lat = selected_fish_coords$fish_lat,
-      zoom = selected_fish_coords$zoom) %>%
+    fitBounds(lng1 = bounds$lng1,
+              lat1 = bounds$lat1,
+              lng2 = bounds$lng2,
+              lat2 = bounds$lat2) %>%
     addProviderTiles("Esri.WorldImagery", group = "Esri World Imagery") %>%
     addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
     addLayersControl(position = 'bottomright',
@@ -202,12 +183,12 @@ output$fish_map <- renderLeaflet({
       label = ~stream_label,
       layerId = ~stream_label,
       labelOptions = labelOptions(noHide = FALSE))
-  # Test if carcass_coords has data ==========================
+  # Test if carcass_coords has data =========================
   if ( !nrow(carcass_coords) > 0L ) {
     return(edit_fish_loc)
   } else {
     edit_fish_loc_two = edit_fish_loc %>%
-      # Add existing data if locations exist ===================
+      # Add existing data if locations exist ================
     addCircleMarkers(
       lng = carcass_coords$longitude,
       lat = carcass_coords$latitude,
