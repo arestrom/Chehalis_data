@@ -5,7 +5,7 @@ ui = dashboardPagePlus(
   header = dash_header,
   sidebar = dash_leftsidebar,
   body = dashboardBody(
-    includeCSS("www/salmon_data.css"),
+    includeCSS("www/chehalis_data.css"),
     tabItems(
       tabItem(tabName = "wria_stream",
               fluidRow(
@@ -265,5 +265,5 @@ ui = dashboardPagePlus(
       )
     )
   ),
-  title = "Salmon data"
+  title = "Chehalis Basin data"
 )

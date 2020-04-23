@@ -247,7 +247,7 @@ observeEvent(input$redd_loc_map, {
                           actionButton("capture_redd_loc", "Save coordinates"),
                           tippy("<i style='color:#1a5e86;padding-left:8px', class='fas fa-info-circle'></i>",
                                 tooltip = glue("<span style='font-size:11px;'>",
-                                               "You can zoom in on the map and use the cicle tool at ",
+                                               "You can zoom in on the map and use the circle tool at ",
                                                "the upper left to place a marker where you saw the redd. ",
                                                "You can use the edit tool to move the circle marker to a ",
                                                "new location. When done, click on the 'Save coordinates' ",
@@ -278,7 +278,7 @@ observeEvent(input$capture_redd_loc, {
 }, priority = 9999)
 
 # Set rv to NULL
-observeEvent(input$capture_fish_loc, {
+observeEvent(input$capture_redd_loc, {
   redd_edit_rv$lat = NULL
   redd_edit_rv$lon = NULL
 }, priority = -1)
