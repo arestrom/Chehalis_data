@@ -1,0 +1,2525 @@
+/*
+.skin-blue .main-header .navbar {
+  background-color: #3e3f3a;
+}
+
+.skin-blue .main-header .logo {
+  background-color: #3e3f3a;
+}
+
+.skin-blue .main-header .logo:hover {
+  background-color: #3e3f3a;
+}
+
+
+.skin-blue .left-side, .skin-blue .main-sidebar, .skin-blue .wrapper {
+    background-color: #f8f5f0;
+}
+
+.content-wrapper, .right-side {
+    background-color: #ffffff;
+}
+
+.shinyhelper-container {
+  position: absolute;
+  display: inline-block;
+}
+*/
+
+.shiny-input-container {
+  display: inline-block;
+  vertical-align:top;
+  min-height: 28px;
+  height: 28px;
+  font-size: 11px;
+  line-height: 1.0;
+  border-radius: 4px;
+}
+
+/*=== Accordian containers ===*/
+.container-fluid {
+  width: 100%;
+}
+
+.box-title {
+  font-size: 14px;
+  color: #33079a;
+}
+
+.collapsed {
+  color: #881f8e;
+}
+
+/* Controls space under inputs to provide space for label when wrapping */
+.form-group {
+  margin-bottom: 20px;
+  border-radius: 4px;
+}
+
+.form-control {
+  font-size: 11px;
+  height: 26px;
+  padding: 4px 4px;
+  border-radius: 4px;
+}
+
+.selectize-input {
+  min-height: 26px;
+  height: 26px;             /* keep: Sets consistent height across inputs...but hides multi-selections */
+  font-size: 11px;
+  vertical-align: middle;
+  padding-top: 3px;         /* keep: This does the trick in centering vertically */
+  border-radius: 4px;
+}
+
+.shiny-output-error-validation {
+  color: #1c3e75;
+  font-weight: normal;
+  font-size: 1.18em;
+}
+
+/* Required fields survey At home: #9ed6a140, then at work: #17ea2d42, =============================================================*/
+
+#survey_date_input .form-control {
+  background-color: #17ea2d42;
+}
+
+#survey_method_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#upper_rm_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#lower_rm_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#observer_input.form-control {
+  background-color: #17ea2d42;
+}
+
+#submitter_input.form-control {
+  background-color: #17ea2d42;
+}
+
+#data_source_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#data_source_unit_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#data_review_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#completion_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#incomplete_type_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* Required fields survey_intent =============================================================*/
+
+#intent_species_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#intent_count_type_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* Required fields survey_event =============================================================*/
+
+#event_species_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#survey_design_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#cwt_detect_method_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#run_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#run_year_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* Required fields fish_location =============================================================*/
+
+#fish_name_input.form-control {
+  background-color: #17ea2d42;
+}
+
+#fish_channel_type_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#fish_orientation_type_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* Required fields fish_counts =============================================================*/
+
+#fish_count_input.form-control {
+  background-color: #17ea2d42;
+}
+
+#fish_status_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#sex_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#maturity_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#origin_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#cwt_status_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#clip_status_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#prev_counted_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* Required fields individual_fish =============================================================*/
+
+#fish_condition_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#fish_trauma_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#gill_condition_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#spawn_condition_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#cwt_result_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* Required fields fish_measurement =============================================================*/
+
+#length_cm_input.form-control {
+  background-color: #17ea2d42;
+}
+
+#length_type_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* Required fields redd_location =============================================================*/
+
+#redd_name_input.form-control {
+  background-color: #17ea2d42;
+}
+
+#channel_type_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#orientation_type_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* Required fields redd_counts =============================================================*/
+
+#redd_status_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+#redd_count_input.form-control {
+  background-color: #17ea2d42;
+}
+
+/* Required fields individual_redd =============================================================*/
+
+#redd_shape_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* Required fields fish_measurement =============================================================*/
+
+#river_mile_input.form-control {
+  background-color: #17ea2d42;
+}
+
+#reach_point_type_select .selectize-input {
+  background-color: #17ea2d42;
+}
+
+/* End of required fields =============================================================*/
+
+#sthd_image {
+  display:inline-block;
+  text-align: center;
+}
+
+#sportswomen_image {
+  display:inline-block;
+  text-align: center;
+}
+
+#wria_text {
+  text-align: center;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+#check_for_new_surveys {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#import_mobile {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#stream_text {
+  text-align: center;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+#year_text {
+  text-align: center;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+#survey_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#survey_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#survey_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#comment_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#comment_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#comment_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#intent_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#intent_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#intent_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#wbm_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#wbm_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#wbm_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#survey_event_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#survey_event_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#survey_event_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#fish_enc_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#fish_enc_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#fish_enc_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#fish_loc_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#fish_loc_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#fish_loc_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#fish_loc_map {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#ind_fish_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 6px;
+  border-radius: 4px;
+}
+
+#ind_fish_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#ind_fish_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#fish_meas_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 6px;
+  border-radius: 4px;
+}
+
+#fish_meas_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#fish_meas_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#redd_enc_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#redd_enc_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#redd_enc_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#redd_loc_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#redd_loc_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#redd_loc_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#redd_loc_map {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 6px;
+}
+
+#ind_redd_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 6px;
+  border-radius: 4px;
+}
+
+#ind_redd_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#ind_redd_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#substrate_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#substrate_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#substrate_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+/*
+
+#accordian .a {
+  color: #b6a4bf;
+}
+*/
+
+#start_time_select {
+  display: inline-block;
+  vertical-align:top;
+  min-height: 28px;
+  height: 28px;
+  font-size: 11px;
+  line-height: 1.0;
+}
+
+#end_time_select {
+  display: inline-block;
+  vertical-align:top;
+  min-height: 28px;
+  height: 28px;
+  font-size: 11px;
+  line-height: 1.0;
+}
+
+.dataTables_wrapper {
+  width: 100%;
+  font-size: 11px;
+  line-height: 0.9;
+}
+
+#survey_insert_modal .modal-lg {
+  width: 1200px;
+}
+
+#survey_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_update_modal .modal-lg {
+  width: 1200px;
+}
+
+#survey_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_delete_modal .modal-lg {
+  width: 1200px;
+}
+
+#survey_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_comment_insert_modal .modal-lg {
+  width: 1200px;
+}
+
+#survey_comment_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_comment_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_comment_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_comment_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_comment_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_comment_update_modal .modal-lg {
+  width: 1200px;
+}
+
+#survey_comment_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_comment_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_comment_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_comment_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_comment_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_comment_delete_modal .modal-lg {
+  width: 1200px;
+}
+
+#survey_comment_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_comment_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_comment_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_comment_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_comment_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_intent_insert_modal .modal-lg {
+  width: 700px;
+}
+
+#survey_intent_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_intent_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_intent_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_intent_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_intent_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_intent_update_modal .modal-lg {
+  width: 700px;
+}
+
+#survey_intent_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_intent_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_intent_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_intent_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_intent_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_intent_delete_modal .modal-lg {
+  width: 700px;
+}
+
+#survey_intent_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_intent_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_intent_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_intent_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_intent_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#start_temperature_time_select {
+  display: inline-block;
+  vertical-align:top;
+  min-height: 28px;
+  height: 28px;
+  font-size: 11px;
+  line-height: 1.0;
+}
+
+#end_temperature_time_select {
+  display: inline-block;
+  vertical-align:top;
+  min-height: 28px;
+  height: 28px;
+  font-size: 11px;
+  line-height: 1.0;
+}
+
+#waterbody_meas_insert_modal .modal-lg {
+  width: 1200px;
+}
+
+#waterbody_meas_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#waterbody_meas_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#waterbody_meas_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#waterbody_meas_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#waterbody_meas_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#waterbody_meas_update_modal .modal-lg {
+  width: 1200px;
+}
+
+#waterbody_meas_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#waterbody_meas_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#waterbody_meas_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#waterbody_meas_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#waterbody_meas_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#waterbody_meas_delete_modal .modal-lg {
+  width: 1200px;
+}
+
+#waterbody_meas_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#waterbody_meas_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#waterbody_meas_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#waterbody_meas_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#waterbody_meas_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_event_insert_modal .modal-lg {
+  width: 1000px;
+}
+
+#survey_event_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_event_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_event_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_event_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_event_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_event_update_modal .modal-lg {
+  width: 1000px;
+}
+
+#survey_event_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_event_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_event_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_event_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_event_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#survey_event_delete_modal .modal-lg {
+  width: 1000px;
+}
+
+#survey_event_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#survey_event_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#survey_event_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#survey_event_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#survey_event_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#fish_encounter_time_select {
+  display: inline-block;
+  vertical-align:top;
+  min-height: 28px;
+  height: 28px;
+  font-size: 11px;
+  line-height: 1.0;
+}
+
+#fish_encounter_insert_modal .modal-lg {
+  width: 1000px;
+}
+
+#fish_encounter_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#fish_encounter_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#fish_encounter_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#fish_encounter_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#fish_encounter_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#fish_encounter_update_modal .modal-lg {
+  width: 1000px;
+}
+
+#fish_encounter_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#fish_encounter_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#fish_encounter_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#fish_encounter_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#fish_encounter_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#fish_encounter_delete_modal .modal-lg {
+  width: 1000px;
+}
+
+#fish_encounter_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#fish_encounter_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#fish_encounter_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#fish_encounter_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#fish_encounter_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#fish_location_map_modal .modal-lg {
+  width: 1000px;
+}
+
+#fish_location_map_modal .modal-content {
+  border-radius: 6px;
+}
+
+#fish_location_map_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#fish_location_map_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#fish_location_map_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#fish_location_map_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#fish_location_insert_modal .modal-lg {
+  width: 1000px;
+}
+
+#fish_location_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#fish_location_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#fish_location_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#fish_location_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#fish_location_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#fish_location_update_modal .modal-lg {
+  width: 1000px;
+}
+
+#fish_location_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#fish_location_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#fish_location_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#fish_location_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#fish_location_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#fish_location_delete_modal .modal-lg {
+  width: 1000px;
+}
+
+#fish_location_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#fish_location_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#fish_location_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#fish_location_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#fish_location_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#individual_fish_insert_modal .modal-lg {
+  width: 1200px;
+}
+
+#individual_fish_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#individual_fish_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#individual_fish_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#individual_fish_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#individual_fish_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#individual_fish_update_modal .modal-lg {
+  width: 1200px;
+}
+
+#individual_fish_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#individual_fish_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#individual_fish_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#individual_fish_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#individual_fish_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#individual_fish_delete_modal .modal-lg {
+  width: 1200px;
+}
+
+#individual_fish_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#individual_fish_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#individual_fish_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#individual_fish_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#individual_fish_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#length_measurement_insert_modal .modal-lg {
+  width: 400px;
+}
+
+#length_measurement_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#length_measurement_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#length_measurement_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#length_measurement_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#length_measurement_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#length_measurement_update_modal .modal-lg {
+  width: 400px;
+}
+
+#length_measurement_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#length_measurement_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#length_measurement_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#length_measurement_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#length_measurement_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#length_measurement_delete_modal .modal-lg {
+  width: 400px;
+}
+
+#length_measurement_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#length_measurement_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#length_measurement_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#length_measurement_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#length_measurement_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_encounter_time_select {
+  display: inline-block;
+  vertical-align:top;
+  min-height: 28px;
+  height: 28px;
+  font-size: 11px;
+  line-height: 1.0;
+}
+
+#redd_encounter_insert_modal .modal-lg {
+  width: 900px;
+}
+
+#redd_encounter_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_encounter_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_encounter_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_encounter_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_encounter_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_encounter_update_modal .modal-lg {
+  width: 900px;
+}
+
+#redd_encounter_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_encounter_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_encounter_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_encounter_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_encounter_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_encounter_delete_modal .modal-lg {
+  width: 900px;
+}
+
+#redd_encounter_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_encounter_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_encounter_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_encounter_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_encounter_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_location_map_modal .modal-lg {
+  width: 1000px;
+}
+
+#redd_location_map_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_location_map_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_location_map_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_location_map_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_location_map_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_location_insert_modal .modal-lg {
+  width: 1000px;
+}
+
+#redd_location_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_location_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_location_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_location_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_location_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_location_update_modal .modal-lg {
+  width: 1000px;
+}
+
+#redd_location_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_location_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_location_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_location_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_location_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_location_delete_modal .modal-lg {
+  width: 1000px;
+}
+
+#redd_location_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_location_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_location_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_location_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_location_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#individual_redd_insert_modal .modal-lg {
+  width: 1200px;
+}
+
+#individual_redd_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#individual_redd_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#individual_redd_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#individual_redd_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#individual_redd_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#individual_redd_update_modal .modal-lg {
+  width: 1200px;
+}
+
+#individual_redd_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#individual_redd_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#individual_redd_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#individual_redd_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#individual_redd_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#individual_redd_delete_modal .modal-lg {
+  width: 1200px;
+}
+
+#individual_redd_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#individual_redd_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#individual_redd_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#individual_redd_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#individual_redd_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_substrate_insert_modal .modal-lg {
+  width: 700px;
+}
+
+#redd_substrate_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_substrate_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_substrate_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_substrate_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_substrate_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_substrate_update_modal .modal-lg {
+  width: 700px;
+}
+
+#redd_substrate_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_substrate_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_substrate_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_substrate_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_substrate_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#redd_substrate_delete_modal .modal-lg {
+  width: 700px;
+}
+
+#redd_substrate_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#redd_substrate_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#redd_substrate_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#redd_substrate_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#redd_substrate_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#reach_point_add {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#reach_point_edit {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#reach_point_delete {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#use_reach_point_map {
+  color: #e6ebef;
+  background-color:#4d1566;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+  border-radius: 4px;
+}
+
+#reach_point_map_modal .modal-lg {
+  width: 1000px;
+}
+
+#reach_point_map_modal .modal-content {
+  border-radius: 6px;
+}
+
+#reach_point_map_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#reach_point_map_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#reach_point_map_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#reach_point_map_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#reach_point_insert_modal .modal-lg {
+  width: 1000px;
+}
+
+#reach_point_insert_modal .modal-content {
+  border-radius: 6px;
+}
+
+#reach_point_insert_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#reach_point_insert_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#reach_point_insert_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#reach_point_insert_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#reach_point_update_modal .modal-lg {
+  width: 1000px;
+}
+
+#reach_point_update_modal .modal-content {
+  border-radius: 6px;
+}
+
+#reach_point_update_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#reach_point_update_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#reach_point_update_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#reach_point_update_modal .btn-default {
+  color: #e6ebef;
+  background-color:#231651;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+#reach_point_delete_modal .modal-lg {
+  width: 1000px;
+}
+
+#reach_point_delete_modal .modal-content {
+  border-radius: 6px;
+}
+
+#reach_point_delete_modal .modal-header {
+  background-color: #becc4a;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+#reach_point_delete_modal .modal-body {
+  background-color: #ffffff;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#reach_point_delete_modal .modal-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #191c13;
+}
+
+#reach_point_delete_modal .btn-default {
+  color: #e6ebef;
+  background-color:#590b25;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+
+#rmd_about {
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+#rmd_credits {
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+
+
+
+
