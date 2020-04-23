@@ -99,3 +99,37 @@ strt = Sys.time()
 years = get_data_years(waterbody_id)
 nd = Sys.time(); nd - strt
 
+# Pull out Absher Creeek
+wb_id = streams %>%
+  filter(stream_name == "Absher Creek (LB)") %>%
+  pull(waterbody_id)
+
+# Get the id
+waterbody_id = wb_id
+
+# Stream centroid query
+get_stream_bounds = function(waterbody_id) {
+  qry = glue("select DISTINCT st.waterbody_id, ",
+             "st.geom as geometry ",
+             "from stream as st ",
+             "where st.waterbody_id = '{waterbody_id}'")
+  # con = poolCheckout(pool)
+  con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  stream_bounds = sf::st_read(con, query = qry, crs = 2927)
+  # poolReturn(con)
+  dbDisconnect(con)
+  stream_bounds = stream_bounds %>%
+    st_transform(., 4326) %>%
+    st_cast(., "POINT", warn = FALSE) %>%
+    mutate(lat = as.numeric(st_coordinates(geometry)[,2])) %>%
+    mutate(lon = as.numeric(st_coordinates(geometry)[,1])) %>%
+    st_drop_geometry() %>%
+    mutate(min_lat = min(lat),
+           min_lon = min(lon),
+           max_lat = max(lat),
+           max_lon = max(lon)) %>%
+    select(waterbody_id, min_lat, min_lon, max_lat, max_lon) %>%
+    distinct()
+  return(stream_bounds)
+}
+

@@ -114,71 +114,52 @@ observeEvent(input$fish_locations_rows_selected, {
 # Get either selected fish coordinates or default stream centroid
 #================================================================
 
-# # Get data for centering map...
-# # either stream centroid or selected fish location
-# selected_fish_coords = reactive({
-#   req(input$tabs == "data_entry")
-#   req(input$surveys_rows_selected)
-#   req(input$survey_events_rows_selected)
-#   center_lat = selected_stream_centroid()$center_lat
-#   center_lon = selected_stream_centroid()$center_lon
-#   # Get location_coordinates data should be nrow == 0 if no coordinates present
-#   if (!is.null(input$fish_locations_rows_selected) ) {
-#     fish_coords = get_fish_coordinates(selected_fish_location_data()$fish_location_id)
-#     fish_location_id = selected_fish_location_data()$fish_location_id
-#   } else {
-#     fish_coords = NULL
-#     fish_location_id = remisc::get_uuid(1L)
-#   }
-#   if ( is.null(fish_coords) | length(fish_coords$latitude) == 0 |
-#        length(fish_coords$longitude) == 0 ) {
-#     fish_lat = center_lat
-#     fish_lon = center_lon
-#     zoom = 12L
-#   } else {
-#     fish_lat = fish_coords$latitude
-#     fish_lon = fish_coords$longitude
-#     zoom = 16L
-#   }
-#   fcoords = tibble(fish_location_id = fish_location_id,
-#                    fish_lat = fish_lat,
-#                    fish_lon = fish_lon,
-#                    zoom = zoom)
-#   return(fcoords)
-# })
-
-
-# Pull out coords for all fish of species seen on reach for past 4 months
-carcass_coords = reactive({
+# Output leaflet bidn map....could also use color to indicate species:
+# See: https://rstudio.github.io/leaflet/markers.html
+output$fish_map <- renderLeaflet({
+  # Get data for centering map ====================================
+  req(input$tabs == "data_entry")
+  req(input$surveys_rows_selected)
+  req(input$survey_events_rows_selected)
+  center_lat = selected_stream_centroid()$center_lat
+  center_lon = selected_stream_centroid()$center_lon
+  # Get location_coordinates data should be nrow == 0 if no coordinates present
+  if (!is.null(input$fish_locations_rows_selected) ) {
+    fish_coords = get_fish_coordinates(selected_fish_location_data()$fish_location_id)
+    fish_location_id = selected_fish_location_data()$fish_location_id
+  } else {
+    fish_coords = NULL
+    fish_location_id = remisc::get_uuid(1L)
+  }
+  if ( is.null(fish_coords) | length(fish_coords$latitude) == 0 |
+       length(fish_coords$longitude) == 0 ) {
+    fish_lat = center_lat
+    fish_lon = center_lon
+    zoom = 12L
+  } else {
+    fish_lat = fish_coords$latitude
+    fish_lon = fish_coords$longitude
+    zoom = 16L
+  }
+  selected_fish_coords = tibble(fish_location_id = fish_location_id,
+                                fish_lat = fish_lat,
+                                fish_lon = fish_lon,
+                                zoom = zoom)
   # Get data for possibly multiple carcass locations ===========================
   up_rm = selected_survey_data()$up_rm
   lo_rm = selected_survey_data()$lo_rm
   survey_date = format(as.Date(selected_survey_data()$survey_date))
   species_id = selected_survey_event_data()$species_id
-  carc_coords = get_fish_locations(waterbody_id(), up_rm, lo_rm,
+  carcass_coords = get_fish_locations(waterbody_id(), up_rm, lo_rm,
                                       survey_date, species_id) %>%
     filter(!is.na(latitude) & !is.na(longitude)) %>%
     select(fish_location_id, fish_name, latitude, longitude)
-  print(carc_coords)
-  return(carc_coords)
-})
-
-
-
-
-
-# NOTE: FROM flight_proof, id is needed in map if map will be updated but is not visible. !!!!!!!!!!!!!!!
-
-
-# Output leaflet bidn map....could also use color to indicate species:
-# See: https://rstudio.github.io/leaflet/markers.html
-output$fish_map <- renderLeaflet({
-  # Generate basemap
+  # Generate basemap =========================================================
   edit_fish_loc = leaflet() %>%
-    fitBounds(lng1 = selected_stream_bounds()$min_lon,
-              lat1 = selected_stream_bounds()$min_lat,
-              lng2 = selected_stream_bounds()$max_lon,
-              lat2 = selected_stream_bounds()$max_lat) %>%
+    setView(
+      lng = selected_fish_coords$fish_lon,
+      lat = selected_fish_coords$fish_lat,
+      zoom = selected_fish_coords$zoom) %>%
     addProviderTiles("Esri.WorldImagery", group = "Esri World Imagery") %>%
     addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
     addLayersControl(position = 'bottomright',
@@ -195,7 +176,7 @@ output$fish_map <- renderLeaflet({
       rectangleOptions = FALSE,
       markerOptions = FALSE,
       circleMarkerOptions = drawCircleMarkerOptions(
-        color = "#ace600",
+        color = "#0743a3",
         stroke = TRUE,
         weight = 2,
         fillOpacity = 0.5),
@@ -210,29 +191,24 @@ output$fish_map <- renderLeaflet({
       label = ~stream_label,
       layerId = ~stream_label,
       labelOptions = labelOptions(noHide = FALSE))
-  return(edit_fish_loc)
-})
-
-# Add carcass points if they exist
-observe({
-  input$fish_location_map_modal
-  carc_coords = carcass_coords()
-  # Create leaflet proxy object
-  fish_map_proxy = leafletProxy("fish_map")
-  if ( nrow(carcass_coords()) > 0L ) {
-    fish_map_proxy = fish_map_proxy %>%
-    addCircleMarkers(
-      lng = carc_coords$longitude,
-      lat = carc_coords$latitude,
-      popup = carc_coords$fish_name,
-      layerId = carc_coords$fish_location_id,
-      radius = 8,
-      color = "red",
-      fillOpacity = 0.5,
-      stroke = FALSE,
-      options = markerOptions(draggable = FALSE,
-                              riseOnHover = TRUE))
-    return(fish_map_proxy)
+  # Test if carcass_coords has data ==========================
+  if ( !nrow(carcass_coords) > 0L ) {
+    return(edit_fish_loc)
+  } else {
+    edit_fish_loc_two = edit_fish_loc %>%
+      # Add existing data if locations exist ===================
+      addCircleMarkers(
+        lng = carcass_coords$longitude,
+        lat = carcass_coords$latitude,
+        popup = carcass_coords$fish_name,
+        layerId = carcass_coords$fish_location_id,
+        radius = 8,
+        color = "blue",
+        fillOpacity = 0.5,
+        stroke = FALSE,
+        options = markerOptions(draggable = FALSE,
+                                riseOnHover = TRUE))
+    return(edit_fish_loc_two)
   }
 })
 
@@ -241,7 +217,6 @@ fish_edit_rv = reactiveValues(lat = NULL, lon = NULL)
 
 # Set rv to NULL on initiation of map
 observe({
-  input$fish_location_map_modal
   fish_edit_rv$lat = NULL
   fish_edit_rv$lon = NULL
 }, priority = 9999)
@@ -254,15 +229,12 @@ observe({
 })
 
 # Get dataframe of updated locations
-observe({
-  input$fish_map_draw_all_features
-  output$fish_coordinates = renderUI({
-    flat = fish_edit_rv$lat
-    flon = fish_edit_rv$lon
-    HTML(glue("Fish location: ", {flat}, ": ", {flon}))
-  })
+output$fish_coordinates = renderUI({
+  lat = fish_edit_rv$lat
+  lon = fish_edit_rv$lon
+  input$fish_map_marker_click
+  HTML(glue("Fish location: ", {lat}, ": ", {lon}))
 })
-
 
 
 # # Reactive to set coordinates for output
@@ -348,6 +320,13 @@ observeEvent(input$capture_fish_loc, {
   fish_edit_rv$lat = NULL
   fish_edit_rv$lon = NULL
 }, priority = -1)
+
+# # Update all input values to values in selected row
+# observeEvent(input$capture_fish_loc, {
+#   updateNumericInput(session, "fish_latitude_input", value = fish_coords()$lat)
+#   updateNumericInput(session, "fish_longitude_input", value = fish_coords()$lon)
+#   removeModal()
+# })
 
 #========================================================
 # Insert operations: reactives, observers and modals

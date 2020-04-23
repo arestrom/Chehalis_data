@@ -190,6 +190,17 @@ selected_stream_centroid = reactive({
 })
 
 #========================================================
+# Get bounds of selected stream for fish_map & redd_map
+#========================================================
+
+# Get centroid of stream for setting view of fish_map
+selected_stream_bounds = reactive({
+  req(input$stream_select)
+  stream_bounds = get_stream_bounds(waterbody_id())
+  return(stream_bounds)
+})
+
+#========================================================
 # Get wria for location insert, redds and fish
 #========================================================
 
