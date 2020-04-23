@@ -268,10 +268,10 @@ observeEvent(input$fish_loc_map, {
                                                "the upper left to place a marker where you saw the fish. ",
                                                "You can use the edit tool to move the circle marker to a ",
                                                "new location. When done, click on the 'Save coordinates' ",
-                                               "button. If no coordinates appear below after placing a ",
-                                               "marker it is because you did not commit a previous ",
-                                               "change. Just click on any row in the 'Fish location' ",
-                                               "or 'Species data' tables to reactivate.<span>"))),
+                                               "button. If no coordinates appear to the right of this ",
+                                               "information icon after placing a marker, click on any ",
+                                               "row in the 'Fish location' or 'Species data' tables to ",
+                                               "reactivate the marker tools.<span>"))),
                    column(width = 9,
                           htmlOutput("fish_coordinates"))
                  )
