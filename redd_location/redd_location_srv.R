@@ -119,35 +119,10 @@ observeEvent(input$redd_locations_rows_selected, {
 # Output leaflet bidn map....could also use color to indicate species:
 # See: https://rstudio.github.io/leaflet/markers.html
 output$redd_map <- renderLeaflet({
-  # Get data for centering map ====================================
   req(input$tabs == "data_entry")
   req(input$surveys_rows_selected)
   req(input$survey_events_rows_selected)
-  center_lat = selected_stream_centroid()$center_lat
-  center_lon = selected_stream_centroid()$center_lon
-  # Get location_coordinates data should be nrow == 0 if no coordinates present
-  if (!is.null(input$redd_locations_rows_selected) ) {
-    redd_coords = get_redd_coordinates(selected_redd_location_data()$redd_location_id)
-    redd_location_id = selected_redd_location_data()$redd_location_id
-  } else {
-    redd_coords = NULL
-    redd_location_id = remisc::get_uuid(1L)
-  }
-  if ( is.null(redd_coords) | length(redd_coords$latitude) == 0 |
-       length(redd_coords$longitude) == 0 ) {
-    redd_lat = center_lat
-    redd_lon = center_lon
-    zoom = 12L
-  } else {
-    redd_lat = redd_coords$latitude
-    redd_lon = redd_coords$longitude
-    zoom = 16L
-  }
-  selected_redd_coords = tibble(redd_location_id = redd_location_id,
-                                redd_lat = redd_lat,
-                                redd_lon = redd_lon,
-                                zoom = zoom)
-  # Get data for possibly multiple redd locations ===========================
+  # Get data for possibly multiple carcass locations and fitting to bounds
   up_rm = selected_survey_data()$up_rm
   lo_rm = selected_survey_data()$lo_rm
   survey_date = format(as.Date(selected_survey_data()$survey_date))
@@ -155,13 +130,30 @@ output$redd_map <- renderLeaflet({
   redd_coords = get_redd_locations(waterbody_id(), up_rm, lo_rm,
                                    survey_date, species_id) %>%
     filter(!is.na(latitude) & !is.na(longitude)) %>%
-    select(redd_location_id, redd_name, latitude, longitude)
-  # Generate basemap =========================================================
+    mutate(min_lat = min(latitude),
+           min_lon = min(longitude),
+           max_lat = max(latitude),
+           max_lon = max(longitude)) %>%
+    select(redd_location_id, redd_name, latitude, longitude,
+           min_lat, min_lon, max_lat, max_lon)
+  # Get data for setting map bounds ========================
+  if (!is.null(input$redd_locations_rows_selected) ) {
+    bounds = tibble(lng1 = selected_stream_bounds()$min_lon,
+                    lat1 = selected_stream_bounds()$min_lat,
+                    lng2 = selected_stream_bounds()$max_lon,
+                    lat2 = selected_stream_bounds()$max_lat)
+  } else {
+    bounds = tibble(lng1 = redd_coords$min_lon[1],
+                    lat1 = redd_coords$min_lat[1],
+                    lng2 = redd_coords$max_lon[1],
+                    lat2 = redd_coords$max_lat[1])
+  }
+  # Generate basemap ======================================
   edit_redd_loc = leaflet() %>%
-    setView(
-      lng = selected_redd_coords$redd_lon,
-      lat = selected_redd_coords$redd_lat,
-      zoom = selected_redd_coords$zoom) %>%
+    fitBounds(lng1 = bounds$lng1,
+              lat1 = bounds$lat1,
+              lng2 = bounds$lng2,
+              lat2 = bounds$lat2) %>%
     addProviderTiles("Esri.WorldImagery", group = "Esri World Imagery") %>%
     addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
     addLayersControl(position = 'bottomright',

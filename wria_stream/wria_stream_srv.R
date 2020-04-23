@@ -111,10 +111,10 @@ output$stream_map <- renderLeaflet({
   m
 })
 
-# Update leaflet proxy map
+# Update leaflet proxy map with all streams in selected wria
 observe({
-  stream_map_proxy = leafletProxy("stream_map")
-  stream_map_proxy %>%
+  input$wria_select
+  stream_map_proxy = leafletProxy("stream_map") %>%
     clearShapes() %>%
     addPolylines(data = wria_streams(),
                  group = "Streams",
@@ -127,6 +127,16 @@ observe({
                      baseGroups = c("Esri World Imagery", "Open Topo Map"),
                      overlayGroups = c("Streams"),
                      options = layersControlOptions(collapsed = TRUE))
+})
+
+# Focus map on selected stream
+observe({
+  input$stream_select
+  stream_map_proxy = leafletProxy("stream_map") %>%
+    fitBounds(lng1 = selected_stream_bounds()$min_lon,
+              lat1 = selected_stream_bounds()$min_lat,
+              lng2 = selected_stream_bounds()$max_lon,
+              lat2 = selected_stream_bounds()$max_lat)
 })
 
 #========================================================
