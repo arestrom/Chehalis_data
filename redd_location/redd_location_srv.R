@@ -1,4 +1,5 @@
 
+
 #========================================================
 # Generate lut select ui's
 #========================================================
@@ -115,6 +116,38 @@ observeEvent(input$redd_locations_rows_selected, {
 # Get either selected redd coordinates or default stream centroid
 #================================================================
 
+# # Get centroid of stream for setting view of redd_map....might be null if no location entered
+# selected_redd_coords = reactive({
+#   req(input$tabs == "data_entry")
+#   req(input$surveys_rows_selected)
+#   req(input$survey_events_rows_selected)
+#   # Get centroid of stream....always available if stream is selected
+#   center_lat = selected_stream_centroid()$center_lat
+#   center_lon = selected_stream_centroid()$center_lon
+#   # Get location_coordinates data should be nrow == 0 if no coordinates present
+#   if (!is.null(input$redd_locations_rows_selected) ) {
+#     redd_coords = get_redd_coordinates(selected_redd_location_data()$redd_location_id)
+#     redd_location_id = selected_redd_location_data()$redd_location_id
+#   } else {
+#     redd_coords = NULL
+#     redd_location_id = remisc::get_uuid(1L)
+#   }
+#   if ( is.null(redd_coords) | length(redd_coords$latitude) == 0 | length(redd_coords$longitude) == 0 ) {
+#     redd_lat = center_lat
+#     redd_lon = center_lon
+#     redd_name = "none"
+#   } else {
+#     redd_lat = redd_coords$latitude
+#     redd_lon = redd_coords$longitude
+#     redd_name = selected_redd_location_data()$redd_name
+#   }
+#   redd_coords = tibble(redd_location_id = redd_location_id,
+#                        redd_name = redd_name,
+#                        redd_lat = redd_lat,
+#                        redd_lon = redd_lon)
+#   return(redd_coords)
+# })
+
 # Output leaflet bidn map....could also use color to indicate species:
 # See: https://rstudio.github.io/leaflet/markers.html
 output$redd_map <- renderLeaflet({
@@ -156,6 +189,11 @@ output$redd_map <- renderLeaflet({
     filter(!is.na(latitude) & !is.na(longitude)) %>%
     select(redd_location_id, redd_name, latitude, longitude)
   # Generate basemap =========================================================
+  # redd_loc_data = selected_redd_coords()
+  # redd_lat = redd_loc_data$redd_lat
+  # redd_lon = redd_loc_data$redd_lon
+  # redd_name = redd_loc_data$redd_name
+  # redd_location_id = redd_loc_data$redd_location_id
   edit_redd_loc = leaflet() %>%
     setView(
       lng = selected_redd_coords$redd_lon,
@@ -167,23 +205,23 @@ output$redd_map <- renderLeaflet({
                      baseGroups = c("Esri World Imagery", "Open Topo Map"),
                      overlayGroups = c("Streams"),
                      options = layersControlOptions(collapsed = TRUE)) %>%
-  # Add edit features
-  leaflet.extras::addDrawToolbar(
-    targetGroup = "redd_edits",
-    position = "topleft",
-    polylineOptions = FALSE,
-    polygonOptions = FALSE,
-    circleOptions = FALSE,
-    rectangleOptions = FALSE,
-    markerOptions = FALSE,
-    circleMarkerOptions = drawCircleMarkerOptions(
-      color = "#ace600",
-      stroke = TRUE,
-      weight = 2,
-      fillOpacity = 0.5),
-    editOptions = editToolbarOptions(
-      selectedPathOptions = selectedPathOptions()),
-    singleFeature = TRUE) %>%
+    # Add edit features
+    leaflet.extras::addDrawToolbar(
+      targetGroup = "redd_edits",
+      position = "topleft",
+      polylineOptions = FALSE,
+      polygonOptions = FALSE,
+      circleOptions = FALSE,
+      rectangleOptions = FALSE,
+      markerOptions = FALSE,
+      circleMarkerOptions = drawCircleMarkerOptions(
+        color = "#ace600",
+        stroke = TRUE,
+        weight = 2,
+        fillOpacity = 0.5),
+      editOptions = editToolbarOptions(
+        selectedPathOptions = selectedPathOptions()),
+      singleFeature = TRUE) %>%
     addPolylines(
       data = wria_streams(),
       group = "Streams",
@@ -197,7 +235,7 @@ output$redd_map <- renderLeaflet({
     return(edit_redd_loc)
   } else {
     edit_redd_loc_two = edit_redd_loc %>%
-    # Add existing data if locations exist ===================
+      # Add existing data if locations exist ===================
     addCircleMarkers(
       lng = redd_coords$longitude,
       lat = redd_coords$latitude,
@@ -213,26 +251,42 @@ output$redd_map <- renderLeaflet({
   }
 })
 
-# Create a reactive values object for drawn_features
-redd_edit_rv = reactiveValues(lat = NULL, lon = NULL)
-
-# Set rv to NULL on initiation of map
-observeEvent(input$redd_loc_map, {
-  redd_edit_rv$lat = NULL
-  redd_edit_rv$lon = NULL
-}, priority = 9999)
-
-# Assign coordinates from mapedit circle marker
-observeEvent(input$redd_map_draw_all_features, {
-  redd_edit_rv$lat = as.numeric(input$redd_map_draw_all_features$features[[1]]$geometry$coordinates[[2]])
-  redd_edit_rv$lon = as.numeric(input$redd_map_draw_all_features$features[[1]]$geometry$coordinates[[1]])
+# Pull coordinates from the last drawn, or edited marker
+all_redd_coords = eventReactive(input$fish_map_draw_all_features, {
+  crds = NULL
+  crds = tibble(lat = as.numeric(input$redd_map_draw_all_features$features[[1]]$geometry$coordinates[[2]]),
+                lon = as.numeric(input$redd_map_draw_all_features$features[[1]]$geometry$coordinates[[1]]))
+  return(crds)
 })
 
-# Get html output of updated locations
-output$fish_coordinates = renderUI({
-  coords_out = HTML(glue("Redd location: ", {redd_edit_rv$lat}, ": ", {redd_edit_rv$lon}))
-  return(coords_out)
+# # Create reactive to hold click data
+# redd_marker_data = reactive({
+#   req(input$redd_map_marker_click)
+#   redd_click_data = input$redd_map_marker_click
+#   redd_mark_dat = tibble(latitude = round(as.numeric(redd_click_data$lat), digits = 6),
+#                     longitude = round(as.numeric(redd_click_data$lng), digits = 6))
+#   return(redd_mark_dat)
+# })
+
+# Get dataframe of updated locations
+output$redd_coordinates = renderUI({
+  input$redd_map_marker_click
+  if ( is.null(all_redd_coords()) ) {
+    HTML("Place a circle markerwhere the redd was found")
+  } else {
+    HTML(glue("Redd location: ", {all_redd_coords()$lat}, ": ", {all_redd_coords()$lon}))
+  }
 })
+
+# # Get dataframe of updated locations
+# output$redd_coordinates = renderUI({
+#   input$redd_map_marker_click
+#   if ( length(input$redd_map_marker_click) == 0L ) {
+#   HTML("Drag marker to edit location. Click on marker to set coordinates")
+# } else {
+#   HTML(glue("Redd location: ", {redd_marker_data()$latitude}, ": ", {redd_marker_data()$longitude}))
+# }
+# })
 
 # Modal for new redd locations...add or edit a point...write coordinates to lat, lon
 observeEvent(input$redd_loc_map, {
@@ -258,10 +312,7 @@ observeEvent(input$redd_loc_map, {
                                                "the upper left to place a marker where you saw the redd. ",
                                                "You can use the edit tool to move the circle marker to a ",
                                                "new location. When done, click on the 'Save coordinates' ",
-                                               "button. If no coordinates appear below after placing a ",
-                                               "marker it is because you did not commit a previous ",
-                                               "edit. Just click on any row in the 'Redd location' ",
-                                               "or 'Species data' tables to reactivate.<span>"))),
+                                               "button.<span>"))),
                    column(width = 9,
                           htmlOutput("redd_coordinates"))
                  )
@@ -279,16 +330,10 @@ observeEvent(input$redd_loc_map, {
 
 # Update all input values to values in selected row
 observeEvent(input$capture_redd_loc, {
-  updateNumericInput(session, "redd_latitude_input", value = redd_edit_rv$lat)
-  updateNumericInput(session, "redd_longitude_input", value = redd_edit_rv$lon)
+  updateNumericInput(session, "redd_latitude_input", value = all_redd_coords()$lat)
+  updateNumericInput(session, "redd_longitude_input", value = all_redd_coords()$lon)
   removeModal()
-}, priority = 9999)
-
-# Set rv to NULL
-observeEvent(input$capture_redd_loc, {
-  redd_edit_rv$lat = NULL
-  redd_edit_rv$lon = NULL
-}, priority = -1)
+})
 
 #========================================================
 # Insert operations: reactives, observers and modals
@@ -713,18 +758,18 @@ observeEvent(input$redd_loc_delete, {
                  footer = NULL
                )
              } else if ( nrow(redd_loc_dependencies) > 0L ) {
-                 modalDialog (
-                   size = "l",
-                   title = paste("The redd count observation(s) listed below are linked to the redd location data you selected. ",
-                                 "Please edit or delete the dependent redd count data in the 'Redd counts' data entry ",
-                                 "screen below before deleting the selected redd location data."),
-                   fluidPage (
-                     DT::DTOutput("redd_location_modal_dependency_vals"),
-                     br()
-                   ),
-                   easyClose = TRUE,
-                   footer = NULL
-                 )
+               modalDialog (
+                 size = "l",
+                 title = paste("The redd count observation(s) listed below are linked to the redd location data you selected. ",
+                               "Please edit or delete the dependent redd count data in the 'Redd counts' data entry ",
+                               "screen below before deleting the selected redd location data."),
+                 fluidPage (
+                   DT::DTOutput("redd_location_modal_dependency_vals"),
+                   br()
+                 ),
+                 easyClose = TRUE,
+                 footer = NULL
+               )
              } else {
                modalDialog (
                  size = 'l',
