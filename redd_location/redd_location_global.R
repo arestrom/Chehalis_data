@@ -196,48 +196,50 @@ redd_location_insert = function(new_redd_location_values) {
   if (is.na(location_description) | location_description == "") { location_description = NA }
   # Insert to location table
   con = poolCheckout(pool)
-  insert_loc_result = dbSendStatement(
-    con, glue_sql("INSERT INTO location (",
-                  "location_id, ",
-                  "waterbody_id, ",
-                  "wria_id, ",
-                  "location_type_id, ",
-                  "stream_channel_type_id, ",
-                  "location_orientation_type_id, ",
-                  "location_name, ",
-                  "location_description, ",
-                  "created_by) ",
-                  "VALUES (",
-                  "?, ?, ?, ?, ?, ?, ?, ?, ?)"))
-  dbBind(insert_loc_result, list(location_id, waterbody_id, wria_id,
-                                 location_type_id, stream_channel_type_id,
-                                 location_orientation_type_id, location_name,
-                                 location_description, created_by))
-  dbGetRowsAffected(insert_loc_result)
-  dbClearResult(insert_loc_result)
-  # Insert coordinates to location_coordinates
-  if (!is.na(latitude) & !is.na(longitude) ) {
-    # Create location_coordinates_id
-    location_coordinates_id = remisc::get_uuid(1L)
-    # Create a point in hex binary
-    geom = st_point(c(longitude, latitude)) %>%
-      st_sfc(., crs = 4326) %>%
-      st_transform(., 2927) %>%
-      st_as_binary(., hex = TRUE)
-    insert_lc_result = dbSendStatement(
-      con, glue_sql("INSERT INTO location_coordinates (",
-                    "location_coordinates_id, ",
+  DBI::dbWithTransaction(con, {
+    insert_loc_result = dbSendStatement(
+      con, glue_sql("INSERT INTO location (",
                     "location_id, ",
-                    "horizontal_accuracy, ",
-                    "geom, ",
+                    "waterbody_id, ",
+                    "wria_id, ",
+                    "location_type_id, ",
+                    "stream_channel_type_id, ",
+                    "location_orientation_type_id, ",
+                    "location_name, ",
+                    "location_description, ",
                     "created_by) ",
                     "VALUES (",
-                    "?, ?, ?, ?, ?)"))
-    dbBind(insert_lc_result, list(location_coordinates_id, location_id,
-                                  horizontal_accuracy, geom, created_by))
-    dbGetRowsAffected(insert_lc_result)
-    dbClearResult(insert_lc_result)
-  }
+                    "?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+    dbBind(insert_loc_result, list(location_id, waterbody_id, wria_id,
+                                   location_type_id, stream_channel_type_id,
+                                   location_orientation_type_id, location_name,
+                                   location_description, created_by))
+    dbGetRowsAffected(insert_loc_result)
+    dbClearResult(insert_loc_result)
+    # Insert coordinates to location_coordinates
+    if (!is.na(latitude) & !is.na(longitude) ) {
+      # Create location_coordinates_id
+      location_coordinates_id = remisc::get_uuid(1L)
+      # Create a point in hex binary
+      geom = st_point(c(longitude, latitude)) %>%
+        st_sfc(., crs = 4326) %>%
+        st_transform(., 2927) %>%
+        st_as_binary(., hex = TRUE)
+      insert_lc_result = dbSendStatement(
+        con, glue_sql("INSERT INTO location_coordinates (",
+                      "location_coordinates_id, ",
+                      "location_id, ",
+                      "horizontal_accuracy, ",
+                      "geom, ",
+                      "created_by) ",
+                      "VALUES (",
+                      "?, ?, ?, ?, ?)"))
+      dbBind(insert_lc_result, list(location_coordinates_id, location_id,
+                                    horizontal_accuracy, geom, created_by))
+      dbGetRowsAffected(insert_lc_result)
+      dbClearResult(insert_lc_result)
+    }
+  })
   poolReturn(con)
 }
 
@@ -289,68 +291,70 @@ redd_location_update = function(redd_location_edit_values, selected_redd_locatio
   longitude = edit_values$longitude
   # Checkout a connection
   con = poolCheckout(pool)
-  update_result = dbSendStatement(
-    con, glue_sql("UPDATE location SET ",
-                  "stream_channel_type_id = ?, ",
-                  "location_orientation_type_id = ?, ",
-                  "location_name = ?, ",
-                  "location_description = ?, ",
-                  "modified_datetime = ?, ",
-                  "modified_by = ? ",
-                  "where location_id = ?"))
-  dbBind(update_result, list(stream_channel_type_id,
-                             location_orientation_type_id,
-                             location_name, location_description,
-                             mod_dt, mod_by,
-                             location_id))
-  dbGetRowsAffected(update_result)
-  dbClearResult(update_result)
-  # Insert coordinates to location_coordinates if previous entry does not exist
-  if ( is.na(selected_redd_location_data$latitude) & is.na(selected_redd_location_data$longitude) ) {
-    if ( !is.na(latitude) & !is.na(longitude) ) {
-      # Insert coordinates to location_coordinates
-      # Create location_coordinates_id
-      location_coordinates_id = remisc::get_uuid(1L)
-      # Create a point in hex binary
-      geom = st_point(c(longitude, latitude)) %>%
-        st_sfc(., crs = 4326) %>%
-        st_transform(., 2927) %>%
-        st_as_binary(., hex = TRUE)
-      insert_lc_result = dbSendStatement(
-        con, glue_sql("INSERT INTO location_coordinates (",
-                      "location_coordinates_id, ",
-                      "location_id, ",
-                      "horizontal_accuracy, ",
-                      "geom, ",
-                      "created_by) ",
-                      "VALUES (",
-                      "?, ?, ?, ?, ?)"))
-      dbBind(insert_lc_result, list(location_coordinates_id, location_id,
-                                    horizontal_accuracy, geom, created_by))
-      dbGetRowsAffected(insert_lc_result)
-      dbClearResult(insert_lc_result)
+  DBI::dbWithTransaction(con, {
+    update_result = dbSendStatement(
+      con, glue_sql("UPDATE location SET ",
+                    "stream_channel_type_id = ?, ",
+                    "location_orientation_type_id = ?, ",
+                    "location_name = ?, ",
+                    "location_description = ?, ",
+                    "modified_datetime = ?, ",
+                    "modified_by = ? ",
+                    "where location_id = ?"))
+    dbBind(update_result, list(stream_channel_type_id,
+                               location_orientation_type_id,
+                               location_name, location_description,
+                               mod_dt, mod_by,
+                               location_id))
+    dbGetRowsAffected(update_result)
+    dbClearResult(update_result)
+    # Insert coordinates to location_coordinates if previous entry does not exist
+    if ( is.na(selected_redd_location_data$latitude) & is.na(selected_redd_location_data$longitude) ) {
+      if ( !is.na(latitude) & !is.na(longitude) ) {
+        # Insert coordinates to location_coordinates
+        # Create location_coordinates_id
+        location_coordinates_id = remisc::get_uuid(1L)
+        # Create a point in hex binary
+        geom = st_point(c(longitude, latitude)) %>%
+          st_sfc(., crs = 4326) %>%
+          st_transform(., 2927) %>%
+          st_as_binary(., hex = TRUE)
+        insert_lc_result = dbSendStatement(
+          con, glue_sql("INSERT INTO location_coordinates (",
+                        "location_coordinates_id, ",
+                        "location_id, ",
+                        "horizontal_accuracy, ",
+                        "geom, ",
+                        "created_by) ",
+                        "VALUES (",
+                        "?, ?, ?, ?, ?)"))
+        dbBind(insert_lc_result, list(location_coordinates_id, location_id,
+                                      horizontal_accuracy, geom, created_by))
+        dbGetRowsAffected(insert_lc_result)
+        dbClearResult(insert_lc_result)
+      }
+      # Otherwise update coordinates if previous entry does exist
+    } else if (!is.na(selected_redd_location_data$latitude) & !is.na(selected_redd_location_data$longitude) ) {
+      if ( !is.na(latitude) & !is.na(longitude) ) {
+        # Create a point in hex binary
+        geom = st_point(c(longitude, latitude)) %>%
+          st_sfc(., crs = 4326) %>%
+          st_transform(., 2927) %>%
+          st_as_binary(., hex = TRUE)
+        update_lc_result = dbSendStatement(
+          con, glue_sql("UPDATE location_coordinates SET ",
+                        "horizontal_accuracy = ?, ",
+                        "geom = ?, ",
+                        "modified_datetime = ?, ",
+                        "modified_by = ? ",
+                        "where location_id = ?"))
+        dbBind(update_lc_result, list(horizontal_accuracy, geom,
+                                      mod_dt, mod_by, location_id))
+        dbGetRowsAffected(update_lc_result)
+        dbClearResult(update_lc_result)
+      }
     }
-  # Otherwise update coordinates if previous entry does exist
-  } else if (!is.na(selected_redd_location_data$latitude) & !is.na(selected_redd_location_data$longitude) ) {
-    if ( !is.na(latitude) & !is.na(longitude) ) {
-      # Create a point in hex binary
-      geom = st_point(c(longitude, latitude)) %>%
-        st_sfc(., crs = 4326) %>%
-        st_transform(., 2927) %>%
-        st_as_binary(., hex = TRUE)
-      update_lc_result = dbSendStatement(
-        con, glue_sql("UPDATE location_coordinates SET ",
-                      "horizontal_accuracy = ?, ",
-                      "geom = ?, ",
-                      "modified_datetime = ?, ",
-                      "modified_by = ? ",
-                      "where location_id = ?"))
-      dbBind(update_lc_result, list(horizontal_accuracy, geom,
-                                    mod_dt, mod_by, location_id))
-      dbGetRowsAffected(update_lc_result)
-      dbClearResult(update_lc_result)
-    }
-  }
+  })
   poolReturn(con)
 }
 
@@ -397,16 +401,18 @@ get_redd_location_dependencies = function(redd_location_id) {
 redd_location_delete = function(delete_values) {
   redd_location_id = delete_values$redd_location_id
   con = poolCheckout(pool)
-  # New function...delete only after all dependencies are removed
-  delete_result_one = dbSendStatement(
-    con, glue_sql("DELETE FROM location_coordinates WHERE location_id = ?"))
-  dbBind(delete_result_one, list(redd_location_id))
-  dbGetRowsAffected(delete_result_one)
-  dbClearResult(delete_result_one)
-  delete_result_two = dbSendStatement(
-    con, glue_sql("DELETE FROM location WHERE location_id = ?"))
-  dbBind(delete_result_two, list(redd_location_id))
-  dbGetRowsAffected(delete_result_two)
-  dbClearResult(delete_result_two)
+  DBI::dbWithTransaction(con, {
+    # New function...delete only after all dependencies are removed
+    delete_result_one = dbSendStatement(
+      con, glue_sql("DELETE FROM location_coordinates WHERE location_id = ?"))
+    dbBind(delete_result_one, list(redd_location_id))
+    dbGetRowsAffected(delete_result_one)
+    dbClearResult(delete_result_one)
+    delete_result_two = dbSendStatement(
+      con, glue_sql("DELETE FROM location WHERE location_id = ?"))
+    dbBind(delete_result_two, list(redd_location_id))
+    dbGetRowsAffected(delete_result_two)
+    dbClearResult(delete_result_two)
+  })
   poolReturn(con)
 }
