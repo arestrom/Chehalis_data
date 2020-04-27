@@ -43,6 +43,10 @@
 #     with weird firing of querys and leaked pool.
 #  8. See: https://www.endpoint.com/blog/2015/08/12/bucardo-postgres-replication-pgbench
 #     for possible replication scenarios.
+#  9. To prune merged git branches:
+#     a, Check which branches have been merged:       git branch --merged
+#     b, Once branch has been deleted from remote:    git fetch -p            # To prune those no longer on remote
+#     c, To delete branch from local:                 git branch -d <branch>
 #
 #
 # ToDo:
