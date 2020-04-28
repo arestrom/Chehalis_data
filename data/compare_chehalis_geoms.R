@@ -2,10 +2,10 @@
 # Identify differences in geoms between DB and official LLID layer
 #
 # Notes:
-#  1. To get the latest LLID data from geolib...open geolib LLID_ROUTES in qgis. Then
+#  1. Can get the latest LLID data from geolib...open geolib LLID_ROUTES in qgis. Then
 #     export as a geopackage. Set CRS to 2927 first. Default settings will
 #     work. Takes a few minutes to download. Then use code below to trim
-#     to WRIAs 22 and 23.
+#     to WRIAs 22 and 23. For now am using LLID20200311.gdb in current folder.
 #  2. Some substantial changes occurred on 2020-03-12. One of the most dramatic was
 #     Sherwood Creek, which was essentially split into Hensen Creek for the lower
 #     portion and Sherwood Creek for part of the upper portion. So RMs will no
