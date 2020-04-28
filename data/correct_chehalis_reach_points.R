@@ -8,7 +8,7 @@
 #
 #  Completed: 2020-04-
 #
-# AS 2020-04-14
+# AS 2020-04-28
 #===========================================================================
 
 # Clear workspace
@@ -125,6 +125,12 @@ dbDisconnect(db_con)
 
 # Get Lea's corrected point data
 reach_edits = read_sf("data/SG_Lea_Point_Edits.gdb", layer = "sg_points_lea_edits")
+
+# Make some after gdb creation edits to reflect updates made in SG
+reach_edits = reach_edits %>%
+  mutate(llid = trimws(llid)) %>%
+  mutate(llid = if_else(llid == "1238331471969", "1238847469963", llid)) %>%
+  mutate(llid = if_else(llid == "1240139471209", "1240151471207", llid))
 
 # Pull out coordinates then rename to the default geometry...also takes care of the bogus z value
 reach_edits = reach_edits %>%
@@ -409,6 +415,32 @@ waterbody_no_match_geo = waterbody_no_match %>%
          comments) %>%
   arrange(waterbody_name)
 
+#============================================================================================
+# Sent waterbody_no_match_geo to Lea for review...too many unknowns
+#============================================================================================
+
+# # Output sgs_streams
+# st_crs(sg_streams)$epsg
+# st_write(sg_streams, "data/sg_streams.shp")
+#
+# # Output waterbody_mismatch
+# waterbody_mismatch = waterbody_no_match_geo %>%
+#   st_transform(2927)
+#
+# # Output sgs_streams
+# st_crs(waterbody_mismatch)$epsg
+# st_write(waterbody_mismatch, "data/waterbody_mismatch.shp")
+
+#============================================================================================
+# 6. After Lea's review....make the following changes
+#============================================================================================
+
+# A. Delete one point...this is duplicated
+waterbody_no_match_geo = waterbody_no_match_geo %>%
+  filter(!seq_id == 218)
+
+# B. Correct
+
 # Use waterbody_id....send these to Lea afterwards
 # Notes:
 # 1. Need to adjust line work for Schaeffer Slough GIDs 507, 508
@@ -416,19 +448,7 @@ waterbody_no_match_geo = waterbody_no_match %>%
 use_wbid = c(483, 484, 485, 218, 842, 494, 495, 496, 497, 498, 499,
             60, 62,)
 
-# Need to output the rest for Lea to take care of....too many unknowns !!!!
 
-# Output sgs_streams
-st_crs(sg_streams)$epsg
-st_write(sg_streams, "data/sg_streams.shp")
-
-# Output waterbody_mismatch
-waterbody_mismatch = waterbody_no_match_geo %>%
-  st_transform(2927)
-
-# Output sgs_streams
-st_crs(waterbody_mismatch)$epsg
-st_write(waterbody_mismatch, "data/waterbody_mismatch.shp")
 
 
 
