@@ -1,12 +1,12 @@
 #===========================================================================
-# Correct edited WRIA 22 and 23 reach_points from Lea. Some LLIDs and
-# waterbodies have been added or changed. So now need to make sure
-# points are assigned to the correct waterbody_id
+# Correct WRIA 22 and 23 reach_points from Lea. After adding and editing
+# noticed that some points, especially on SF Newaukum were duplicated.
+# Checking that only one point per stream is present
 #
 # Notes:
 #  1.
 #
-#  Completed: 2020-04-29
+#  Completed: 2020-04-
 #
 # AS 2020-04-29
 #===========================================================================
@@ -101,49 +101,110 @@ update_point = function(x) {
 }
 
 #============================================================================
-# Import all stream data from sg that are in WRIAs 22 or 23
+# Import WRIA 22 and 23 points that are withing 100 meters and with same RM
 #============================================================================
 
 # Define query to get needed data
-qry = glue("select distinct wb.waterbody_id, wb.waterbody_name, wb.waterbody_display_name, ",
+qry = glue("select distinct wb.waterbody_id, wb.waterbody_name, ",
            "wb.latitude_longitude_id as llid, wb.stream_catalog_code as cat_code, ",
-           "wr.wria_code, st.stream_id, st.gid, st.geom as geometry ",
-           "from waterbody_lut as wb ",
+           "loc.river_mile_measure as river_mile, loc.location_id, ",
+           "loc.location_name, loc.location_description, loc.created_datetime, ",
+           "loc.created_by, st.stream_id, lc.gid, lc.geom as geometry ",
+           "from location as loc ",
+           "left join location_coordinates as lc on loc.location_id = lc.location_id ",
+           "left join location_type_lut as lt on loc.location_type_id = lt.location_type_id ",
+           "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
            "left join stream as st on wb.waterbody_id = st.waterbody_id ",
            "inner join wria_lut as wr on st_intersects(st.geom, wr.geom) ",
-           "where stream_id is not null and wr.wria_code in ('22', '23') ",
-           "order by waterbody_name")
+           "where wr.wria_code in ('22', '23') ",
+           "and lt.location_type_description in ('Reach boundary point', 'Section break point') ",
+           "order by wb.waterbody_name, loc.river_mile_measure")
 
 # Get values from source
 db_con = pg_con_local(dbname = "spawning_ground")
-sg_streams = st_read(db_con, query = qry)
+sg_points = st_read(db_con, query = qry)
 dbDisconnect(db_con)
 
 #============================================================================
-# Import all reach data from points file corrected by Lea
+# Identify cases where RM is duplicated...by waterbody_id and RM
 #============================================================================
 
-# Get Lea's corrected point data
-reach_edits = read_sf("data/SG_Lea_Point_Edits.gdb", layer = "sg_points_lea_edits")
-
-# Make some after gdb creation edits to reflect updates made in SG
-reach_edits = reach_edits %>%
-  mutate(llid = trimws(llid)) %>%
-  mutate(llid = if_else(llid == "1238331471969", "1238847469963", llid)) %>%
-  mutate(llid = if_else(llid == "1240139471209", "1240151471207", llid))
-
-# Pull out coordinates then rename to the default geometry...also takes care of the bogus z value
-reach_edits = reach_edits %>%
-  mutate(lon = as.numeric(st_coordinates(Shape)[,1])) %>%
-  mutate(lat = as.numeric(st_coordinates(Shape)[,2])) %>%
+# Pull out duplicated RMs
+dup_rc = sg_points %>%
+  group_by(waterbody_id, river_mile) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq > 1) %>%
+  select(waterbody_id, dup_location_id = location_id, river_mile) %>%
   st_drop_geometry() %>%
-  st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
-  arrange(waterbody_name, river_mile) %>%
-  mutate(seq_id = as.integer(seq(1, nrow(reach_edits)))) %>%
-  select(seq_id, fid, rc_wbid = waterbody_id, rc_wbname = waterbody_name, rc_wbdisplay_name = waterbody_display_name,
-         rc_llid = llid, rc_cat_code = cat_code, rc_stid = stream_id, location_id, river_mile, location_name,
-         location_description, comments) %>%
-  st_transform(2927)
+  distinct()
+
+# Join back to get both copies
+dup_rc = dup_rc %>%
+  inner_join(sg_points, by = c("waterbody_id", "river_mile")) %>%
+  st_as_sf() %>%
+  st_transform(4326)
+
+# Result: Only four cases...all ok, when wria_code...Chehalis issue---is omitted.
+
+#============================================================================
+# Identify cases where RM is duplicated...by polygon intersect
+#============================================================================
+
+# Just keep points with coordinates...no reason for next step otherwise
+rc_points = sg_points %>%
+  filter(!is.na(gid))
+
+# Pull out duplicated RMs, then buffer by 100 ft. Units will be in units of CRS (survey feet)
+rc_poly = rc_points %>%
+  st_buffer(dist = 100)
+
+# # Verify in QGIS
+# write_sf(rc_poly, "data/rc_poly.gpkg")
+
+# Rename fields in rc_poly to allow better names in join
+rc_poly = rc_poly %>%
+  select(poly_wb_id = waterbody_id, poly_wb_name = waterbody_name,
+         poly_rm = river_mile, poly_loc_id = location_id,
+         poly_loc_name = location_name, poly_loc_desc = location_description,
+         poly_gid = gid, poly_create_dt = created_datetime)
+
+# Join
+pt_poly = rc_poly %>%
+  st_join(rc_points) %>%
+  arrange(poly_gid) %>%
+  group_by(poly_gid) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup()
+
+# Pull out multiple joins
+mult_pt_gid = pt_poly %>%
+  filter(n_seq > 1) %>%
+  pull(poly_gid)
+
+# Get full set of points with multiple intersects
+mult_point = pt_poly %>%
+  filter(poly_gid %in% mult_pt_gid)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #==========================================================================
 # Join points to streams by nearest_feature, i.e., stream nearest to point
