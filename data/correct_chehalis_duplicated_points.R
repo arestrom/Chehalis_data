@@ -322,18 +322,8 @@ db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, "DROP TABLE stream_temp")
 DBI::dbDisconnect(db_con)
 
-
-
-
-
-
-
-
-
-
-
 #============================================================================================
-# Should Shaeffer Slough be updated ????? Verify
+# Should Shaeffer Slough be updated? Verify
 #============================================================================================
 
 #============================================================
