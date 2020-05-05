@@ -241,7 +241,7 @@ DBI::dbExecute(db_con, qry)
 dbDisconnect(db_con)
 
 #======================================================================
-# Add new stream
+# Add new unnamed stream
 #======================================================================
 
 # llid
@@ -321,6 +321,314 @@ DBI::dbDisconnect(db_con)
 db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, "DROP TABLE stream_temp")
 DBI::dbDisconnect(db_con)
+
+# Update reach point to associate with new stream
+# new_wb_id = "480e352c-bcb1-4ae0-ac92-e1f45a4ee83e"
+# loc_id = "82f87a85-b268-46f0-94f7-6bb9552a320b"
+qry = glue::glue("UPDATE location ",
+                 "SET waterbody_id = '{new_wb_id}' ",
+                 "WHERE location_id = '{loc_id}'")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Update reach point to associate with new stream
+# new_wb_id = "480e352c-bcb1-4ae0-ac92-e1f45a4ee83e"
+# loc_id = "a5936011-0631-4349-886f-f54410cb1532"
+qry = glue::glue("UPDATE location ",
+                 "SET waterbody_id = '{new_wb_id}' ",
+                 "WHERE location_id = '{loc_id}'")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+#======================================================================
+# Add new unnamed stream
+#======================================================================
+
+# llid
+ll_id = '1230774469526'
+#wb_id =
+
+# Create new entry in waterbody_lut
+wb = tibble(waterbody_id = remisc::get_uuid(1L),
+            waterbody_name = "Unnamed Tributary (LB)",
+            waterbody_display_name = "Unnamed Trib",
+            latitude_longitude_id = ll_id,
+            stream_catalog_code = "23.0677A",
+            tributary_to_name = "Waddell Creek",
+            obsolete_flag = 0L,
+            obsolete_datetime = as.POSIXct(NA))
+
+# Write to sink
+db_con = pg_con_local(dbname = "spawning_ground")
+dbWriteTable(db_con, 'waterbody_lut', wb, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Get last gid
+qry = glue("select max(gid) as gid from stream")
+# Run query
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Generate new gid
+new_gid = max_gid$gid + 1L
+# gid = 3639L
+
+# Pull out wb_id
+new_wb_id = wb$waterbody_id
+
+# Get geometry
+llid_chehalis = read_sf("data/llid_chehalis_2020-03-12.gpkg",
+                        layer = "llid_chehalis_2020-03-12", crs = 2927)
+
+# Get stream geometry from Arleta's layer
+st_llid = llid_chehalis %>%
+  filter(llid == ll_id)
+
+# Check crs
+st_crs(st_llid)$epsg
+
+# Create stream
+stream_st = st_llid %>%
+  mutate(stream_id = remisc::get_uuid(1L)) %>%
+  mutate(waterbody_id = new_wb_id) %>%
+  mutate(gid = new_gid) %>%
+  mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
+  mutate(created_by = Sys.getenv("USERNAME")) %>%
+  mutate(modified_datetime = as.POSIXct(NA)) %>%
+  mutate(modified_by = NA_character_) %>%
+  select(stream_id, waterbody_id, gid, geom, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Write temp table
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = stream_st, dsn = db_con, layer = "stream_temp")
+dbDisconnect(db_con)
+
+# Use select into query to get data into point_location
+qry = glue::glue("INSERT INTO stream ",
+                 "SELECT CAST(stream_id AS UUID), CAST(waterbody_id AS UUID), ",
+                 "gid, geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM stream_temp")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE stream_temp")
+DBI::dbDisconnect(db_con)
+
+# Update reach point to associate with new stream
+# new_wb_id = ""
+# loc_id = "45f473ab-ab42-43b1-b4a9-afd29c1f5860"
+qry = glue::glue("UPDATE location ",
+                 "SET waterbody_id = '{new_wb_id}' ",
+                 "WHERE location_id = '{loc_id}'")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Update reach point to associate with new stream
+# new_wb_id = ""
+# loc_id = "b275132d-4a79-4237-9d0e-b537f1ad5984"
+qry = glue::glue("UPDATE location ",
+                 "SET waterbody_id = '{new_wb_id}' ",
+                 "WHERE location_id = '{loc_id}'")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+#======================================================================
+# Add new unnamed stream
+#======================================================================
+
+# llid
+ll_id = '1230815469563'
+#wb_id =
+
+# Create new entry in waterbody_lut
+wb = tibble(waterbody_id = remisc::get_uuid(1L),
+            waterbody_name = "Unnamed Tributary",
+            waterbody_display_name = "Unnamed Trib",
+            latitude_longitude_id = ll_id,
+            stream_catalog_code = "23",
+            tributary_to_name = "Waddell Creek",
+            obsolete_flag = 0L,
+            obsolete_datetime = as.POSIXct(NA))
+
+# Write to sink
+db_con = pg_con_local(dbname = "spawning_ground")
+dbWriteTable(db_con, 'waterbody_lut', wb, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Get last gid
+qry = glue("select max(gid) as gid from stream")
+# Run query
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Generate new gid
+new_gid = max_gid$gid + 1L
+# gid = 3639L
+
+# Pull out wb_id
+new_wb_id = wb$waterbody_id
+
+# Get geometry
+llid_chehalis = read_sf("data/llid_chehalis_2020-03-12.gpkg",
+                        layer = "llid_chehalis_2020-03-12", crs = 2927)
+
+# Get stream geometry from Arleta's layer
+st_llid = llid_chehalis %>%
+  filter(llid == ll_id)
+
+# Check crs
+st_crs(st_llid)$epsg
+
+# Create stream
+stream_st = st_llid %>%
+  mutate(stream_id = remisc::get_uuid(1L)) %>%
+  mutate(waterbody_id = new_wb_id) %>%
+  mutate(gid = new_gid) %>%
+  mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
+  mutate(created_by = Sys.getenv("USERNAME")) %>%
+  mutate(modified_datetime = as.POSIXct(NA)) %>%
+  mutate(modified_by = NA_character_) %>%
+  select(stream_id, waterbody_id, gid, geom, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Write temp table
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = stream_st, dsn = db_con, layer = "stream_temp")
+dbDisconnect(db_con)
+
+# Use select into query to get data into point_location
+qry = glue::glue("INSERT INTO stream ",
+                 "SELECT CAST(stream_id AS UUID), CAST(waterbody_id AS UUID), ",
+                 "gid, geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM stream_temp")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE stream_temp")
+DBI::dbDisconnect(db_con)
+
+# Update reach point to associate with new stream
+# new_wb_id = ""
+# loc_id = "91c491fd-245d-4f92-a8df-29f965769aea"
+qry = glue::glue("UPDATE location ",
+                 "SET waterbody_id = '{new_wb_id}' ",
+                 "WHERE location_id = '{loc_id}'")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+#======================================================================
+# Add McDonald Creek 22.0480 geometry
+#======================================================================
+
+# llid and waterbody_id
+ll_id = '1234097469950'
+wb_id = 'aed10dcf-fd0a-49d0-acd4-4aaf1160050a'
+
+# Get last gid
+qry = glue("select max(gid) as gid from stream")
+# Run query
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Generate new gid
+new_gid = max_gid$gid + 1L
+# gid = 3639L
+
+# Pull out wb_id
+#new_wb_id = wb$waterbody_id
+new_wb_id = wb_id
+
+# Get geometry
+llid_chehalis = read_sf("data/llid_chehalis_2020-03-12.gpkg",
+                        layer = "llid_chehalis_2020-03-12", crs = 2927)
+
+# Get stream geometry from Arleta's layer
+st_llid = llid_chehalis %>%
+  filter(llid == ll_id)
+
+# Check crs
+st_crs(st_llid)$epsg
+
+# Create stream
+stream_st = st_llid %>%
+  mutate(stream_id = remisc::get_uuid(1L)) %>%
+  mutate(waterbody_id = new_wb_id) %>%
+  mutate(gid = new_gid) %>%
+  mutate(created_datetime = with_tz(Sys.time(), tzone = "UTC")) %>%
+  mutate(created_by = Sys.getenv("USERNAME")) %>%
+  mutate(modified_datetime = as.POSIXct(NA)) %>%
+  mutate(modified_by = NA_character_) %>%
+  select(stream_id, waterbody_id, gid, geom, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Write temp table
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = stream_st, dsn = db_con, layer = "stream_temp")
+dbDisconnect(db_con)
+
+# Use select into query to get data into point_location
+qry = glue::glue("INSERT INTO stream ",
+                 "SELECT CAST(stream_id AS UUID), CAST(waterbody_id AS UUID), ",
+                 "gid, geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM stream_temp")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE stream_temp")
+DBI::dbDisconnect(db_con)
+
+# Update reach point to associate with new stream
+# new_wb_id = ""
+# loc_id = "91c491fd-245d-4f92-a8df-29f965769aea"
+qry = glue::glue("UPDATE location ",
+                 "SET waterbody_id = '{new_wb_id}' ",
+                 "WHERE location_id = '{loc_id}'")
+
+# Insert select to DB
+db_con = dbConnect(odbc::odbc(), dsn = "local_spawn", timezone = "UTC")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
 
 #============================================================================================
 # Should Shaeffer Slough be updated? Verify
