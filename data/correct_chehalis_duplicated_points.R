@@ -127,6 +127,7 @@ dbDisconnect(db_con)
 
 #============================================================================
 # Identify cases where RM is duplicated...by waterbody_id and RM
+# Result: Only two records
 #============================================================================
 
 # Pull out duplicated RMs
@@ -145,7 +146,53 @@ dup_rc = dup_rc %>%
   st_as_sf() %>%
   st_transform(4326)
 
-# Result: Only four cases...all ok, when wria_code...Chehalis issue---is omitted.
+# Result: Now Ok, only the Hatchery Creek location, with old and new mouth points.
+
+#============================================================================
+# Identify cases where RM is duplicated...by llid and RM
+# Result: Only two records.
+#============================================================================
+
+# Pull out duplicated RMs
+dup_rc_two = sg_points %>%
+  group_by(llid, river_mile) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq > 1) %>%
+  select(llid, dup_location_id = location_id, river_mile) %>%
+  st_drop_geometry() %>%
+  distinct()
+
+# Join back to get both copies
+dup_rc_two = dup_rc_two %>%
+  inner_join(sg_points, by = c("llid", "river_mile")) %>%
+  st_as_sf() %>%
+  st_transform(4326)
+
+# Result: Now Ok, only the Hatchery Creek location, with old and new mouth points.
+
+#============================================================================
+# Identify cases where RM is duplicated...by cat_code and RM...expect many
+# Result: These all appear fine (40 records)
+#============================================================================
+
+# Pull out duplicated RMs
+dup_rc_three = sg_points %>%
+  group_by(cat_code, river_mile) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq > 1) %>%
+  select(cat_code, dup_location_id = location_id, river_mile) %>%
+  st_drop_geometry() %>%
+  distinct()
+
+# Join back to get both copies
+dup_rc_three = dup_rc_three %>%
+  inner_join(sg_points, by = c("cat_code", "river_mile")) %>%
+  st_as_sf() %>%
+  st_transform(4326)
+
+# Result: Now Ok, only the Hatchery Creek location, with old and new mouth points.
 
 #============================================================================
 # Identify cases where RM is duplicated...by polygon intersect
@@ -1420,16 +1467,24 @@ dbDisconnect(db_con)
 # Update survey
 db_con = pg_con_local(dbname = "spawning_ground")
 qry = glue("update survey set ",
-           "lower_end_point_id = '8f322e5a-b418-4502-b9ad-58b286ecf661' ",
-           "where lower_end_point_id = '3d8d8604-c986-480c-84d7-b6b6c268b051'")
+           "lower_end_point_id = '4edbc925-eca4-4b99-aa18-804ada7fe8da' ",
+           "where lower_end_point_id = 'a8d275dd-61d5-455b-baa8-ec400e4b0e90'")
+DBI::dbExecute(db_con, qry)
+dbDisconnect(db_con)
+
+# Update survey
+db_con = pg_con_local(dbname = "spawning_ground")
+qry = glue("update survey set ",
+           "upper_end_point_id = '0a7d2dd3-0e20-4780-8641-172c51226e37' ",
+           "where upper_end_point_id = 'bc8cc1ee-8f1a-4ff5-9105-e96e1f704b08'")
 DBI::dbExecute(db_con, qry)
 dbDisconnect(db_con)
 #
 # Update survey
 db_con = pg_con_local(dbname = "spawning_ground")
 qry = glue("update survey set ",
-           "upper_end_point_id = 'a8499d7a-3a33-47e6-a8b3-87ef65bab6ab' ",
-           "where survey_id = '368e6e15-64c0-436e-9ae7-d82d0029c311'")
+           "upper_end_point_id = '27778884-ce84-42b3-92ba-f79e44759a15' ",
+           "where survey_id = 'bc8cc1ee-8f1a-4ff5-9105-e96e1f704b08'")
 DBI::dbExecute(db_con, qry)
 dbDisconnect(db_con)
 #
@@ -1451,6 +1506,13 @@ dbDisconnect(db_con)
 db_con = pg_con_local(dbname = "spawning_ground")
 qry = glue("delete from waterbody_lut ",
            "where waterbody_id = 'b8a2079f-101b-415d-8fde-bf8158de0473'")
+DBI::dbExecute(db_con, qry)
+dbDisconnect(db_con)
+
+# Delete stream...dup geo
+db_con = pg_con_local(dbname = "spawning_ground")
+qry = glue("delete from stream ",
+           "where stream_id = 'e6ce7709-d97d-4038-8dcf-8c582d383952'")
 DBI::dbExecute(db_con, qry)
 dbDisconnect(db_con)
 
