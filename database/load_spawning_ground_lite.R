@@ -18,9 +18,10 @@
 #
 # Notes on R procedure:
 #  1. Updated to convert all times to UTC for loading to sqlite
+#  2. Update lastest batch of streams and points for Lea than ran script: 2020-05-11
 #
 # ToDo:
-#  1. Done with this set...may want to add other tables later.
+#  1.
 #
 # AS 2020-05-11
 #===============================================================================
@@ -1428,34 +1429,11 @@ db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.s
 dbWriteTable(db_con, 'wria_lut', dat, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
 
-# Clean up
-rm(list = c("dat", "wria_polys"))
-
-
-
-# VERIFY !!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-# # See if I can fool it and not use tibble
-# class(dat)
-#
-# # Convert to binary
-# dat = st_as_binary(dat)
-#
-#
-# # Convert back to binary, then hex
-# dat = wria_polys %>%
-#   mutate(geom = st_as_binary(geom)) %>%
-#   mutate(geom = rawToHex(geom)) %>%
-#   mutate(geometry = geom) %>%
-#   st_drop_geometry() %>%
-#   select(wria_id, wria_code, wria_description, geom = geometry,
-#          obsolete_flag, obsolete_datetime)
-#
-# # Check size of object
-# object.size(dat)
-
-
+# Dump the temp table
+qry = glue("drop table wria_temp")
+pg_con = pg_con_local(dbname = "spawning_ground")
+dbExecute(pg_con, qry)
+dbDisconnect(pg_con)
 
 # # Test reading in as binary....WORKS PERFECT !!!!!  ========================
 #
@@ -1482,6 +1460,9 @@ rm(list = c("dat", "wria_polys"))
 #
 # # Clean up
 # rm(list = c("wria_st"))
+
+# Clean up
+rm(list = c("dat", "wria_polys"))
 
 #=================================================================================================
 # waterbody and stream

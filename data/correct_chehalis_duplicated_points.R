@@ -1520,23 +1520,22 @@ dbDisconnect(db_con)
 # Add new point
 #============================================================
 
-# Add geometry to existing point
-location_id = "54a49978-5d6c-4569-b4e6-758196ec9743"
-longitude = -123.9194
-latitude = 47.2299
-horizontal_accuracy = NULL
-created_by = "stromas"
-con = pg_con_local(dbname = "spawning_ground")
-qry = glue_sql("INSERT INTO location_coordinates ",
-               "(location_id, horizontal_accuracy, geom, created_by) ",
-               "VALUES ({location_id}, {horizontal_accuracy}, ",
-               "ST_Transform(ST_GeomFromText('POINT({longitude} {latitude})', 4326), 2927), ",
-               "{created_by}) ",
-               .con = con)
-# Run
-DBI::dbExecute(con, qry)
-dbDisconnect(con)
-
+# # Add geometry to existing point
+# location_id = "54a49978-5d6c-4569-b4e6-758196ec9743"
+# longitude = -123.9194
+# latitude = 47.2299
+# horizontal_accuracy = NULL
+# created_by = "stromas"
+# con = pg_con_local(dbname = "spawning_ground")
+# qry = glue_sql("INSERT INTO location_coordinates ",
+#                "(location_id, horizontal_accuracy, geom, created_by) ",
+#                "VALUES ({location_id}, {horizontal_accuracy}, ",
+#                "ST_Transform(ST_GeomFromText('POINT({longitude} {latitude})', 4326), 2927), ",
+#                "{created_by}) ",
+#                .con = con)
+# # Run
+# DBI::dbExecute(con, qry)
+# dbDisconnect(con)
 
 #============================================================================================
 # Should Shaeffer Slough be updated? Verify
@@ -1545,6 +1544,8 @@ dbDisconnect(con)
 #============================================================
 # Reset gid_sequence
 #============================================================
+
+# Points ======================
 
 # Get the current max_gid from the location_coordinates table
 qry = "select max(gid) from location_coordinates"
@@ -1557,6 +1558,21 @@ qry = glue("SELECT setval('location_coordinates_gid_seq', {max_gid}, true)")
 db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
+
+# Streams =====================
+
+# Get the current max_gid from the stream table
+qry = "select max(gid) from stream"
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = DBI::dbGetQuery(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Code to reset sequence
+qry = glue("SELECT setval('stream_gid_seq', {max_gid}, true)")
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
 
 
 

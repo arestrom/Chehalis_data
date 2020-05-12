@@ -6,9 +6,9 @@
 # Notes:
 #  1.
 #
-#  Completed: 2020-05-07
+#  Completed: 2020-05-11
 #
-# AS 2020-05-07
+# AS 2020-05-11
 #===========================================================================
 
 # Clear workspace
@@ -121,7 +121,7 @@ sg_points = sg_points %>%
          llid, river_mile, location_name, location_description)
 
 # # Output as a geopackage
-# write_sf(sg_points, "data/sg_points_4326_2020-05-07.gpkg")
+# write_sf(sg_points, "data/sg_points_4326_2020-05-11.gpkg")
 
 # # Output with styling
 # num_cols = ncol(sg_coords)
