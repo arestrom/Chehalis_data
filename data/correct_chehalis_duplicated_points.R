@@ -1431,12 +1431,12 @@ dbDisconnect(db_con)
 # Update point to correct waterbody
 db_con = pg_con_local(dbname = "spawning_ground")
 qry = glue("update location set ",
-           "waterbody_id = '109b64f4-274d-4666-96a5-c249fcc0d801', ",
+           "waterbody_id = '2cffd913-8e7a-4967-bed3-2c437b81f15b', ",
            # "river_mile_measure = 16.3, ",
-           "location_description = 'Polson Camp bridge', ",
+           "location_description = 'Hwy 508 Lower', ",
            "modified_datetime = now(), ",
            "modified_by = 'stromas' ",
-           "where location_id = 'cfef2011-826c-47da-b13c-e70e85b48a6b'")
+           "where location_id = 'a169cded-62b1-41aa-ba27-09a18d8b3b7b'")
 DBI::dbExecute(db_con, qry)
 dbDisconnect(db_con)
 
@@ -1515,6 +1515,27 @@ qry = glue("delete from stream ",
            "where stream_id = 'e6ce7709-d97d-4038-8dcf-8c582d383952'")
 DBI::dbExecute(db_con, qry)
 dbDisconnect(db_con)
+
+#============================================================
+# Add new point
+#============================================================
+
+# Add geometry to existing point
+location_id = "54a49978-5d6c-4569-b4e6-758196ec9743"
+longitude = -123.9194
+latitude = 47.2299
+horizontal_accuracy = NULL
+created_by = "stromas"
+con = pg_con_local(dbname = "spawning_ground")
+qry = glue_sql("INSERT INTO location_coordinates ",
+               "(location_id, horizontal_accuracy, geom, created_by) ",
+               "VALUES ({location_id}, {horizontal_accuracy}, ",
+               "ST_Transform(ST_GeomFromText('POINT({longitude} {latitude})', 4326), 2927), ",
+               "{created_by}) ",
+               .con = con)
+# Run
+DBI::dbExecute(con, qry)
+dbDisconnect(con)
 
 
 #============================================================================================
