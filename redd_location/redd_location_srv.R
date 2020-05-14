@@ -122,6 +122,8 @@ output$redd_map <- renderLeaflet({
   req(input$tabs == "data_entry")
   req(input$surveys_rows_selected)
   req(input$survey_events_rows_selected)
+  # Force map to rerender every time redd_loc_map button is clicked
+  input$redd_loc_map
   # Get data for possibly multiple carcass locations and fitting to bounds
   up_rm = selected_survey_data()$up_rm
   lo_rm = selected_survey_data()$lo_rm
@@ -137,16 +139,20 @@ output$redd_map <- renderLeaflet({
     select(redd_location_id, redd_name, latitude, longitude,
            min_lat, min_lon, max_lat, max_lon)
   # Get data for setting map bounds ========================
-  if (!is.null(input$redd_locations_rows_selected) ) {
+  if ( nrow(redd_coords) == 0L |
+       is.na(input$redd_latitude_input) |
+       is.na(input$redd_longitude_input) ) {
     bounds = tibble(lng1 = selected_stream_bounds()$min_lon,
                     lat1 = selected_stream_bounds()$min_lat,
                     lng2 = selected_stream_bounds()$max_lon,
                     lat2 = selected_stream_bounds()$max_lat)
   } else {
-    bounds = tibble(lng1 = redd_coords$min_lon[1],
-                    lat1 = redd_coords$min_lat[1],
-                    lng2 = redd_coords$max_lon[1],
-                    lat2 = redd_coords$max_lat[1])
+    # Add buffer, otherwise, if only a single point is available in redd_coords,
+    # map zoom may be so high that the map does not render
+    bounds = tibble(lng1 = (redd_coords$min_lon[1] - 0.0015),
+                    lat1 = (redd_coords$min_lat[1] - 0.0015),
+                    lng2 = (redd_coords$max_lon[1] + 0.0015),
+                    lat2 = (redd_coords$max_lat[1] + 0.0015))
   }
   # Generate basemap ======================================
   edit_redd_loc = leaflet() %>%
@@ -249,12 +255,9 @@ observeEvent(input$redd_loc_map, {
                                 tooltip = glue("<span style='font-size:11px;'>",
                                                "You can zoom in on the map and use the circle tool at ",
                                                "the upper left to place a marker where you saw the redd. ",
-                                               "You can use the edit tool to move the circle marker to a ",
-                                               "new location. When done, click on the 'Save coordinates' ",
-                                               "button. If no coordinates appear to the right of this ",
-                                               "information icon after placing a marker, click on any ",
-                                               "row in the 'Redd location' or 'Species data' tables to ",
-                                               "reactivate the marker tools.<span>"))),
+                                               "You can also use the edit tool to move the marker you ",
+                                               "just added if you need to fine-tune the position. When ",
+                                               "satisfied, click on the 'Save coordinates' button. <span>"))),
                    column(width = 9,
                           htmlOutput("redd_coordinates"))
                  )
