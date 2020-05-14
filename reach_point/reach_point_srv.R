@@ -99,7 +99,7 @@ observeEvent(input$reach_points_rows_selected, {
 # See: https://rstudio.github.io/leaflet/markers.html
 output$reach_point_map <- renderLeaflet({
   req(input$tabs == "reach_point")
-  #req(input$reach_points_rows_selected)
+  # Force map to rerender every time use_reach_point_map button is clicked
   input$use_reach_point_map
   reach_coords = get_reach_point(waterbody_id()) %>%
     filter(!is.na(latitude) & !is.na(longitude)) %>%
@@ -113,10 +113,6 @@ output$reach_point_map <- renderLeaflet({
     mutate(reach_label = paste0("River mile: ", river_mile, ", ", reach_descr)) %>%
     select(location_id, reach_label, latitude, longitude,
            min_lat, min_lon, max_lat, max_lon)
-  # print("latitude_input")
-  # print(input$reach_point_latitude_input)
-  # print("row_selected")
-  # print(input$reach_points_rows_selected)
   # Get data for setting map bounds ========================
   if ( nrow(reach_coords) == 0L |
        is.na(input$reach_point_latitude_input) |
@@ -126,6 +122,8 @@ output$reach_point_map <- renderLeaflet({
                     lng2 = selected_stream_bounds()$max_lon,
                     lat2 = selected_stream_bounds()$max_lat)
   } else {
+    # Add buffer, otherwise, if only a single point is available in reach_coords,
+    # map zoom may be so high that the map does not render
     bounds = tibble(lng1 = (reach_coords$min_lon[1] - 0.0015),
                     lat1 = (reach_coords$min_lat[1] - 0.0015),
                     lng2 = (reach_coords$max_lon[1] + 0.0015),
@@ -215,7 +213,6 @@ output$reach_point_coordinates = renderUI({
 
 # Modal for new reach points...add or edit a point...write coordinates to lat, lon
 observeEvent(input$use_reach_point_map, {
-  #req(input$reach_points_rows_selected)
   showModal(
     # Verify required fields have data...none can be blank
     tags$div(id = "reach_point_map_modal",
@@ -237,7 +234,7 @@ observeEvent(input$use_reach_point_map, {
                                                "You can zoom in on the map and use the circle marker ",
                                                "tool at the upper left to place a marker where the ",
                                                "reach end point should be located. You can use the ",
-                                               "edit tool to move the circle marker to a new location. ",
+                                               "edit tool to fine-tune the position of the marker. ",
                                                "You can also use the measure tool at the upper right ",
                                                "to measure the distance in miles from the mouth. ",
                                                "When done, click on the 'Save coordinates' button.<span>"))),

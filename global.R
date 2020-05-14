@@ -147,9 +147,7 @@
 #     Need to have DB code wrapped in try-catch...with toastr.
 # 50. Need to add an other_observations and barrier accordians at the survey level...along
 #     with interface to add or edit location.
-# 51. After adding new streams and lut values needed by Lea's team...reload
-#     sqlite db with completely fresh set of values. Then propogate to other
-#     DBs...archive and prod.
+# 51. Need script to sync central DB location data with local.
 #
 # AS 2020-05-12
 #==============================================================

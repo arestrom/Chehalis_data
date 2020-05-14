@@ -120,6 +120,8 @@ output$fish_map <- renderLeaflet({
   req(input$tabs == "data_entry")
   req(input$surveys_rows_selected)
   req(input$survey_events_rows_selected)
+  # Force map to rerender every time fish_loc_map button is clicked
+  input$fish_loc_map
   # Get data for possibly multiple carcass locations and fitting to bounds
   up_rm = selected_survey_data()$up_rm
   lo_rm = selected_survey_data()$lo_rm
@@ -135,16 +137,20 @@ output$fish_map <- renderLeaflet({
     select(fish_location_id, fish_name, latitude, longitude,
            min_lat, min_lon, max_lat, max_lon)
   # Get data for setting map bounds ========================
-  if (!is.null(input$fish_locations_rows_selected) ) {
+  if ( nrow(carcass_coords) == 0L |
+       is.na(input$fish_latitude_input) |
+       is.na(input$fish_longitude_input) ) {
     bounds = tibble(lng1 = selected_stream_bounds()$min_lon,
                     lat1 = selected_stream_bounds()$min_lat,
                     lng2 = selected_stream_bounds()$max_lon,
                     lat2 = selected_stream_bounds()$max_lat)
   } else {
-    bounds = tibble(lng1 = carcass_coords$min_lon[1],
-                    lat1 = carcass_coords$min_lat[1],
-                    lng2 = carcass_coords$max_lon[1],
-                    lat2 = carcass_coords$max_lat[1])
+    # Add buffer, otherwise, if only a single point is available in carcass_coords,
+    # map zoom may be so high that the map does not render
+    bounds = tibble(lng1 = (carcass_coords$min_lon[1] - 0.0015),
+                    lat1 = (carcass_coords$min_lat[1] - 0.0015),
+                    lng2 = (carcass_coords$max_lon[1] + 0.0015),
+                    lat2 = (carcass_coords$max_lat[1] + 0.0015))
   }
   # Generate basemap ======================================
   edit_fish_loc = leaflet() %>%
@@ -245,14 +251,11 @@ observeEvent(input$fish_loc_map, {
                           actionButton("capture_fish_loc", "Save coordinates"),
                           tippy("<i style='color:#1a5e86;padding-left:8px', class='fas fa-info-circle'></i>",
                                 tooltip = glue("<span style='font-size:11px;'>",
-                                               "You can zoom in on the map and use the cicle tool at ",
+                                               "You can zoom in on the map and use the circle tool at ",
                                                "the upper left to place a marker where you saw the fish. ",
-                                               "You can use the edit tool to move the circle marker to a ",
-                                               "new location. When done, click on the 'Save coordinates' ",
-                                               "button. If no coordinates appear to the right of this ",
-                                               "information icon after placing a marker, click on any ",
-                                               "row in the 'Fish location' or 'Species data' tables to ",
-                                               "reactivate the marker tools.<span>"))),
+                                               "You can also use the edit tool to move the marker you ",
+                                               "just added if you need to fine-tune the position. When ",
+                                               "satisfied, click on the 'Save coordinates' button. <span>"))),
                    column(width = 9,
                           htmlOutput("fish_coordinates"))
                  )
