@@ -93,10 +93,14 @@ observeEvent(input$reach_points_rows_selected, {
 #================================================================
 
 # Output leaflet bidn map....could also use color to indicate species:
+# Notes:
+# 1. input$reach_point_rows_selected is either row number or NULL
+# 2. input$reach_point_latitude_input is either value or NA
 # See: https://rstudio.github.io/leaflet/markers.html
 output$reach_point_map <- renderLeaflet({
   req(input$tabs == "reach_point")
-  req(input$reach_points_rows_selected)
+  #req(input$reach_points_rows_selected)
+  input$use_reach_point_map
   reach_coords = get_reach_point(waterbody_id()) %>%
     filter(!is.na(latitude) & !is.na(longitude)) %>%
     mutate(min_lat = min(latitude),
@@ -109,11 +113,24 @@ output$reach_point_map <- renderLeaflet({
     mutate(reach_label = paste0("River mile: ", river_mile, ", ", reach_descr)) %>%
     select(location_id, reach_label, latitude, longitude,
            min_lat, min_lon, max_lat, max_lon)
+  # print("latitude_input")
+  # print(input$reach_point_latitude_input)
+  # print("row_selected")
+  # print(input$reach_points_rows_selected)
   # Get data for setting map bounds ========================
-  bounds = tibble(lng1 = reach_coords$min_lon[1],
-                  lat1 = reach_coords$min_lat[1],
-                  lng2 = reach_coords$max_lon[1],
-                  lat2 = reach_coords$max_lat[1])
+  if ( nrow(reach_coords) == 0L |
+       is.na(input$reach_point_latitude_input) |
+       is.na(input$reach_point_longitude_input) ) {
+    bounds = tibble(lng1 = selected_stream_bounds()$min_lon,
+                    lat1 = selected_stream_bounds()$min_lat,
+                    lng2 = selected_stream_bounds()$max_lon,
+                    lat2 = selected_stream_bounds()$max_lat)
+  } else {
+    bounds = tibble(lng1 = (reach_coords$min_lon[1] - 0.0015),
+                    lat1 = (reach_coords$min_lat[1] - 0.0015),
+                    lng2 = (reach_coords$max_lon[1] + 0.0015),
+                    lat2 = (reach_coords$max_lat[1] + 0.0015))
+  }
   # Generate basemap ======================================
   edit_reach_loc = leaflet() %>%
     fitBounds(lng1 = bounds$lng1,
@@ -143,6 +160,9 @@ output$reach_point_map <- renderLeaflet({
       editOptions = editToolbarOptions(
         selectedPathOptions = selectedPathOptions()),
       singleFeature = TRUE) %>%
+    addMeasure(primaryLengthUnit = "miles",
+               activeColor = "#d91424",
+               completedColor = "#d914c2") %>%
     addPolylines(
       data = wria_streams(),
       group = "Streams",
@@ -195,7 +215,7 @@ output$reach_point_coordinates = renderUI({
 
 # Modal for new reach points...add or edit a point...write coordinates to lat, lon
 observeEvent(input$use_reach_point_map, {
-  req(input$reach_points_rows_selected)
+  #req(input$reach_points_rows_selected)
   showModal(
     # Verify required fields have data...none can be blank
     tags$div(id = "reach_point_map_modal",
@@ -218,11 +238,9 @@ observeEvent(input$use_reach_point_map, {
                                                "tool at the upper left to place a marker where the ",
                                                "reach end point should be located. You can use the ",
                                                "edit tool to move the circle marker to a new location. ",
-                                               "When done, click on the 'Save coordinates' button. ",
-                                               "If no coordinates appear to the right of this ",
-                                               "information icon after placing a marker, click on any ",
-                                               "row in the 'Reach point' table to reactivate the marker ",
-                                               "tools.<span>"))),
+                                               "You can also use the measure tool at the upper right ",
+                                               "to measure the distance in miles from the mouth. ",
+                                               "When done, click on the 'Save coordinates' button.<span>"))),
                    column(width = 9,
                           htmlOutput("reach_point_coordinates"))
                  )
@@ -501,7 +519,7 @@ observeEvent(input$reach_point_edit, {
   new_reach_point_vals[] = lapply(new_reach_point_vals, remisc::set_na)
   showModal(
     tags$div(id = "reach_point_update_modal",
-             if ( data_manager_flag() == TRUE ) {
+             if ( data_manager_flag() == TRUE & !Sys.getenv("USERNAME") %in% c("stromas", "ronnelmr") ) {
                modalDialog (
                  size = "m",
                  title = "Warning",
@@ -593,8 +611,9 @@ reach_point_dependencies = reactive({
 
 # Generate values to show check modal
 output$reach_point_delete_surveys = renderDT({
-  reach_pt_del_srv = dependent_reach_point_surveys()
-  reach_point_del_dt_msg = glue("All surveys below need to be reassigned to a different reach end point!")
+  reach_pt_del_srv = dependent_reach_point_surveys() %>%
+    select(survey_dt, upper_river_mile, lower_river_mile, observer)
+  reach_point_del_dt_msg = glue("All surveys below need to be reassigned to a different reach end point first!")
   # Generate table
   datatable(reach_pt_del_srv,
             rownames = FALSE,
@@ -617,7 +636,7 @@ observeEvent(input$reach_point_delete, {
   reach_pt_dependencies = reach_point_dependencies()
   table_names = paste0(paste0("'", names(reach_pt_dependencies), "'"), collapse = ", ")
   # Customize the delete message depending on if other entries are linked to location
-  if ( ncol(reach_pt_dependencies) > 0L ) {
+  if ( ncol(reach_pt_dependencies) > 0L | nrow(dependent_reach_point_surveys()) > 0L ) {
     reach_point_delete_msg = glue("Other entries in {table_names} have been assigned to this reach point. ",
                                   "All entries below must be reassigned to another river mile before the ",
                                   "point can be deleted.")
@@ -626,7 +645,7 @@ observeEvent(input$reach_point_delete, {
   }
   showModal(
     tags$div(id = "reach_point_delete_modal",
-             if ( ncol(reach_pt_dependencies) > 0L ) {
+             if ( ncol(reach_pt_dependencies) > 0L | nrow(dependent_reach_point_surveys()) > 0L ) {
                modalDialog (
                  size = "m",
                  title = "Warning",

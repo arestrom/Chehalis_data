@@ -106,10 +106,30 @@ get_reach_point = function(waterbody_id) {
 # Run
 reach_point_coords = get_reach_point(waterbody_id)
 
+# Identify reach_point dependencies prior to delete
+get_reach_point_surveys = function(location_id) {
+  qry = glue("select datetime(s.survey_datetime, 'localtime') as survey_date, ",
+             "locu.river_mile_measure as upper_river_mile, ",
+             "locl.river_mile_measure as lower_river_mile, ",
+             "s.observer_last_name as observer ",
+             "from survey as s ",
+             "left join location as locu on s.upper_end_point_id = locu.location_id ",
+             "left join location as locl on s.lower_end_point_id = locl.location_id ",
+             "where locu.location_id = '{location_id}' or locl.location_id = '{location_id}'")
+  con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  #con = poolCheckout(pool)
+  reach_point_surveys = DBI::dbGetQuery(con, qry)
+  dbDisconnect(con)
+  #poolReturn(con)
+  reach_point_surveys = reach_point_surveys %>%
+    mutate(survey_date = as.POSIXct(survey_date, tz = "America/Los_Angeles")) %>%
+    mutate(survey_dt = format(survey_date, "%m/%d/%Y"))
+  return(reach_point_surveys)
+}
 
-
-
-
+# Test
+loc_id = "8380aa11-d02d-4974-8a6c-4ff8bec0ac35"
+reach_surveys = get_reach_point_surveys(loc_id)
 
 
 
