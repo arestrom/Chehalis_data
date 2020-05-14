@@ -151,7 +151,7 @@
 #     sqlite db with completely fresh set of values. Then propogate to other
 #     DBs...archive and prod.
 #
-# AS 2020-03-19
+# AS 2020-05-12
 #==============================================================
 
 # Load libraries
@@ -226,7 +226,7 @@ source("mobile_import/mobile_import_global.R")
 # Define globals ================================================================
 
 # Switch to RPostgres....works, but need to change placeholders in separate branch...then do PR.
-pool = pool::dbPool(RSQLite::SQLite(), dbname = "data/sg_lite.sqlite", host = "localhost")
+pool = pool::dbPool(RSQLite::SQLite(), dbname = "database/spawning_ground_lite.sqlite", host = "localhost")
 
 # Define functions =============================================================
 

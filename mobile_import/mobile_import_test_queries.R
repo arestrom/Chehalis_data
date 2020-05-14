@@ -125,7 +125,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test: Currently 1486 records....can use start_id in tandem with parent_record_id from DB in the future to filter
+# Test: Currently 1657 records....can use start_id in tandem with parent_record_id from DB in the future to filter
 strt = Sys.time()
 current_surveys = get_core_survey_data(profile_id, parent_form_page_id, start_id = 0L, access_token)
 nd = Sys.time(); nd - strt
@@ -613,6 +613,10 @@ any(is.na(survey_prep$survey_completion_status_id))
 any(is.na(survey_prep$incomplete_survey_type_id))
 any(is.na(survey_prep$created_datetime))
 any(is.na(survey_prep$created_by))
+
+# Pull out cases with no entry in incomplete_survey_type
+chk_incomplete = survey_prep %>%
+  filter(is.na(incomplete_survey_type_id))
 
 
 # Survey comment ================================
@@ -1199,7 +1203,7 @@ all(is.na(chk_mark_species$carcass_condition))
 any(is.na(fish_mark$mark_status_1))
 any(is.na(fish_mark$mark_status_2))
 
-# Trim to only marked fish...went from 2539 rows to 2207 rows..correct: chk_mark_species: 332 rows
+# Trim to only marked fish...went from 2632 rows to 2217 rows..correct: chk_mark_species: 415 rows
 fish_mark = fish_mark %>%
   filter(!mark_status_one == "Not applicable" | !mark_status_two == "Not applicable")
 
@@ -1230,14 +1234,26 @@ fish_mark = fish_mark %>%
 # addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
 # saveWorkbook(wb, out_name, overwrite = TRUE)
 
-# # Pull out only cases Lea indicated could not be correct: 4-5 Not Tagged + both mark_status == Unknown.
-# fish_mark_incorrect = fish_mark %>%
-#   select(parent_record_id, mark_status_1, mark_status_2, common_name,
-#          number_fish, carcass_condition, carc_tag_1, carc_tag_2,
-#          mark_status_one, mark_status_two) %>%
-#   filter(carcass_condition == "4_5 Not Tagged" & mark_status_one == "Unknown" & mark_status_two == "Unknown") %>%
-#   arrange(parent_record_id)
-#
+# Pull out only cases Lea indicated could not be correct: 4-5 Not Tagged + both mark_status == Unknown.
+fish_mark_incorrect = fish_mark %>%
+  select(parent_record_id, mark_status_1, mark_status_2, common_name,
+         number_fish, carcass_condition, carc_tag_1, carc_tag_2,
+         mark_status_one, mark_status_two) %>%
+  filter(carcass_condition == "4_5 Not Tagged" & mark_status_one == "Unknown" & mark_status_two == "Unknown") %>%
+  arrange(parent_record_id)
+
+
+
+
+# STOPPED HERE !!!!!!!!!!!!!!!
+
+
+
+
+
+
+
+
 # # Output with styling
 # num_cols = ncol(fish_mark_incorrect)
 # current_date = format(Sys.Date())
