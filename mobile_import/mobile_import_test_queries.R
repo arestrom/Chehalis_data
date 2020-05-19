@@ -397,7 +397,9 @@ no_end_point = as.data.frame(missing_rm[2])
 
 
 # STOPPED HERE....Need to incorporate to the front-end.
-
+# ToDo:
+#  1. Get rid of "listed" entries in lo_rm etc.
+#  2. Output both spreadsheets to front-end as proofing aids.
 
 
 
