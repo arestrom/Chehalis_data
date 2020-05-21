@@ -18,12 +18,12 @@
 #
 # Notes on R procedure:
 #  1. Updated to convert all times to UTC for loading to sqlite
-#  2. Update lastest batch of streams and points for Lea than ran script: 2020-05-11
+#  2. Update lastest batch of streams and points for Lea than ran script: 2020-05-20 at 7:51 pm.
 #
 # ToDo:
 #  1.
 #
-# AS 2020-05-11
+# AS 2020-05-20
 #===============================================================================
 
 # Clear workspace

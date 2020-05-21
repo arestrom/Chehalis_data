@@ -1,38 +1,19 @@
--- Created on 2020-02-12
+-- Created on 2020-05-20 approx 5:00 pm
 
--- Questions:
---
 -- Setup:
 -- 1. Use DBeaver -> Database -> New database connection -> SQlite -> Browse to set path
 --    then explicitly set name and extension (sqlite). No need for any other settings.
--- 2. Highlight new DB in Database navigator -> Right-click new DB -> SQL editor -> paste in create script and run.
+-- 2. Highlight new DB in Database navigator -> Right-click new DB -> SQL editor -> paste in create script and run using Execute SQL script.
 -- 3. New DB will now be visible in Windows Explorer...it was empty at first creation.
 -- 4. Run load_spawning_ground_lite.R
 
 -- Notes:
 -- 1. Only five datatypes supported: Null, Integer, Real, Text, Blob
 ---   Convert booleans to integer, uuids and datetime to text
--- 2. Spatialite requires an integer primary key and ROWID for geometry
---    columns to work properly... will try first with BLOBs instead.
---    See example in db_setup.R for examples of converting to and from
---    hex and binary.
--- 3. Design notes: https://www.gaia-gis.it/gaia-sins/spatialite-cookbook-5/cookbook_topics.03.html#topic_Creating_a_well_designed_DB
--- 4. Sometimes get error on first run when using spatialite gui...just delete and recreate db once again...then run and success.
 
 -- ToDo:
--- 1.
+-- 1. Write script to update just the new location bits from postgres spawning_ground.
 
--- Spatial examples:
---SELECT AddGeometryColumn('fish_biologist_district', 'geom', 2927, 'POLYGON', 'XY');
---SELECT CreateSpatialIndex("geonames", "Geometry");
-
--- Current date 2020-02-12
-
--- Enable spatialite extension so invokation of CreateUUID() function does not throw error
--- Not needed if using spatialite gui
--- SELECT load_extension('mod_spatialite')
-
--- Create tables: Location Level -----------------------------------------------------------------------------------------------------
 
 -- Location ------------------------------------------------------
 
@@ -656,13 +637,13 @@ CREATE TABLE cwt_detection_status_lut (
     obsolete_datetime text
 ) WITHOUT ROWID;
 
---CREATE TABLE adipose_clip_status_lut (
---	adipose_clip_status_id text PRIMARY KEY,
---    adipose_clip_status_code text NOT NULL,
---    adipose_clip_status_description text NOT NULL,
---    obsolete_flag text NOT NULL,
---    obsolete_datetime text
---) WITHOUT ROWID;
+CREATE TABLE adipose_clip_status_lut (
+	adipose_clip_status_id text PRIMARY KEY,
+    adipose_clip_status_code text NOT NULL,
+    adipose_clip_status_description text NOT NULL,
+    obsolete_flag text NOT NULL,
+    obsolete_datetime text
+) WITHOUT ROWID;
 
 CREATE TABLE fish_behavior_type_lut (
     fish_behavior_type_id text DEFAULT (Createtext()) PRIMARY KEY,
