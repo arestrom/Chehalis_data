@@ -19,10 +19,10 @@ get_streams = function(chosen_wria) {
              "inner join stream as st on wb.waterbody_id = st.waterbody_id ",
              "inner join location as loc on wb.waterbody_id = loc.waterbody_id ",
              "inner join wria_lut as wr on loc.wria_id = wr.wria_id ",
-             "where wria_name = '{chosen_wria}' ",
+             "where wr.wria_code = '{chosen_wria}' ",
              "order by stream_name")
   con = poolCheckout(pool)
-  streams_st = sf::st_read(con, query = qry)
+  streams_st = sf::st_read(con, query = qry, crs = 2927)
   poolReturn(con)
   return(streams_st)
 }

@@ -18,7 +18,8 @@ output$wria_select = renderUI({
 # Get streams in wria
 wria_streams = reactive({
   req(input$wria_select)
-  streams = get_streams(chosen_wria = input$wria_select) %>%
+  chosen_wria = substr(input$wria_select, 1, 2)
+  streams = get_streams(chosen_wria) %>%
     mutate(stream_label = if_else(is.na(stream_name) & !is.na(waterbody_name),
                                   waterbody_name, stream_name)) %>%
     mutate(stream_label = paste0(stream_name, ": ", llid)) %>%

@@ -125,7 +125,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test: Currently 1867 records....can use start_id in tandem with parent_record_id from DB in the future to filter
+# Test: Currently 1884 records....can use start_id in tandem with parent_record_id from DB in the future to filter
 strt = Sys.time()
 current_surveys = get_core_survey_data(profile_id, parent_form_page_id, start_id = 0L, access_token)
 nd = Sys.time(); nd - strt
@@ -166,6 +166,20 @@ new_survey_counts = new_surveys %>%
   select(n_surveys, first_id, start_date, last_id, end_date) %>%
   distinct()
 
+#====================================================================================
+# HARD-CODING SOME CORRECTIONS FOR ITEMS BELOW IN missing_llid !!!!!!!!!!!!!!!!!!!
+#====================================================================================
+
+# # Manually edit two cases !!!!!!!!!!!!!
+# # There is no entry in DB for Trib 0896 0.0-0.4. There is only 0.0-0.5
+# # Also, LLID is entered incorrectly, needs to be 13 characters. One 6 missing
+# new_surveys$reach[new_surveys$parent_form_survey_id == 2295] = "1227031466494_000.00-000.50"
+# new_surveys$reach[new_surveys$parent_form_survey_id == 3165] = "1226096466309_002.60-003.40"
+
+#====================================================================================
+# ELIMINATE SECTION ABOVE IN THE FUTURE !!!!!!!!!!!!!!!!!!!   NEED TO OUTPUT SOMEHOW !!!!
+#====================================================================================
+
 # Pull out LLID and reach values
 new_surveys = new_surveys %>%
   mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
@@ -173,43 +187,43 @@ new_surveys = new_surveys %>%
   mutate(lo_rm = remisc::get_text_item(reach_trim, 1, "-")) %>%
   mutate(up_rm = remisc::get_text_item(reach_trim, 2, "-"))
 
-# Get waterbody_ids for streams missing from option list, based on match with LLIDs
+# Get waterbody_ids. Some changed....need to replace all based on match with llid
 qry = glue("select distinct wb.waterbody_id, wb.waterbody_display_name, ",
            "wb.latitude_longitude_id as llid, st.stream_id as stream_geometry_id ",
            "from waterbody_lut as wb ",
            "left join stream as st on wb.waterbody_id = st.waterbody_id ",
            "order by waterbody_display_name")
 
-# Checkout connection
+# Checkout connection: Currently 584 streams
 con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
 #con = poolCheckout(pool)
 streams = dbGetQuery(con, qry)
 DBI::dbDisconnect(con)
 
-# Identify missing stream values
-found_wb = new_surveys %>%
-  filter(nchar(stream_name) != 36L) %>%
-  left_join(streams, by = "llid") %>%
-  select(parent_form_survey_id, waterbody_id, waterbody_display_name) %>%
-  distinct() %>%
-  arrange(waterbody_display_name)
+# Identify any missing LLIDs in surveys. Currently two without corrections above.
+missing_llid = new_surveys %>%
+  filter(is.na(llid) | !nchar(llid) == 13)
 
 # Add values
 new_surveys = new_surveys %>%
-  left_join(found_wb, by = "parent_form_survey_id") %>%
-  mutate(stream_name = if_else(!is.na(waterbody_id), waterbody_id, stream_name)) %>%
+  left_join(streams, by = "llid") %>%
   mutate(stream_name_text = if_else(!is.na(waterbody_id), waterbody_display_name, stream_name_text)) %>%
-  select(-c(waterbody_id, waterbody_display_name))
+  select(-c(waterbody_display_name))
 
-# Identify missing stream values
+# Identify missing stream values. In many cases stream_name will still have wb_id correctly entered
+# so try joining on stream_name
 missing_stream_vals = new_surveys %>%
-  filter(nchar(stream_name) != 36L) %>%
-  mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
+  filter(is.na(waterbody_id)) %>%
+  select(-c(waterbody_id, stream_geometry_id)) %>%
+  rename(waterbody_id = stream_name, iform_llid = llid) %>%
+  left_join(streams, by = "waterbody_id") %>%
+  mutate(stream_name_text = if_else(!is.na(waterbody_id), waterbody_display_name, stream_name_text)) %>%
+  mutate(no_llid = if_else(is.na(iform_llid) | !nchar(iform_llid) == 13L, "yes", "no")) %>%
   mutate(stream_name = case_when(
-    stream_name == "unnamed_tributary" & no_llid == "no" ~ llid,
-    stream_name == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
-    stream_name == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
-    !stream_name %in% c("unnamed_tributary", "not_listed") ~ stream_name)) %>%
+    waterbody_id == "unnamed_tributary" & no_llid == "no" ~ iform_llid,
+    waterbody_id == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
+    waterbody_id == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
+    !waterbody_id %in% c("unnamed_tributary", "not_listed") ~ waterbody_id)) %>%
   mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
   mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
   mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
@@ -218,8 +232,8 @@ missing_stream_vals = new_surveys %>%
   mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
   mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
   mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
-  select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
-         llid, no_llid, reach, lower_coords, upper_coords) %>%
+  select(parent_form_survey_id, survey_date, waterbody_id, stream_name, stream_name_text,
+         waterbody_display_name, iform_llid, llid, reach, lower_coords, upper_coords) %>%
   distinct()
 
 # # Output with styling
@@ -241,6 +255,10 @@ missing_reach_vals = new_surveys %>%
   mutate(up_rm = trimws(up_rm)) %>%
   filter(is.na(lo_rm) | is.na(up_rm) | lo_rm == "listed" | up_rm == "listed" |
            lo_rm == "" | up_rm == "") %>%
+  select(-c(waterbody_id, stream_geometry_id)) %>%
+  rename(waterbody_id = stream_name, iform_llid = llid) %>%
+  left_join(streams, by = "waterbody_id") %>%
+  mutate(stream_name_text = if_else(!is.na(waterbody_id), waterbody_display_name, stream_name_text)) %>%
   mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
   mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
   mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
@@ -250,8 +268,8 @@ missing_reach_vals = new_surveys %>%
   mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
   mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
   mutate(reach_text = if_else(reach_text == "Not Listed", new_reach, reach_text)) %>%
-  select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
-         reach, reach_text, up_rm, lo_rm, lower_coords, upper_coords) %>%
+  select(parent_form_survey_id, survey_date, waterbody_id, stream_name_text,
+         waterbody_display_name, reach, reach_text, up_rm, lo_rm, lower_coords, upper_coords) %>%
   distinct()
 
 # # Output with styling

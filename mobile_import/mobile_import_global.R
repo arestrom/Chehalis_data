@@ -1,6 +1,6 @@
 
-# Get counts and date-range of surveys ready to download
-count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
+# Get new survey data
+get_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   # Define query for new mobile surveys
   qry = glue("select distinct s.survey_id ",
              "from survey as s")
@@ -17,7 +17,7 @@ count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   # Get list of all survey_ids and parent_form iform ids on server
   field_string <- paste0("id:<(>\"", start_id, "\"),", fields)
   # Loop through all survey records
-  parent_ids = iformr::get_all_records(
+  header_data = iformr::get_all_records(
     server_name = "wdfw",
     profile_id = profile_id,
     page_id = parent_form_page_id,
@@ -28,15 +28,51 @@ count_new_surveys = function(profile_id, parent_form_page_id, access_token) {
     field_string = field_string,
     since_id = start_id)
   # Keep only records where headerid is not in survey_id
-  new_survey_data = parent_ids %>%
+  new_survey_data = header_data %>%
+    mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
+    mutate(reach_trim = remisc::get_text_item(reach, 2, "_")) %>%
+    mutate(lo_rm = remisc::get_text_item(reach_trim, 1, "-")) %>%
+    mutate(up_rm = remisc::get_text_item(reach_trim, 2, "-")) %>%
     select(parent_form_survey_id = id, survey_id = headerid, survey_date,
-           stream_name, stream_name_text, new_stream_name, reach, reach_text,
-           new_reach, gps_loc_lower, gps_loc_upper) %>%
+           stream_name, stream_name_text, new_stream_name, llid,
+           reach, reach_text, lo_rm, up_rm, new_reach, gps_loc_lower,
+           gps_loc_upper) %>%
     distinct() %>%
     anti_join(existing_surveys, by = "survey_id") %>%
     arrange(as.Date(survey_date))
   return(new_survey_data)
 }
+
+# Get all stream data in DB
+get_mobile_streams = function() {
+  qry = glue("select distinct wb.waterbody_id, wb.waterbody_display_name, ",
+             "wb.latitude_longitude_id as llid, st.stream_id as stream_geometry_id ",
+             "from waterbody_lut as wb ",
+             "left join stream as st on wb.waterbody_id = st.waterbody_id ",
+             "order by waterbody_display_name")
+  con = poolCheckout(pool)
+  streams = dbGetQuery(con, qry)
+  poolReturn(con)
+  return(streams)
+}
+
+# Get existing rm_data
+get_mobile_river_miles = function() {
+  qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
+             "wb.waterbody_id, wb.waterbody_display_name, loc.river_mile_measure as river_mile ",
+             "from location as loc ",
+             "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
+             "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
+             "where wria_code in ('22', '23')")
+  # Checkout connection
+  con = poolCheckout(pool)
+  river_mile_data = DBI::dbGetQuery(con, qry) %>%
+    filter(!is.na(llid) & !is.na(river_mile))
+  poolReturn(con)
+  return(river_mile_data)
+}
+
+
 
 # #========================================================
 # # Insert callback
