@@ -192,8 +192,6 @@ get_mobile_river_miles = function() {
   return(river_mile_data)
 }
 
-
-
 #==========================================================================
 # Reactives from mobile_import_srv.R
 #==========================================================================
@@ -310,12 +308,20 @@ add_end_points = function(new_survey_data) {
   # Pull out cases where no match exists
   no_reach_point = add_reach_vals %>%
     filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
+    mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
+    mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
+    mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
+    mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
+    mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
+    mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
+    mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
+    mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
     mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
     mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
     select(parent_form_survey_id, iform_waterbody_id = stream_name, iform_llid = llid,
            db_lo_wbid = lo_wbid, db_up_wbid = up_wbid, iform_stream_name_text = stream_name_text,
-           db_lo_name = lo_name, db_up_name = up_name, reach_text, lo_rm, up_rm, lower_comment,
-           upper_comment) %>%
+           db_lo_name = lo_name, db_up_name = up_name, reach_text, lo_rm, up_rm, lower_coords,
+           upper_coords, lower_comment, upper_comment) %>%
     distinct() %>%
     arrange(iform_stream_name_text, lo_rm, up_rm)
   return(no_reach_point)
