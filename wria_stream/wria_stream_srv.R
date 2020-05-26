@@ -218,7 +218,8 @@ selected_stream_bounds = reactive({
 # Reactive to pull out wria_id
 wria_id = reactive({
   req(input$wria_select)
-  get_streams(chosen_wria = input$wria_select) %>%
+  chosen_wria = substr(input$wria_select, 1, 2)
+  get_streams(chosen_wria) %>%
     st_drop_geometry() %>%
     mutate(wria_id = tolower(wria_id)) %>%
     select(wria_id) %>%

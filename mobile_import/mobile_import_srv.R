@@ -316,6 +316,8 @@ output$add_endpoints = renderDT({
                               reach_text = "",
                               lo_rm = "",
                               up_rm = "",
+                              lower_coords = "",
+                              upper_coords = "",
                               lower_comment = "",
                               upper_comment = "")
   datatable(add_endpoints_data,
