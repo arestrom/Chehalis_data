@@ -89,9 +89,13 @@ live_fish_page_id = iformr::get_page_id(
 # Check
 live_fish_page_id
 
-#==========================================================================
+#===================================================================================================
+# Initial check section to get survey counts and verify streams and reach points are all present
+#===================================================================================================
+
+#============================================
 # Functions from mobile_import_global.R
-#==========================================================================
+#============================================
 
 # Get new survey data
 get_new_surveys = function(profile_id, parent_form_page_id, access_token) {
@@ -153,26 +157,6 @@ get_mobile_streams = function() {
   #poolReturn(con)
   return(streams)
 }
-
-# # Get existing rm_data
-# get_mobile_river_miles = function() {
-#   qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
-#              "wb.waterbody_id, wb.waterbody_display_name, loc.river_mile_measure as rm ",
-#              "from location as loc ",
-#              "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
-#              "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
-#              "where wria_code in ('22', '23')")
-#   # Checkout connection
-#   con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
-#   #con = poolCheckout(pool)
-#   rm_data = DBI::dbGetQuery(con, qry)
-#   DBI::dbDisconnect(con)
-#   #poolReturn(con)
-#   # Dump any data without RMs or llid
-#   rm_data = rm_data %>%
-#     filter(!is.na(llid) & !is.na(rm))
-#   return(rm_data)
-# }
 
 # Get existing rm_data
 get_mobile_river_miles = function() {
@@ -332,13 +316,167 @@ missing_stream_vals = missing_stream_vals(new_survey_data)
 missing_reach_vals = missing_reach_vals(new_survey_data)
 add_end_points = add_end_points(new_survey_data)
 
+#======================================================================================
+# Get top-level header data
+#======================================================================================
 
+# Get header data
+get_header_data = function(profile_id, parent_form_page_id, start_id, access_token) {
+  # Define fields
+  fields = glue::glue("created_date, created_by, created_device_id, modified_date, ",
+                      "modified_by, data_entry_type, target_species, survey_date, ",
+                      "start_time, observers, stream_name, stream_name_text, ",
+                      "new_stream_name, reach, reach_text, new_reach, survey_type, ",
+                      "survey_method, survey_direction, clarity_ft, clarity_code, ",
+                      "weather, flow, stream_conditions, no_survey, reachsplit_yn, ",
+                      "user_name, headerid, end_time, header_comments, stream_temp, ",
+                      "survey_completion_status, chinook_count_type, coho_count_type, ",
+                      "steelhead_count_type, chum_count_type, gps_loc_lower, ",
+                      "gps_loc_upper, coho_run_year, steelhead_run_year, chum_run_year, ",
+                      "chinook_run_year, carcass_tagging, code_reach")
+  # Order by id ascending and get all records after start_id
+  field_string = glue('id:<(>"{start_id}"), {fields}')
+  # Loop through all survey records
+  parent_records = iformr::get_all_records(
+    server_name = "wdfw",
+    profile_id = profile_id,
+    page_id = parent_form_page_id,
+    fields = "fields",
+    limit = 1000,
+    offset = 0,
+    access_token = access_token,
+    field_string = field_string,
+    since_id = since_id)
+  return(parent_records)
+}
 
+# New access token
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
+}
 
+# Test...currently 1910 records....approx 4.0 seconds
+# Get start_id
+# Pull out start_id
+start_id = min(new_survey_data$parent_form_survey_id) - 1
+# start_id = new_survey_counts$first_id -1
+strt = Sys.time()
+header_data = get_header_data(profile_id, parent_form_page_id, start_id, access_token)
+nd = Sys.time(); nd - strt
 
+# Check some date and time values
+any(is.na(header_data$survey_date))
+# chk_date = header_data %>%
+#   filter(is.na(survey_date))
+# # TEMPORARY FIX !!!!!!!!!!!!
+# header_data = header_data %>%
+#   filter(!is.na(survey_date))
 
+# Process dates etc
+# Rename id to parent_record_id for more explicit joins to subform data...convert dates, etc.
+header_data = header_data %>%
+  rename(parent_record_id = id, survey_uuid = headerid) %>%
+  mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date))) %>%
+  mutate(modified_datetime = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(survey_start_datetime = as.POSIXct(paste0(survey_date, " ", start_time), tz = "America/Los_Angeles")) %>%
+  mutate(survey_end_datetime = as.POSIXct(paste0(survey_date, " ", end_time), tz = "America/Los_Angeles")) %>%
+  mutate(created_datetime = with_tz(created_datetime, tzone = "UTC")) %>%
+  mutate(modified_datetime = with_tz(modified_datetime, tzone = "UTC")) %>%
+  mutate(survey_start_datetime = with_tz(survey_start_datetime, tzone = "UTC")) %>%
+  mutate(survey_end_datetime = with_tz(survey_end_datetime, tzone = "UTC")) %>%
+  # Temporary fix for target species...mostly key values...but a couple with names !!!!!!!
+  mutate(target_species = case_when(
+    target_species == "Chinook" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",
+    target_species == "Chum" ~ "69d1348b-7e8e-4232-981a-702eda20c9b1",
+    !target_species %in% c("Chinook", "Chum") ~ target_species)) %>%
+  mutate(created_by = stringi::stri_replace_all_fixed(observers, "@dfw.wa.gov", "")) %>%
+  mutate(observers = stringi::stri_replace_all_fixed(observers, "@dfw.wa.gov", "")) %>%
+  mutate(observers = stringi::stri_replace_all_fixed(observers, ".", " ")) %>%
+  mutate(observers = stringi::stri_trans_totitle(observers)) %>%
+  select(parent_record_id, survey_uuid, created_datetime, created_by, modified_datetime,
+         modified_by, created_device_id, data_entry_type, target_species, survey_date,
+         survey_start_datetime, survey_end_datetime, observers, stream_name, stream_name_text,
+         new_stream_name, reach, reach_text, new_reach, survey_type, survey_method,
+         survey_direction, clarity_ft, clarity_code, weather, flow,stream_conditions,
+         no_survey, reachsplit_yn, user_name, end_time, header_comments,
+         stream_temp, survey_completion_status, chinook_count_type, coho_count_type,
+         steelhead_count_type, chum_count_type, gps_loc_lower, gps_loc_upper,
+         coho_run_year, steelhead_run_year, chum_run_year, chinook_run_year,
+         carcass_tagging, code_reach)
 
+# CHECKS -------------------------------------------------------
 
+# Check some values
+unique(header_data$observers)
+unique(header_data$data_entry_type)
+unique(header_data$reachsplit_yn)
+
+# Check for missing values...required fields
+any(is.na(header_data$survey_date))
+any(is.na(header_data$survey_start_datetime))
+any(is.na(header_data$survey_end_datetime))
+any(is.na(header_data$survey_type))
+any(is.na(header_data$survey_method))
+
+# Optional
+any(is.na(header_data$survey_direction))
+unique(header_data$chinook_count_type)
+unique(header_data$coho_count_type)
+unique(header_data$steelhead_count_type)
+unique(header_data$chum_count_type)
+
+# Run year
+unique(header_data$coho_run_year)
+unique(header_data$steelhead_run_year)
+unique(header_data$chum_run_year)
+unique(header_data$chinook_run_year)
+unique(header_data$carcass_tagging)
+
+# Pull out missing required fields....now zero
+missing_req = header_data %>%
+  filter(is.na(survey_date) | is.na(survey_type) | is.na(survey_method)) %>%
+  select(parent_record_id, created_by, survey_date, observers, stream_name_text,
+         reach_text, survey_type, survey_method)
+#write.csv(missing_req, "data/missing_data.csv")
+
+# Check
+any(is.na(header_data$survey_uuid))
+any(header_data$survey_uuid == "")
+unique(nchar(header_data$survey_uuid))
+min(header_data$parent_record_id)
+
+# Generate new survey_id where missing...pull into separate datasets
+no_survey_id = header_data %>%
+  filter(is.na(survey_uuid))
+
+with_survey_id = header_data %>%
+  filter(!is.na(survey_uuid))
+
+# Add uuid
+no_survey_id = no_survey_id %>%
+  mutate(survey_uuid = remisc::get_uuid(nrow(no_survey_id)))
+
+# Combine
+header_data = rbind(no_survey_id, with_survey_id)
+
+# Check
+any(is.na(header_data$survey_uuid))
+any(header_data$survey_uuid == "")
+unique(nchar(header_data$survey_uuid))
+any(duplicated(header_data$survey_uuid))
+min(header_data$parent_record_id)
+
+# Pull out data with duplicated survey_uuid
+chk_uuid = header_data %>%
+  filter(duplicated(survey_uuid)) %>%
+  select(survey_uuid) %>%
+  left_join(header_data, by = "survey_uuid")
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
