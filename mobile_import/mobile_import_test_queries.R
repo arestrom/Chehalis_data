@@ -1333,18 +1333,6 @@ fish_mark_incorrect = fish_mark %>%
   filter(carcass_condition == "4_5 Not Tagged" & mark_status_one == "Unknown" & mark_status_two == "Unknown") %>%
   arrange(parent_record_id)
 
-
-
-
-# STOPPED HERE !!!!!!!!!!!!!!!
-
-
-
-
-
-
-
-
 # # Output with styling
 # num_cols = ncol(fish_mark_incorrect)
 # current_date = format(Sys.Date())
@@ -1382,12 +1370,19 @@ fish_mark = fish_mark %>%
   left_join(header_se, by = "parent_record_id")
 
 # Pull out fish_capture_event
-fish_capture_event = fish_mark %>%
+fish_capture_event_prep = fish_mark %>%
   mutate(disposition_location_id = NA_character_) %>%
   select(parent_record_id, fish_capture_status_id, disposition_type_id,
          disposition_id, disposition_location_id, created_datetime = created_date,
          created_by, head_created_by, modified_datetime = modified_date,
          modified_by, head_mod_by)
+
+# Check
+any(is.na(fish_capture_event_prep$fish_capture_status_id))
+any(is.na(fish_capture_event_prep$disposition_type_id))
+any(is.na(fish_capture_event_prep$disposition_id))
+any(is.na(fish_capture_event_prep$created_datetime))
+any(is.na(fish_capture_event_prep$created_by))
 
 # Pull out fish mark data separate and combine
 fish_mark_one = fish_mark %>%
@@ -1407,6 +1402,17 @@ fish_mark_prep = rbind(fish_mark_one, fish_mark_two) %>%
   mutate(tag_number = trimws(tag_number)) %>%
   mutate(tag_number = if_else(tag_number == "", NA_character_, tag_number))
 
+# Check
+any(is.na(fish_mark_prep$mark_type_id))
+any(is.na(fish_mark_prep$mark_status_id))
+any(is.na(fish_mark_prep$mark_orientation_id))
+any(is.na(fish_mark_prep$mark_placement_id))
+any(is.na(fish_mark_prep$mark_size_id))
+any(is.na(fish_mark_prep$mark_color_id))
+any(is.na(fish_mark_prep$mark_shape_id))
+any(is.na(fish_mark_prep$created_datetime))
+any(is.na(fish_mark_prep$created_by))
+
 #============ individual_fish =============================================
 
 # Pull out individual_fish data
@@ -1416,7 +1422,38 @@ dead_ind = dead %>%
          spawn_condition_type_id = spawn_condition, cwt_snout_sample_number = cwt_label,
          genetic_sample_number = dna_number, scale_sample_card_number = scale_card_number,
          scale_sample_position_number = scale_card_position_number, encounter_comments,
-         created_date, created_by, modified_date, modified_by)
+         created_date, created_by, modified_date, modified_by) %>%
+  mutate(fish_condition_type_id = trimws(fish_condition_type_id)) %>%
+  mutate(fish_condition_type_id = if_else(fish_condition_type_id == "",
+                                          NA_character_, fish_condition_type_id)) %>%
+  mutate(length_measurement_cm = as.numeric(length_measurement_cm)) %>%
+  mutate(spawn_condition_type_id = trimws(spawn_condition_type_id)) %>%
+  mutate(spawn_condition_type_id = if_else(spawn_condition_type_id == "",
+                                           NA_character_, spawn_condition_type_id)) %>%
+  mutate(cwt_snout_sample_number = trimws(cwt_snout_sample_number)) %>%
+  mutate(cwt_snout_sample_number = if_else(cwt_snout_sample_number == "",
+                                           NA_character_, cwt_snout_sample_number)) %>%
+  mutate(genetic_sample_number = trimws(genetic_sample_number)) %>%
+  mutate(genetic_sample_number = if_else(genetic_sample_number == "",
+                                         NA_character_, genetic_sample_number)) %>%
+  mutate(scale_sample_card_number = trimws(scale_sample_card_number)) %>%
+  mutate(scale_sample_card_number = if_else(scale_sample_card_number == "",
+                                            NA_character_, scale_sample_card_number)) %>%
+  mutate(scale_sample_position_number = trimws(scale_sample_position_number)) %>%
+  mutate(scale_sample_position_number = if_else(scale_sample_position_number == "",
+                                                NA_character_, scale_sample_position_number)) %>%
+  mutate(encounter_comments = trimws(encounter_comments)) %>%
+  mutate(encounter_comments = if_else(encounter_comments == "",
+                                      NA_character_, encounter_comments)) %>%
+  mutate(all_na = if_else(is.na(fish_condition_type_id) |
+                            fish_condition_type_id == "0cd8f278-1c3e-4ad4-b7c7-9afebc8e2358" &
+                            ( is.na(length_measurement_cm) &
+                                is.na(spawn_condition_type_id) &
+                                is.na(cwt_snout_sample_number) &
+                                is.na(genetic_sample_number) &
+                                is.na(scale_sample_card_number) &
+                                is.na(scale_sample_position_number) ),
+                          "yes", "no"))
 
 #======================================================================================================================
 # Import from live fish subform

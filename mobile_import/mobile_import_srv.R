@@ -69,10 +69,30 @@ new_survey_data = eventReactive(input$check_for_new_surveys, {
   return(new_surveys)
 })
 
+# Reactive to process gps data
+core_survey_data = reactive({
+  survey_data = new_survey_data() %>%
+    mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
+    mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
+    mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
+    mutate(lower_coords = gsub("[\t]", ":", lower_coords)) %>%
+    mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
+    mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
+    mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
+    mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
+    mutate(upper_coords = gsub("[\t]", ":", upper_coords)) %>%
+    mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
+    select(parent_form_survey_id, survey_id, survey_date, stream_name,
+           stream_name_text, new_stream_name, llid, reach, reach_text,
+           lo_rm, up_rm, new_reach, lower_coords, upper_coords,
+           waterbody_id, stream_geometry_id)
+})
+
+
 # Reactive for missing streams
 missing_stream_vals = reactive({
   streams = stream_data()
-  missing_streams = new_survey_data() %>%
+  missing_streams = core_survey_data() %>%
     filter(is.na(waterbody_id)) %>%
     select(-c(waterbody_id, stream_geometry_id)) %>%
     rename(waterbody_id = stream_name, iform_llid = llid) %>%
@@ -84,14 +104,6 @@ missing_stream_vals = reactive({
       waterbody_id == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
       waterbody_id == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
       !waterbody_id %in% c("unnamed_tributary", "not_listed") ~ waterbody_id)) %>%
-    mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
-    mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
-    mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
-    mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
-    mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
-    mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
-    mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
-    mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
     mutate(iform_llid = if_else(iform_llid %in% c("", "not"), NA_character_, iform_llid)) %>%
     mutate(reach = if_else(reach %in% c("", "not_listed"), NA_character_, reach)) %>%
     select(parent_form_survey_id, survey_date, waterbody_id, stream_name, stream_name_text,
@@ -103,7 +115,7 @@ missing_stream_vals = reactive({
 # Reactive for missing reaches
 missing_reach_vals =reactive({
   streams = stream_data()
-  missing_reaches = new_survey_data() %>%
+  missing_reaches = core_survey_data() %>%
     mutate(lo_rm = trimws(lo_rm)) %>%
     mutate(up_rm = trimws(up_rm)) %>%
     filter(is.na(lo_rm) | is.na(up_rm) | lo_rm == "listed" | up_rm == "listed" |
@@ -112,14 +124,6 @@ missing_reach_vals =reactive({
     rename(waterbody_id = stream_name, iform_llid = llid) %>%
     left_join(streams, by = "waterbody_id") %>%
     mutate(stream_name_text = if_else(!is.na(waterbody_id), waterbody_display_name, stream_name_text)) %>%
-    mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
-    mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
-    mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
-    mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
-    mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
-    mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
-    mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
-    mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
     mutate(reach_text = if_else(reach_text == "Not Listed", new_reach, reach_text)) %>%
     mutate(up_rm = if_else(up_rm %in% c("", "listed"), NA_character_, up_rm)) %>%
     mutate(lo_rm = if_else(lo_rm %in% c("", "listed"), NA_character_, lo_rm)) %>%
@@ -142,7 +146,7 @@ add_end_points = reactive({
     select(upper_end_point_id = location_id, llid, up_rm = river_mile,
            up_wbid = waterbody_id, up_name = waterbody_display_name) %>%
     distinct()
-  add_reach_vals = new_survey_data() %>%
+  add_reach_vals = core_survey_data() %>%
     filter(nchar(reach) >= 27L) %>%
     mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
     mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
@@ -153,14 +157,6 @@ add_end_points = reactive({
   # Pull out cases where no match exists
   no_reach_point = add_reach_vals %>%
     filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
-    mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
-    mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
-    mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
-    mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
-    mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
-    mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
-    mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
-    mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
     mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
     mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
     select(parent_form_survey_id, iform_waterbody_id = stream_name, iform_llid = llid,
