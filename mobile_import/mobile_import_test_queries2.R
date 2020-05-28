@@ -29,6 +29,8 @@ other_obs_form_name = "r6_stream_surveys_other_observation"
 other_pics_form_name = "r6_stream_surveys_other_pics"
 dead_fish_form_name = "r6_stream_surveys_deads"
 live_fish_form_name = "r6_stream_surveys_lives"
+redds_form_name = "r6_stream_surveys_redds"
+recaps_form_name = "r6_tagged_carcass_recoveries"
 
 # Get access token
 access_token = NULL
@@ -88,6 +90,26 @@ live_fish_page_id = iformr::get_page_id(
 
 # Check
 live_fish_page_id
+
+# Get the dead fish form id
+redds_page_id = iformr::get_page_id(
+  server_name = "wdfw",
+  profile_id = profile_id,
+  page_name = redds_form_name,
+  access_token = access_token)
+
+# Check
+redds_page_id
+
+# Get the dead fish form id
+recaps_page_id = iformr::get_page_id(
+  server_name = "wdfw",
+  profile_id = profile_id,
+  page_name = recaps_form_name,
+  access_token = access_token)
+
+# Check
+recaps_page_id
 
 #===================================================================================================
 # Initial check section to get survey counts and verify streams and reach points are all present
@@ -202,7 +224,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Get new survey_data: currently 1928 records
+# Get new survey_data: currently 1940 records
 new_survey_data = get_new_survey_data(profile_id, parent_form_page_id, access_token)
 
 # Reactive to process gps data
@@ -381,7 +403,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1928 records....approx 4.0 seconds
+# Test...currently 1940 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -1439,14 +1461,14 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 2639 records
+# Test...currently 859 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 live = get_live(profile_id, live_fish_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
 # Dump any records that are not in header_data
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 2539 records after filter
+# Filter to header_data with no missing stream or reach_id for now. 859 records after filter
 live = live %>%
   filter(!parent_record_id %in% del_id)
 
@@ -1466,67 +1488,225 @@ live_se = live %>%
 
 #============ fish_encounter ========================
 
-# Pull out fish_encounter data....calculate maturity later...from sex
-live_fe_unk_mark_unk_sex = live %>%
+# Pull out fish_encounter data categories
+live_fe_unknown_mark_unknown_sex = live %>%
   select(parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
-         run_type, live_type, fish_count = unknown_mark_unknown_sex_count) %>%
+         live_type, fish_count = unknown_mark_unknown_sex_count) %>%
   mutate(sex_id = "c0f86c86-dc49-406b-805d-c21a6756de91") %>%                    # Unknown
   mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
-  mutate(adipose_clip_status_id = "")
-  mutate()
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Unable to check
 
-
-
-
-
-
-
-# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Pull out fish_encounter data....calculate maturity later...from sex
-live_fe = live %>%
-  mutate(fish_status_id = "b185dc5d-6b15-4b5b-a54e-3301aec0270f") %>%            # Dead fish
-  mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%                # Unknown
-  mutate(fish_behavior_type_id = "70454429-724e-4ccf-b8a6-893cafba356a") %>%     # Not applicable...dead fish
-  mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...not in form
-  mutate(previously_counted_indicator = 0L) %>%
+# Pull out fish_encounter data categories
+live_fe_unmarked_male = live %>%
   select(parent_record_id, created_date, created_by, created_location,
-         modified_date, modified_by, modified_location, fish_status_id, fish_sex,
-         origin_id, cwt_detected, clip_status, fish_behavior_type_id,
-         mortality_type_id, fish_count = number_fish, previously_counted_indicator)
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = unmarked_male_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "66d9a635-a127-4d12-8998-6e86dd93afa6")        # Not clipped
 
-# #============== fish_capture_event and fish_mark =============
-#
-# # Correct and add species common name
-# unique(fish_mark$species_fish)
-# fish_mark = fish_mark %>%
-#   mutate(species_fish = if_else(species_fish == "Chum", "69d1348b-7e8e-4232-981a-702eda20c9b1", species_fish)) %>%
-#   mutate(common_name = case_when(
-#     species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1" ~ "Chum",
-#     species_fish == "e42aa0fc-c591-4fab-8481-55b0df38dcb1" ~ "Chinook",
-#     species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304" ~ "Coho",
-#     species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1" ~ "Sthd",
-#     TRUE ~ species_fish)) %>%
+# Pull out fish_encounter data categories
+live_fe_unmarked_female = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = unmarked_female_count) %>%
+  mutate(sex_id = "1511973c-cbe1-4101-9481-458130041ee7") %>%                    # Female
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "66d9a635-a127-4d12-8998-6e86dd93afa6")        # Not clipped
 
+# Pull out fish_encounter data categories
+live_fe_unmarked_jack = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = unmarked_jack_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "0b0d12cf-ed27-48fb-ade2-b408067520e1") %>%               # Subadult
+  mutate(adipose_clip_status_id = "66d9a635-a127-4d12-8998-6e86dd93afa6")        # Not clipped
 
+# Pull out fish_encounter data categories
+live_fe_unmarked_unknown_sex = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = unmarked_unknown_sex_count) %>%
+  mutate(sex_id = "c0f86c86-dc49-406b-805d-c21a6756de91") %>%                    # Unknown
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "66d9a635-a127-4d12-8998-6e86dd93afa6")        # Not clipped
+
+# Pull out fish_encounter data categories
+live_fe_unknown_mark_male = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = unknown_mark_male_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Unable to check
+
+# Pull out fish_encounter data categories
+live_fe_unknown_mark_female = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = unknown_mark_female_count) %>%
+  mutate(sex_id = "1511973c-cbe1-4101-9481-458130041ee7") %>%                    # Female
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Unable to check
+
+# Pull out fish_encounter data categories
+live_fe_unknown_mark_jack = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = unknown_mark_jack_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "0b0d12cf-ed27-48fb-ade2-b408067520e1") %>%               # Subadult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Unable to check
+
+# Pull out fish_encounter data categories
+live_fe_ad_male = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = ad_male_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Clipped
+
+# Pull out fish_encounter data categories
+live_fe_ad_female = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = ad_female_count) %>%
+  mutate(sex_id = "1511973c-cbe1-4101-9481-458130041ee7") %>%                    # Female
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Clipped
+
+# Pull out fish_encounter data categories
+live_fe_ad_jack = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = ad_jack_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "0b0d12cf-ed27-48fb-ade2-b408067520e1") %>%               # Subadult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Clipped
+
+# Pull out fish_encounter data categories
+live_fe_ad_mark_unknown_sex = live %>%
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, species_fish,
+         live_type, fish_count = ad_mark_unknown_sex_count) %>%
+  mutate(sex_id = "c0f86c86-dc49-406b-805d-c21a6756de91") %>%                    # Unknown
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Clipped
+
+# Combine
+live_fe = rbind(live_fe_unknown_mark_unknown_sex,
+                live_fe_unmarked_male,
+                live_fe_unmarked_female,
+                live_fe_unmarked_jack,
+                live_fe_unmarked_unknown_sex,
+                live_fe_unknown_mark_male,
+                live_fe_unknown_mark_female,
+                live_fe_unknown_mark_jack,
+                live_fe_ad_male,
+                live_fe_ad_female,
+                live_fe_ad_jack,
+                live_fe_ad_mark_unknown_sex)
+
+# # Do a quick check on ad_clip for chum...only UN and NC ok to convert all to NC
+# chk_chum_clip = live_fe %>%
+#   filter(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1")
+# table(chk_chum_clip$adipose_clip_status_id, useNA = "ifany")
+
+# Change any "Unable to check" cases to not checked for chum
+live_fe = live_fe %>%
+  mutate(adipose_clip_status_id = if_else(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1",
+                                          "33b78489-7ad3-4482-9455-3988e05bfb28",
+                                          adipose_clip_status_id))
+
+# Add some columns
+live_fe = live_fe %>%
+  mutate(fish_status_id = "6a200904-8a57-4dd5-8c82-2353f91186ac") %>%            # Live fish
+  mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%                # Unknown....not in form
+  mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...live fish
+  mutate(previously_counted_indicator = 0L) %>%                                  # Not in form
+  select(parent_record_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, fish_status_id,
+         sex_id, origin_id, adipose_clip_status_id, fish_behavior_type_id = live_type,
+         mortality_type_id, fish_count, previously_counted_indicator)
+
+#======================================================================================================================
+# Import from redds subform
+#======================================================================================================================
+
+# Function to get dead fish records....No nested subforms
+get_redds = function(profile_id, redds_page_id, start_id, access_token) {
+  # Define fields
+  fields = glue::glue("parent_page_id, parent_element_id, created_date, created_by, ",
+                      "created_location, created_device_id, modified_date, modified_by, ",
+                      "modified_location, modified_device_id, server_modified_date, ",
+                      "redd_type, species_redd, redd_count, new_redd_name, transitory_redd_list, ",
+                      "other_redd_name, previous_redd_name, sgs_redd_name, redd_location, ",
+                      "redd_loc_in_river, river_location_text, redd_length, redd_width, ",
+                      "redd_degraded, dewatered, dewater_text, si_redd, percent_si, ",
+                      "si_by, si_text, sgs_redd_status, redd_latitude, redd_longitude, ",
+                      "fish_on_redd, live_unknown_mark_unknown_sex_count, ",
+                      "live_unmarked_unknown_sex_count, status_marksex, live_unmarked_female_count, ",
+                      "live_unmarked_male_count, live_ad_clipped_female_count, ",
+                      "live_ad_clipped_male_count, live_ad_clipped_unknown_sex_count, ",
+                      "live_unknown_mark_female_count, live_unknown_mark_male_count, ",
+                      "live_unmarked_jack_count, live_unknown_mark_jack_count, ",
+                      "live_ad_clipped_jack_count,stat_week,species_code, ",
+                      "new_redd_count, redd_number_generator, sch_redd_passing, ",
+                      "fch_redd_passing, coho_redd_passing, steelhead_redd_passing, ",
+                      "pacific_lamprey_redd_passing, wb_lamprey_redd_passing, ",
+                      "encounter_comments, prev_redd_grade, prev_redd_location, ",
+                      "prev_redd_si, prev_redd_dewatered, prev_live_redd, prev_comments, ",
+                      "my_element_55, total_fish_on_redd, redd_status, redd_loc_accuracy, ",
+                      "sgs_species, sgs_run, redd_orientation, redd_channel_type, ",
+                      "redd_time_stamp, prev_species_code, prev_si_by")
+  # Order by id ascending and get all records after start_id
+  field_string = glue('id:<, parent_record_id(>"{start_id}"), {fields}')
+  # Loop through all survey records
+  redds = iformr::get_all_records(
+    server_name = "wdfw",
+    profile_id = profile_id,
+    page_id = redds_page_id,
+    fields = "fields",
+    limit = 1000,
+    offset = 0,
+    access_token = access_token,
+    field_string = field_string,
+    since_id = since_id)
+  return(redds)
+}
+
+# New access token
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
+}
+
+# Set start_id as the minimum parent_record_id minus one
+start_id = min(header_data$parent_record_id) - 1
+
+# Test...currently 10629 records: Checked that I got first and last parent_record_id
+strt = Sys.time()
+redds = get_redds(profile_id, redds_page_id, start_id, access_token)
+nd = Sys.time(); nd - strt
+
+# Dump any records that are not in header_data
+# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Filter to header_data with no missing stream or reach_id for now. 10629 records after filter
+redds = redds %>%
+  filter(!parent_record_id %in% del_id)
+
+# Process dates
+redds = redds %>%
+  mutate(created_date = as.POSIXct(iformr::idate_time(created_date))) %>%
+  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
+  mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
 
 
 
