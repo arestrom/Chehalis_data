@@ -224,7 +224,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Get new survey_data: currently 1940 records
+# Get new survey_data: currently 1951 records
 new_survey_data = get_new_survey_data(profile_id, parent_form_page_id, access_token)
 
 # Reactive to process gps data
@@ -403,7 +403,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1940 records....approx 4.0 seconds
+# Test...currently 1951 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -453,7 +453,7 @@ header_data = header_data %>%
          carcass_tagging, code_reach)
 
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now
+# Filter to header_data with no missing stream or reach_id for now: 1949
 header_data = header_data %>%
   filter(!parent_record_id %in% del_id)
 
@@ -915,14 +915,14 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 300 records
+# Test...currently 301 records
 strt = Sys.time()
 other_obs = get_other_obs(profile_id, other_obs_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
 # Dump any records that are not in header_data
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 176 records after filter
+# Filter to header_data with no missing stream or reach_id for now. 301 records after filter
 other_obs = other_obs %>%
   filter(!parent_record_id %in% del_id)
 
@@ -951,7 +951,7 @@ get_other_pictures = function(profile_id, other_pics_page_id, start_id, access_t
   return(other_pics)
 }
 
-# Test...currently 178 records
+# Test...currently 179 records
 strt = Sys.time()
 other_pictures = get_other_pictures(profile_id, other_pics_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -1149,7 +1149,7 @@ nd = Sys.time(); nd - strt
 
 # Dump any records that are not in header_data
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 2539 records after filter
+# Filter to header_data with no missing stream or reach_id for now. 2655 records after filter
 dead = dead %>%
   filter(!parent_record_id %in% del_id)
 
@@ -1188,8 +1188,8 @@ dead_fe = dead %>%
   mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...not in form
   mutate(previously_counted_indicator = 0L) %>%
   select(parent_record_id, created_date, created_by, created_location,
-         modified_date, modified_by, modified_location, fish_status_id, fish_sex,
-         origin_id, cwt_detected, clip_status, fish_behavior_type_id,
+         modified_date, modified_by, modified_location, fish_status_id,
+         sex_id = fish_sex, origin_id, cwt_detected, clip_status, fish_behavior_type_id,
          mortality_type_id, fish_count = number_fish, previously_counted_indicator)
 
 #============== fish_capture_event and fish_mark =============
@@ -1690,14 +1690,14 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 10629 records: Checked that I got first and last parent_record_id
+# Test...currently 10651 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
 # Dump any records that are not in header_data
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 10629 records after filter
+# Filter to header_data with no missing stream or reach_id for now. 10651 records after filter
 redds = redds %>%
   filter(!parent_record_id %in% del_id)
 
@@ -1707,6 +1707,146 @@ redds = redds %>%
   mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date))) %>%
   mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
   mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
+
+#================================================================================================
+# Pull out redd location data
+#================================================================================================
+
+# Investigate redd type to see which need to be pulled for entry to location table
+unique(redds$redd_type)
+table(redds$redd_type, useNA = "ifany")
+
+# Strategy:
+# 1. Pull out just the new redd names for location table
+# 2. Pull out all the previously flagged
+# 3. Verify that all the previously flagged have matching redd_names (only one) in location table
+
+# Get additional info from new_survey_data
+loc_info = header_data %>%
+  select(parent_record_id, survey_id = survey_uuid, survey_date,
+         observers, stream_name_text, reach) %>%
+  distinct()
+
+# Add info to redds
+redds = redds %>%
+  left_join(loc_info, by = "parent_record_id")
+
+# Get redd location data: 2812 records
+redd_loc = redds %>%
+  filter(redd_type == "first_time_redd_encountered") %>%
+  select(id, parent_record_id, created_date, created_by, created_location,
+         survey_id, survey_date, observers, stream_name_text, reach, redd_type,
+         river_location_text, sgs_redd_name, redd_latitude, redd_longitude,
+         redd_loc_accuracy, redd_orientation, redd_channel_type)
+
+# Combine
+redd_loc = redd_loc %>%
+  mutate(redd_latitude = as.numeric(redd_latitude)) %>%
+  mutate(redd_longitude = as.numeric(redd_longitude)) %>%
+  mutate(redd_loc_accuracy = as.numeric(redd_loc_accuracy)) %>%
+  mutate(redd_latitude = if_else(redd_latitude == 0, NA_real_, redd_latitude)) %>%
+  mutate(redd_longitude = if_else(redd_longitude == 0, NA_real_, redd_longitude)) %>%
+  mutate(redd_loc_accuracy = if_else(is.na(redd_longitude) | is.na(redd_latitude),
+                                     NA_real_, redd_loc_accuracy))
+
+# Checks ================================================================
+
+# Pull out cases with missing coordinates for inspection
+no_redd_coords = redd_loc %>%
+  filter(is.na(redd_latitude) | is.na(redd_longitude) |
+           redd_latitude < 45 | redd_longitude > -121)
+
+# Pull out cases where redd_name is missing: 498
+no_redd_name = redds %>%
+  filter(is.na(sgs_redd_name)) %>%
+  select(id, parent_record_id, created_date, created_by, created_location,
+         survey_id, survey_date, observers, stream_name_text, reach, redd_type,
+         species_redd, redd_count, new_redd_name, other_redd_name, previous_redd_name,
+         sgs_redd_name, redd_location, redd_latitude, redd_longitude, stat_week,
+         species_code, new_redd_count, redd_number_generator, redd_status,
+         prev_species_code) %>%
+  arrange(stream_name_text, created_date)
+
+# Inspect
+unique(no_redd_name$redd_type)
+
+# Pull out all old redds to see if a matching new_redd name exists
+old_redd_names = redds %>%
+  filter(redd_type == "previously_flagged") %>%
+  filter(!is.na(sgs_redd_name)) %>%
+  mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
+  select(id, parent_record_id, created_date, created_by, created_location,
+         survey_id, survey_date, observers, stream_name_text, reach, redd_type,
+         river_location_text, sgs_redd_name, redd_latitude, redd_longitude,
+         redd_loc_accuracy, redd_orientation, redd_channel_type)
+
+# Old_redd_ids
+old_sgs_redd_names = old_redd_names %>%
+  pull(sgs_redd_name)
+
+# Pull out all new redds
+new_redd_names = redd_loc %>%
+  mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
+  filter(!is.na(sgs_redd_name))
+
+# Old_redd_ids
+new_sgs_redd_names = new_redd_names %>%
+  pull(sgs_redd_name)
+
+# Filter to matching redd_names
+matching_old_redd_names = old_redd_names %>%
+  filter(sgs_redd_name %in% new_sgs_redd_names)
+
+# Identify those where no match occurs
+no_match_to_old_redd_names = old_redd_names %>%
+  filter(!sgs_redd_name %in% new_sgs_redd_names)
+
+# # Output with styling
+# num_cols = ncol(no_match_to_old_redd_names)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "NoMatchOldReddNames.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "NoMatchReddNames", gridLines = TRUE)
+# writeData(wb, sheet = 1, no_match_to_old_redd_names, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
