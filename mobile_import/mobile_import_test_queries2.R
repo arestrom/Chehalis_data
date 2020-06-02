@@ -225,7 +225,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Get new survey_data: currently 1970 records
+# Get new survey_data: currently 1973 records
 new_survey_data = get_new_survey_data(profile_id, parent_form_page_id, access_token)
 
 # Reactive to process gps data
@@ -404,7 +404,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1970 records....approx 4.0 seconds
+# Test...currently 1973 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -1908,7 +1908,7 @@ no_match_to_old_redd_names = old_redd_names %>%
 #
 # Strategy:
 #  1. Only enter new redds to location table...only 10 old redds had coordinates
-#  2. Enter all redds to redd_encounter, but only include a location_id if there
+#  2. Enter all redds to redd_encounter, but only include a location_id if
 #     a redd_name exists or coordinates exist
 #  3. Old redds will be matched by redd_name
 #============================================================================
@@ -1930,7 +1930,8 @@ redd_location_prep = new_redd_loc %>%
 redd_location_prep = redd_location_prep %>%
   mutate(location_id = remisc::get_uuid(nrow(redd_location_prep))) %>%
   mutate(location_type_id = "d5edb1c0-f645-4e82-92af-26f5637b2de0") %>%      # Redd encounter
-  select(location_id, waterbody_id, wria_id, location_type_id,
+  select(id, parent_record_id, survey_id, location_id,
+         waterbody_id, wria_id, location_type_id,
          stream_channel_type_id = redd_channel_type,
          location_orientation_type_id = redd_orientation,
          location_name = sgs_redd_name, latitude = redd_latitude,
@@ -1945,7 +1946,25 @@ redd_location_coords_prep = redd_location_prep %>%
          created_datetime, created_by, modified_datetime,
          modified_by)
 
+#================================================================================================
+# Pull out redd encounter data
+#================================================================================================
 
+
+
+# For Tuesday
+# 1. Make sure to only join on survey_id. Parent record ID is duplicated in several cases where
+#    surveys were split. Inspect all earlier code....!!!!!!!!!!!!!!!!!!!!
+# 2. Output dead_se, live_se, live_fe, dead_fe to include survey_id and subform_id. Need to be
+#    able to fully link later, but without using potentially split parent_record_id
+
+
+
+
+
+
+# Pull out redd_encounter data
+redd_encounter = redds
 
 
 
