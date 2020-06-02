@@ -59,7 +59,8 @@ get_mobile_streams = function() {
 # Get existing rm_data
 get_mobile_river_miles = function() {
   qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
-             "wb.waterbody_id, wb.waterbody_display_name, loc.river_mile_measure as river_mile ",
+             "wb.waterbody_id, wb.waterbody_display_name, wr.wria_id, ",
+             "wr.wria_code, loc.river_mile_measure as river_mile ",
              "from location as loc ",
              "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
              "left join wria_lut as wr on loc.wria_id = wr.wria_id ",

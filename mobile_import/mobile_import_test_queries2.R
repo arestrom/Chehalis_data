@@ -183,7 +183,8 @@ get_mobile_streams = function() {
 # Get existing rm_data
 get_mobile_river_miles = function() {
   qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
-             "wb.waterbody_id, wb.waterbody_display_name, loc.river_mile_measure as river_mile ",
+             "wb.waterbody_id, wb.waterbody_display_name, wr.wria_id, ",
+             "wr.wria_code, loc.river_mile_measure as river_mile ",
              "from location as loc ",
              "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
              "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
@@ -224,7 +225,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Get new survey_data: currently 1951 records
+# Get new survey_data: currently 1970 records
 new_survey_data = get_new_survey_data(profile_id, parent_form_page_id, access_token)
 
 # Reactive to process gps data
@@ -294,7 +295,7 @@ get_missing_reach_vals = function(core_survey_data) {
 }
 
 # Reactive for new end-points needed
-get_add_end_points = function(new_survey_data) {
+get_add_end_points = function(core_survey_data) {
   add_reach_vals = core_survey_data %>%
     filter(nchar(reach) >= 27L) %>%
     mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
@@ -403,7 +404,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1951 records....approx 4.0 seconds
+# Test...currently 1970 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -457,14 +458,18 @@ header_data = header_data %>%
 header_data = header_data %>%
   filter(!parent_record_id %in% del_id)
 
-# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Change one set of RM values.....identified below at line 577
-header_data$reach[header_data$parent_record_id == 1050L] = "1239182470329_010.70-010.70"
+# Pull out data with issues below for inspection
+chk_hack = header_data %>%
+  filter(parent_record_id %in% c(1050, 1947))
 
-# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Change one partial survey no_survey reason to Not Applicable.....identified below at line 610
-# Based on answer from Lea....but fix did not stick
-header_data$no_survey[header_data$parent_record_id == 1947L] = "cde5d9fb-bb33-47c6-9018-177cd65d15f5"
+# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # Change one set of RM values.....identified below at line 577
+# header_data$reach[header_data$parent_record_id == 1050L] = "1239182470329_010.70-010.70"
+#
+# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # Change one partial survey no_survey reason to Not Applicable.....identified below at line 610
+# # Based on answer from Lea....but fix did not stick
+# header_data$no_survey[header_data$parent_record_id == 1947L] = "cde5d9fb-bb33-47c6-9018-177cd65d15f5"
 
 # CHECKS -------------------------------------------------------
 
@@ -572,7 +577,7 @@ survey_prep = header_data %>%
 survey_prep = survey_prep %>%
   mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
   mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
-  mutate(low_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
+  mutate(lo_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
   mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-")))
 
 # Dump any data without RMs or llid
@@ -580,31 +585,49 @@ river_mile_data = get_mobile_river_miles() %>%
   filter(!is.na(llid) & !is.na(river_mile))
 
 # Pull out lower_rms
-low_rm_data = river_mile_data %>%
-  select(lower_end_point_id = location_id, llid, low_rm = river_mile) %>%
+lo_rm_data = river_mile_data %>%
+  select(lower_end_point_id = location_id, llid, lo_rm = river_mile,
+         lo_wria_id = wria_id, lo_wb_id = waterbody_id) %>%
   distinct()
 
 # Pull out upper_rms
 up_rm_data = river_mile_data %>%
-  select(upper_end_point_id = location_id, llid, up_rm = river_mile) %>%
+  select(upper_end_point_id = location_id, llid, up_rm = river_mile,
+         up_wria_id = wria_id, up_wb_id = waterbody_id) %>%
   distinct()
 
 # Join to survey_prep
 survey_prep = survey_prep %>%
-  left_join(low_rm_data, by = c("llid", "low_rm")) %>%
+  left_join(lo_rm_data, by = c("llid", "lo_rm")) %>%
   left_join(up_rm_data, by = c("llid", "up_rm"))
 
 # Pull out cases where no match exists
 no_reach_point = survey_prep %>%
   filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
   distinct() %>%
-  arrange(stream_name_text, low_rm, up_rm)
+  arrange(stream_name_text, lo_rm, up_rm)
 
 # Warn if any missing
 if ( nrow(no_reach_point) > 0L ) {
   cat("\nWARNING: Some end-points still missing. Do not pass go!\n\n")
 } else {
   cat("\nAll end-points now present. Ok to proceed.\n\n")
+}
+
+# Get location info for adding to tables below
+survey_loc_info = survey_prep %>%
+  select(parent_record_id, survey_id, lo_wria_id, up_wria_id,
+         lo_wb_id, up_wb_id) %>%
+  mutate(wria_id = if_else(lo_wria_id == up_wria_id, lo_wria_id, NA_character_)) %>%
+  mutate(waterbody_id = if_else(lo_wb_id == up_wb_id, lo_wb_id, NA_character_))
+
+# Warn if any missing wria_id or waterbody_id
+if ( any(is.na(survey_loc_info$wria_id)) | any(is.na(survey_loc_info$waterbody_id)) ) {
+  cat("\nWARNING: Some surveys conducted on different streams. Do not pass go!\n\n")
+} else {
+  cat("\nAll stream and wria_ids match. Ok to proceed.\n\n")
+  survey_loc_info = survey_loc_info %>%
+    select(parent_record_id, survey_id, wria_id, waterbody_id)
 }
 
 # Finalize survey table
@@ -1096,8 +1119,14 @@ obs_location = other_obs %>%
          created_datetime, created_by, modified_datetime,
          modified_by)
 
-# Combine....wait to process until all location data for all surveys are combined !!!
-header_location = rbind(barrier_location, obs_location)
+# Trim loc_info
+loc_info = survey_loc_info %>%
+  select(survey_id, wria_id, waterbody_id) %>%
+  distinct()
+
+# Combine then add loc info
+header_location = rbind(barrier_location, obs_location) %>%
+  left_join(loc_info, by = "survey_id")
 
 #======================================================================================================================
 # Import from dead fish subform
@@ -1196,8 +1225,8 @@ dead_fe = dead %>%
 
 # Pull out fish mark data
 fish_mark = dead %>%
-  select(parent_record_id, created_date, created_by, modified_date,
-         modified_by, species_fish, number_fish, carcass_condition,
+  select(parent_record_id, subform_id = id, created_date, created_by,
+         modified_date, modified_by, species_fish, number_fish, carcass_condition,
          carc_tag_1, carc_tag_2, mark_status_1, mark_status_2)
 
 # Correct and add species common name
@@ -1266,11 +1295,11 @@ fish_mark = fish_mark %>%
 
 # Pull out only cases Lea indicated could not be correct: 4-5 Not Tagged + both mark_status == Unknown.
 fish_mark_incorrect = fish_mark %>%
-  select(parent_record_id, mark_status_1, mark_status_2, common_name,
-         number_fish, carcass_condition, carc_tag_1, carc_tag_2,
-         mark_status_one, mark_status_two) %>%
+  select(parent_record_id, subform_id, mark_status_1, mark_status_2,
+         common_name, number_fish, carcass_condition, carc_tag_1,
+         carc_tag_2, mark_status_one, mark_status_two) %>%
   filter(carcass_condition == "4_5 Not Tagged" & mark_status_one == "Unknown" & mark_status_two == "Unknown") %>%
-  arrange(parent_record_id)
+  arrange(parent_record_id, subform_id)
 
 # # Output with styling
 # num_cols = ncol(fish_mark_incorrect)
@@ -1690,7 +1719,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 10651 records: Checked that I got first and last parent_record_id
+# Test...currently 10935 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -1716,31 +1745,62 @@ redds = redds %>%
 unique(redds$redd_type)
 table(redds$redd_type, useNA = "ifany")
 
-# Strategy:
-# 1. Pull out just the new redd names for location table
-# 2. Pull out all the previously flagged
-# 3. Verify that all the previously flagged have matching redd_names (only one) in location table
+# Strategy...initial check:
+# 1. Pull out just the new redd names for location table...only ten old redds had coordinates...all old had names
+# 2. Pull out all the previously flagged. Identify any with no match in new, then add comment in redd_encounter
+# 3. Verify that all the previously flagged have matching redd_names in location table...110 did not. Need to flag
+
+# Pull out river_mile data for stream name
+stream_info = river_mile_data %>%
+  select(waterbody_id, stream_name = waterbody_display_name) %>%
+  distinct()
+
+# Pull out header data for survey_date and observers
+header_info = header_data %>%
+  select(survey_id = survey_uuid, survey_date, observers) %>%
+  distinct()
 
 # Get additional info from new_survey_data
-loc_info = header_data %>%
-  select(parent_record_id, survey_id = survey_uuid, survey_date,
-         observers, stream_name_text, reach) %>%
+redd_loc_info = survey_loc_info %>%
+  left_join(stream_info, by = "waterbody_id") %>%
+  left_join(header_info, by = "survey_id") %>%
+  select(parent_record_id, survey_id, wria_id, waterbody_id,
+         survey_date, observers, stream_name) %>%
   distinct()
 
 # Add info to redds
 redds = redds %>%
-  left_join(loc_info, by = "parent_record_id")
+  left_join(redd_loc_info, by = "parent_record_id")
 
-# Get redd location data: 2812 records
-redd_loc = redds %>%
+# Get redd location data: 2818 records
+new_redd_loc = redds %>%
   filter(redd_type == "first_time_redd_encountered") %>%
   select(id, parent_record_id, created_date, created_by, created_location,
-         survey_id, survey_date, observers, stream_name_text, reach, redd_type,
-         river_location_text, sgs_redd_name, redd_latitude, redd_longitude,
+         modified_date, modified_by, survey_id, survey_date, observers,
+         stream_name, waterbody_id, wria_id,redd_type, river_location_text,
+         sgs_redd_name, redd_latitude, redd_longitude, redd_loc_accuracy,
+         redd_orientation, redd_channel_type)
+
+# Get redd location data: 8117 records
+old_redd_loc = redds %>%
+  filter(redd_type == "previously_flagged") %>%
+  select(id, parent_record_id, created_date, created_by, created_location,
+         survey_id, survey_date, observers, stream_name, waterbody_id, wria_id,
+         redd_type, river_location_text, sgs_redd_name, redd_latitude, redd_longitude,
          redd_loc_accuracy, redd_orientation, redd_channel_type)
 
-# Combine
-redd_loc = redd_loc %>%
+# Format
+new_redd_loc = new_redd_loc %>%
+  mutate(redd_latitude = as.numeric(redd_latitude)) %>%
+  mutate(redd_longitude = as.numeric(redd_longitude)) %>%
+  mutate(redd_loc_accuracy = as.numeric(redd_loc_accuracy)) %>%
+  mutate(redd_latitude = if_else(redd_latitude == 0, NA_real_, redd_latitude)) %>%
+  mutate(redd_longitude = if_else(redd_longitude == 0, NA_real_, redd_longitude)) %>%
+  mutate(redd_loc_accuracy = if_else(is.na(redd_longitude) | is.na(redd_latitude),
+                                     NA_real_, redd_loc_accuracy))
+
+# Format
+old_redd_loc = old_redd_loc %>%
   mutate(redd_latitude = as.numeric(redd_latitude)) %>%
   mutate(redd_longitude = as.numeric(redd_longitude)) %>%
   mutate(redd_loc_accuracy = as.numeric(redd_loc_accuracy)) %>%
@@ -1751,21 +1811,38 @@ redd_loc = redd_loc %>%
 
 # Checks ================================================================
 
-# Pull out cases with missing coordinates for inspection
-no_redd_coords = redd_loc %>%
+# Pull out cases with missing coordinates for inspection: 69 cases
+no_redd_coords_new = new_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
 
-# Pull out cases where redd_name is missing: 498
+# Pull out cases with missing coordinates for inspection: 8096 cases....All but 10 cases with no coordinates
+no_redd_coords_old = old_redd_loc %>%
+  filter(is.na(redd_latitude) | is.na(redd_longitude) |
+           redd_latitude < 45 | redd_longitude > -121)
+
+# Pull out cases with missing redd_names for inspection: 532 cases
+no_redd_name_new = new_redd_loc %>%
+  mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
+  filter(is.na(sgs_redd_name) | sgs_redd_name == "")
+
+# Pull out cases with missing coordinates for inspection: 10 cases
+no_redd_coords_or_name_new = new_redd_loc %>%
+  mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
+  filter(is.na(redd_latitude) | is.na(redd_longitude) |
+           redd_latitude < 45 | redd_longitude > -121) %>%
+  filter(is.na(sgs_redd_name) | sgs_redd_name == "")
+
+# Pull out cases where redd_name is missing: 498 cases...all new redds
 no_redd_name = redds %>%
   filter(is.na(sgs_redd_name)) %>%
   select(id, parent_record_id, created_date, created_by, created_location,
-         survey_id, survey_date, observers, stream_name_text, reach, redd_type,
+         survey_id, survey_date, observers, stream_name, waterbody_id, wria_id, redd_type,
          species_redd, redd_count, new_redd_name, other_redd_name, previous_redd_name,
          sgs_redd_name, redd_location, redd_latitude, redd_longitude, stat_week,
          species_code, new_redd_count, redd_number_generator, redd_status,
          prev_species_code) %>%
-  arrange(stream_name_text, created_date)
+  arrange(stream_name, created_date)
 
 # Inspect
 unique(no_redd_name$redd_type)
@@ -1773,19 +1850,22 @@ unique(no_redd_name$redd_type)
 # Pull out all old redds to see if a matching new_redd name exists
 old_redd_names = redds %>%
   filter(redd_type == "previously_flagged") %>%
-  filter(!is.na(sgs_redd_name)) %>%
+  # filter(!is.na(sgs_redd_name)) %>%                   # Not needed. All had redd_names
   mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
   select(id, parent_record_id, created_date, created_by, created_location,
-         survey_id, survey_date, observers, stream_name_text, reach, redd_type,
-         river_location_text, sgs_redd_name, redd_latitude, redd_longitude,
-         redd_loc_accuracy, redd_orientation, redd_channel_type)
+         survey_id, survey_date, observers, stream_name, waterbody_id, wria_id, redd_type,
+         species_redd, redd_count, new_redd_name, other_redd_name, previous_redd_name,
+         sgs_redd_name, redd_location, redd_latitude, redd_longitude, stat_week,
+         species_code, new_redd_count, redd_number_generator, redd_status,
+         prev_species_code) %>%
+  arrange(stream_name, created_date)
 
 # Old_redd_ids
 old_sgs_redd_names = old_redd_names %>%
   pull(sgs_redd_name)
 
 # Pull out all new redds
-new_redd_names = redd_loc %>%
+new_redd_names = new_redd_loc %>%
   mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
   filter(!is.na(sgs_redd_name))
 
@@ -1797,7 +1877,7 @@ new_sgs_redd_names = new_redd_names %>%
 matching_old_redd_names = old_redd_names %>%
   filter(sgs_redd_name %in% new_sgs_redd_names)
 
-# Identify those where no match occurs
+# Identify those where no match occurs: 71 cases.
 no_match_to_old_redd_names = old_redd_names %>%
   filter(!sgs_redd_name %in% new_sgs_redd_names)
 
@@ -1814,8 +1894,69 @@ no_match_to_old_redd_names = old_redd_names %>%
 # addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
 # saveWorkbook(wb, out_name, overwrite = TRUE)
 
+#============================================================================
+# Process for redd_location and redd_encounter table
+#
+# Notes:
+#  1. Only 10 old redds had any coordinates entered. All old redds had redd_names
+#  2. Only 110 old redds had no match to new redd names. These can me manually fixed
+#     later using the front-end.
+#  3. 532 new redds had no redd_name...These still need to be in location table if
+#     coordinates are present.
+#  4. Ten new redd cases had no coords or redd_name. These should not be entered
+#     to location table....no need.
+#
+# Strategy:
+#  1. Only enter new redds to location table...only 10 old redds had coordinates
+#  2. Enter all redds to redd_encounter, but only include a location_id if there
+#     a redd_name exists or coordinates exist
+#  3. Old redds will be matched by redd_name
+#============================================================================
+
+# Pull out ids of records to dump from redd_location_prep...no coords or redd_name
+redd_dump_ids = no_redd_coords_or_name_new %>%
+  pull(id)
+
+# # Pull out created by data
+# by_dat = s_id %>%
+#   select(survey_id, create_by = head_create_by,
+#          mod_by = head_mod_by)
+
+# Prep redd_location data
+redd_location_prep = new_redd_loc %>%
+  filter(!id %in% redd_dump_ids)
+
+# Create and organize needed fields
+redd_location_prep = redd_location_prep %>%
+  mutate(location_id = remisc::get_uuid(nrow(redd_location_prep))) %>%
+  mutate(location_type_id = "d5edb1c0-f645-4e82-92af-26f5637b2de0") %>%      # Redd encounter
+  select(location_id, waterbody_id, wria_id, location_type_id,
+         stream_channel_type_id = redd_channel_type,
+         location_orientation_type_id = redd_orientation,
+         location_name = sgs_redd_name, latitude = redd_latitude,
+         longitude = redd_longitude,
+         horizonal_accuracy = redd_loc_accuracy,
+         created_datetime = created_date, created_by,
+         modified_datetime = modified_date, modified_by)
+
+# Pull out redd_coordinates
+redd_location_coords_prep = redd_location_prep %>%
+  select(location_id, latitude, longitude, horizonal_accuracy,
+         created_datetime, created_by, modified_datetime,
+         modified_by)
 
 
+
+
+
+
+
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+ blum
 
 
 
