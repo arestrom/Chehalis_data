@@ -1527,33 +1527,8 @@ chk_recaps = recaps_se %>%
 
 #=========== fish_mark =============================
 
-# Join placed tags to recaps to get mark data
-# In the future...will need to query database to get tag info !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-tag_info_one = fish_mark_prep %>%
-  filter(!is.na(tag_number)) %>%
-  select(tag_number_one = tag_number, mark_type_id_one = mark_type_id,
-         mark_orientation_id_one = mark_orientation_id, mark_size_id_one = mark_size_id,
-         mark_color_id_one = mark_color_id, mark_shape_id_one = mark_shape_id)
-tag_info_two = fish_mark_prep %>%
-  filter(!is.na(tag_number)) %>%
-  select(tag_number_two = tag_number, mark_type_id_two = mark_type_id,
-         mark_orientation_id_two = mark_orientation_id, mark_size_id_two = mark_size_id,
-         mark_color_id_two = mark_color_id, mark_shape_id_two = mark_shape_id)
-
-
-
-
-
-
-
-
-
-
-# STOPPED HERE !!!!!!!!!!!!!!!!!!!!
-
-
 # ADD run values to recaps
-# Get run type from dead to add to recaps
+# Get run type from dead
 dead_run = dead %>%
   select(run_id = run_type, carc_tag_1, carc_tag_2) %>%
   mutate(tag_number = coalesce(carc_tag_1, carc_tag_2)) %>%
@@ -1564,17 +1539,20 @@ dead_run = dead %>%
 head(sort(unique(dead_run$tag_number)), 15)
 tail(sort(unique(dead_run$tag_number)), 15)
 
-
-
-
-
-
-
-
-
-
-
-
+# Join placed tags to recaps to get mark data
+# In the future...will need to query database to get tag info !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+tag_info_one = fish_mark_prep %>%
+  filter(!is.na(tag_number)) %>%
+  left_join(dead_run, by = "tag_number") %>%
+  select(tag_number_one = tag_number, run_id_one = run_id, mark_type_id_one = mark_type_id,
+         mark_orientation_id_one = mark_orientation_id, mark_size_id_one = mark_size_id,
+         mark_color_id_one = mark_color_id, mark_shape_id_one = mark_shape_id)
+tag_info_two = fish_mark_prep %>%
+  filter(!is.na(tag_number)) %>%
+  left_join(dead_run, by = "tag_number") %>%
+  select(tag_number_two = tag_number, run_id_two = run_id, mark_type_id_two = mark_type_id,
+         mark_orientation_id_two = mark_orientation_id, mark_size_id_two = mark_size_id,
+         mark_color_id_two = mark_color_id, mark_shape_id_two = mark_shape_id)
 
 # Join to recaps
 recaps_se = recaps_se %>%
@@ -1582,13 +1560,14 @@ recaps_se = recaps_se %>%
   mutate(tag_number_two = recovery_tag_2) %>%
   left_join(tag_info_one, by = "tag_number_one") %>%
   left_join(tag_info_two, by = "tag_number_two") %>%
+  mutate(run_id = coalesce(run_id_one, run_id_two)) %>%
   mutate(mark_type_id = coalesce(mark_type_id_one, mark_type_id_two)) %>%
   mutate(mark_orientation_id = coalesce(mark_orientation_id_one, mark_orientation_id_two)) %>%
   mutate(mark_size_id = coalesce(mark_size_id_one, mark_size_id_two)) %>%
   mutate(mark_color_id = coalesce(mark_color_id_one, mark_color_id_two)) %>%
   mutate(mark_shape_id = coalesce(mark_shape_id_one, mark_shape_id_two)) %>%
   select(recap_id, parent_record_id, survey_id, survey_design_type_id,
-         species_id, tag_number_one, tag_number_two, mark_type_id,
+         species_id, tag_number_one, tag_number_two, run_id, mark_type_id,
          mark_orientation_id, mark_size_id, mark_color_id, mark_shape_id,
          created_date, created_by, modified_date, modified_by) %>%
   distinct()
@@ -1596,12 +1575,12 @@ recaps_se = recaps_se %>%
 # Pull out separately and stack
 recaps_se_one = recaps_se %>%
   select(recap_id, parent_record_id, survey_id, survey_design_type_id,
-         species_id, tag_number = tag_number_one, mark_type_id,
+         species_id, tag_number = tag_number_one, run_id, mark_type_id,
          mark_orientation_id, mark_size_id, mark_color_id, mark_shape_id,
          created_date, created_by, modified_date, modified_by)
 recaps_se_two = recaps_se %>%
   select(recap_id, parent_record_id, survey_id, survey_design_type_id,
-         species_id, tag_number = tag_number_two, mark_type_id,
+         species_id, tag_number = tag_number_two, run_id, mark_type_id,
          mark_orientation_id, mark_size_id, mark_color_id, mark_shape_id,
          created_date, created_by, modified_date, modified_by)
 recaps_se = rbind(recaps_se_one, recaps_se_two) %>%
@@ -1621,7 +1600,7 @@ recaps_fish_mark_prep = recaps_se %>%
     TRUE ~ "68e174c7-ea47-4084-a567-bd33b241f94e")) %>%                                       # Observed
   mutate(mark_placement_id = "d35aacb1-20b3-41d7-b24e-00d4941b68a8") %>%                      # Opercle
   select(recap_id, parent_record_id, survey_id, survey_design_type_id,
-         species_id, mark_type_id, mark_status_id, mark_orientation_id,
+         species_id, run_id, mark_type_id, mark_status_id, mark_orientation_id,
          mark_placement_id, mark_size_id, mark_color_id, mark_shape_id,
          tag_number, created_date, created_by, modified_date, modified_by)
 
@@ -1633,7 +1612,7 @@ recaps_fish_capture_event_prep = recaps_se %>%
   mutate(disposition_type_id = "24b51215-f7ea-4480-ba7d-436144969ac3") %>%                   # Carcass returned
   mutate(disposition_id = "dd6d0cab-1cc8-4b07-af93-5cd0be1a7a7f") %>%                        # Not applicable
   select(recap_id, parent_record_id, survey_id, survey_design_type_id,
-         species_id, fish_capture_status_id, disposition_type_id,
+         species_id, run_id, fish_capture_status_id, disposition_type_id,
          disposition_id, created_date, created_by, modified_date,
          modified_by)
 
@@ -2166,6 +2145,7 @@ redds_se = redds %>%
 #================================================================================================
 
 # Prep tables for stacking
+# Dead
 dead_sev = dead_se %>%
   select(dead_id, survey_id, species_id = species_fish,
          run_id = run_type, created_date, created_by,
@@ -2173,22 +2153,147 @@ dead_sev = dead_se %>%
   left_join(header_se, by = "survey_id") %>%
   select(dead_id, survey_id, species_id, survey_design_type_id,
          run_id)
-
-# Add run to recaps
+# Recaps
 recaps_sev = recaps_se %>%
-  left_join(dead_run, by = "tag_number") %>%
-  select(recap_id, survey_id, species_id, )
+  select(recap_id, survey_id, species_id, survey_design_type_id,
+         run_id)
+# Live
+live_sev = live_se %>%
+  left_join(header_se, by = "survey_id") %>%
+  select(live_id, survey_id, species_id = species_fish,
+         survey_design_type_id, run_id = run_type)
+# Redds
+# Need to add redd name to extract species where missing and verify any differences
+redd_name_species = redds %>%
+  select(redd_id, sgs_redd_name, sgs_species)
 
-any(is.na(recaps_sev$tag_number))
+# Add to redds_se
+redds_sev = redds_se %>%
+  select(redd_id, survey_id, species_id = sgs_species,
+         survey_design_type_id, run_id = sgs_run) %>%
+  left_join(redd_name_species, by = "redd_id") %>%
+  mutate(species_id = if_else(species_id == "", NA_character_, species_id))
 
-# Stack the se tables
-survey_event = bind_rows(dead_sev, recaps_se, live_se, redds_se)
+# Verify the columns
+unique(redds_sev$species_id[!nchar(redds_sev$species_id) == 36L])
 
+# Pull out species code from redd_name
+redds_sev = redds_sev %>%
+  mutate(species_code = if_else(nchar(sgs_redd_name) > 7,
+                                remisc::get_text_item(sgs_redd_name, 3, "_"),
+                                substr(sgs_redd_name, 1, 1))) %>%
+  mutate(species_int = substr(species_code, 1, 1)) %>%
+  mutate(species_int = if_else(species_int %in% c("", "*"),
+                               NA_character_, species_int)) %>%
+  mutate(new_species = case_when(
+    species_int == "1" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",
+    species_int == "4" ~ "a0f5b3af-fa07-449c-9f02-14c5368ab304",
+    species_int == "6" ~ "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1",
+    is.na(species_int) ~ NA_character_)) %>%
+  mutate(filled_species = case_when(
+    is.na(sgs_species) & !is.na(new_species) ~ new_species,
+    !is.na(sgs_species) & is.na(new_species) ~ sgs_species,
+    !is.na(sgs_species) & !is.na(new_species) ~ new_species,
+    is.na(sgs_species) & is.na(new_species) ~ NA_character_)) %>%
+  mutate(diff_species = if_else(filled_species == new_species,
+                                "same", "diff"))
 
+# Check
+unique(redds_sev$species_int)
+table(redds_sev$species_int, useNA = "ifany")
 
+# Pull out cases where species differ: None
+redd_species_differ = redds_sev %>%
+  filter(diff_species == "diff")
 
+# Pull out case where species is still missing: None
+no_redd_species = redds_sev %>%
+  filter(is.na(filled_species))
 
+# Pull out final set of data
+redds_sev = redds_sev %>%
+  select(redd_id, survey_id, species_id = filled_species,
+         survey_design_type_id, run_id)
 
+# Stack the sev tables
+survey_event = bind_rows(dead_sev, recaps_sev, live_sev, redds_sev) %>%
+  select(dead_id, live_id, recap_id, redd_id, survey_id,
+         species_id, survey_design_type_id, run_id)
+
+# Correct the species cases
+survey_event = survey_event %>%
+  mutate(species_id = if_else(species_id == "", NA_character_, species_id)) %>%
+  mutate(species_id = if_else(species_id == "Chum", "69d1348b-7e8e-4232-981a-702eda20c9b1", species_id))
+
+# Verify the columns
+unique(survey_event$survey_id[!nchar(survey_event$survey_id) == 36L])
+unique(survey_event$species_id[!nchar(survey_event$species_id) == 36L])
+unique(survey_event$survey_design_type_id[!nchar(survey_event$survey_design_type_id) == 36L])
+unique(survey_event$run_id[!nchar(survey_event$run_id) == 36L])
+
+# Add detection method info
+dead_detect = dead_fe %>%
+  select(dead_id, cwt_detected, fish_count) %>%
+  mutate(cwt_detected = if_else(is.na(cwt_detected) | cwt_detected == "",
+                                "bd7c5765-2ca3-4ab4-80bc-ce1a61ad8115", cwt_detected)) %>%   # Not applicable
+  mutate(cwt_detected = if_else(cwt_detected == "unknown",
+                                "efe698a8-98dd-45df-ba5b-0d448c88121d", cwt_detected)) %>%   # Undetermined
+  distinct()
+
+# Check
+unique(dead_detect$cwt_detected[!nchar(dead_detect$cwt_detected) == 36L])
+
+# Add to survey_event
+survey_event = survey_event %>%
+  left_join(dead_detect, by = "dead_id") %>%
+  mutate(cwt_detection_method_id =
+           if_else(cwt_detected %in% c("6242055f-b2bc-44c1-b0d4-3ce24be44bbe",          # Beep or no beep
+                                       "ba4209af-3839-46a7-bd5d-57bc8516f7af") &
+                     !is.na(fish_count) & fish_count > 0L,
+                   "d2de4873-e9ab-4eda-b1a0-fb9dcc2face7",                              # Electronic
+                   "89a9b6b4-6ea4-44c4-b2e4-e537060e73d3")) %>%                         # Not applicable
+  mutate(cwt_detection_method_id =
+           if_else(species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1",                # Chum
+                   "89a9b6b4-6ea4-44c4-b2e4-e537060e73d3",                              # Not applicable
+                   cwt_detection_method_id))
+
+# Check
+unique(dead_detect$cwt_detected[!nchar(dead_detect$cwt_detected) == 36L])
+
+# Add run_year
+run_year_info = header_se %>%
+  select(survey_id, coho_run_year, steelhead_run_year,
+         chum_run_year, chinook_run_year) %>%
+  distinct()
+
+# Add
+survey_event = survey_event %>%
+  left_join(run_year_info, by = "survey_id") %>%
+  mutate(run_year = case_when(
+    species_id == "a0f5b3af-fa07-449c-9f02-14c5368ab304" ~ coho_run_year,
+    species_id == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1" ~ steelhead_run_year,
+    species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1" ~ chum_run_year,
+    species_id == "e42aa0fc-c591-4fab-8481-55b0df38dcb1" ~ chinook_run_year,
+    TRUE ~ chinook_run_year)) %>%
+  select(dead_id, live_id, recap_id, redd_id, survey_id,
+         species_id, survey_design_type_id, run_id,
+         cwt_detection_method_id, run_year, fish_count)
+
+# Check for missing species
+any(is.na(survey_event$survey_id))
+any(is.na(survey_event$species_id))
+any(is.na(survey_event$survey_design_type_id))
+any(is.na(survey_event$cwt_detection_method_id))
+any(is.na(survey_event$run_id))
+any(is.na(survey_event$run_year))
+
+# Generate survey_event_id
+survey_event = survey_event %>%
+  group_by(survey_id, species_id, survey_design_type_id,
+           cwt_detection_method_id, run_id, run_year) %>%
+  mutate(survey_event_id = remisc::get_uuid(1L)) %>%
+  ungroup() %>%
+  arrange(survey_event_id)
 
 #================================================================================================
 # Pull out redd encounter data
