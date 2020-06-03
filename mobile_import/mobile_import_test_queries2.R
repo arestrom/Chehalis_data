@@ -1,6 +1,14 @@
 #===============================================================================
 # Verify queries work
 #
+# Notes:
+#  1. For the future. If any surveys are split emphasize that you also absolutely
+#     need to enter a new headerid uuid in IFB.
+#  2. Because surveys may be split, edit mobile_import code to always include
+#     the headerid in subform imports.
+#  3. Better yet...strongly discourage splitting surveys in IFB. Only do that
+#     using the front-end.
+#
 # AS 2020-05-20
 #===============================================================================
 
@@ -1189,7 +1197,6 @@ dead = dead %>%
   mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
   mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
 
-
 # Rule: If fish_count > 1 add comments to survey_event table...otherwise add to individual_fish table
 
 # Get higher level survey_event fields from header table
@@ -1201,23 +1208,25 @@ header_se = header_data %>%
 
 #============ survey_event ==========================
 
-# Pull out survey_event data. Calculate cwt_detection method later...Chum = NA, blank = unknown, other = uuid
+# Pull out survey_event data. Calculate cwt_detection method later. Chum = NA, blank = unknown, other = uuid
 dead_se = dead %>%
-  select(parent_record_id, species_fish, run_type, number_fish,
-         encounter_comments, created_date, created_by, modified_date,
-         modified_by)
+  left_join(header_se, by = "parent_record_id") %>%
+  select(dead_id = id, parent_record_id, survey_id, survey_design_type_id,
+         species_fish, run_type, encounter_comments, created_date,
+         created_by, modified_date, modified_by)
 
 #============ fish_encounter ========================
 
 # Pull out fish_encounter data....calculate maturity later...from sex
 dead_fe = dead %>%
+  left_join(header_se, by = "parent_record_id") %>%
   mutate(fish_status_id = "b185dc5d-6b15-4b5b-a54e-3301aec0270f") %>%            # Dead fish
   mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%                # Unknown
   mutate(fish_behavior_type_id = "70454429-724e-4ccf-b8a6-893cafba356a") %>%     # Not applicable...dead fish
   mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...not in form
   mutate(previously_counted_indicator = 0L) %>%
-  select(parent_record_id, created_date, created_by, created_location,
-         modified_date, modified_by, modified_location, fish_status_id,
+  select(dead_id = id, parent_record_id, survey_id, created_date, created_by,
+         created_location, modified_date, modified_by, modified_location, fish_status_id,
          sex_id = fish_sex, origin_id, cwt_detected, clip_status, fish_behavior_type_id,
          mortality_type_id, fish_count = number_fish, previously_counted_indicator)
 
@@ -1225,7 +1234,8 @@ dead_fe = dead %>%
 
 # Pull out fish mark data
 fish_mark = dead %>%
-  select(parent_record_id, subform_id = id, created_date, created_by,
+  left_join(header_se, by = "parent_record_id") %>%
+  select(dead_id = id, parent_record_id, survey_id, created_date, created_by,
          modified_date, modified_by, species_fish, number_fish, carcass_condition,
          carc_tag_1, carc_tag_2, mark_status_1, mark_status_2)
 
@@ -1295,11 +1305,11 @@ fish_mark = fish_mark %>%
 
 # Pull out only cases Lea indicated could not be correct: 4-5 Not Tagged + both mark_status == Unknown.
 fish_mark_incorrect = fish_mark %>%
-  select(parent_record_id, subform_id, mark_status_1, mark_status_2,
+  select(dead_id, parent_record_id, mark_status_1, mark_status_2,
          common_name, number_fish, carcass_condition, carc_tag_1,
          carc_tag_2, mark_status_one, mark_status_two) %>%
   filter(carcass_condition == "4_5 Not Tagged" & mark_status_one == "Unknown" & mark_status_two == "Unknown") %>%
-  arrange(parent_record_id, subform_id)
+  arrange(parent_record_id, dead_id)
 
 # # Output with styling
 # num_cols = ncol(fish_mark_incorrect)
@@ -1333,17 +1343,15 @@ fish_mark = fish_mark %>%
 # Check
 unique(fish_mark$fish_capture_status_id)
 
-# Add needed header data
-fish_mark = fish_mark %>%
-  left_join(header_se, by = "parent_record_id")
+# Check for missing
+any(is.na(fish_mark$survey_id))
 
 # Pull out fish_capture_event
 fish_capture_event_prep = fish_mark %>%
   mutate(disposition_location_id = NA_character_) %>%
-  select(parent_record_id, fish_capture_status_id, disposition_type_id,
+  select(dead_id, parent_record_id, survey_id, fish_capture_status_id, disposition_type_id,
          disposition_id, disposition_location_id, created_datetime = created_date,
-         created_by, head_created_by, modified_datetime = modified_date,
-         modified_by, head_mod_by)
+         created_by, modified_datetime = modified_date, modified_by)
 
 # Check
 any(is.na(fish_capture_event_prep$fish_capture_status_id))
@@ -1354,17 +1362,15 @@ any(is.na(fish_capture_event_prep$created_by))
 
 # Pull out fish mark data separate and combine
 fish_mark_one = fish_mark %>%
-  select(parent_record_id, mark_type_id, mark_status_id = mark_status_1,
+  select(dead_id, parent_record_id, survey_id, mark_type_id, mark_status_id = mark_status_1,
          mark_orientation_id, mark_placement_id, mark_size_id, mark_color_id,
          mark_shape_id, tag_number = carc_tag_1, created_datetime = created_date,
-         created_by, head_created_by, modified_datetime = modified_date,
-         modified_by, head_mod_by)
+         created_by, modified_datetime = modified_date, modified_by)
 fish_mark_two = fish_mark %>%
-  select(parent_record_id, mark_type_id, mark_status_id = mark_status_2,
+  select(dead_id, parent_record_id, survey_id, mark_type_id, mark_status_id = mark_status_2,
          mark_orientation_id, mark_placement_id, mark_size_id, mark_color_id,
          mark_shape_id, tag_number = carc_tag_2, created_datetime = created_date,
-         created_by, head_created_by, modified_datetime = modified_date,
-         modified_by, head_mod_by)
+         created_by, modified_datetime = modified_date, modified_by)
 # Combine
 fish_mark_prep = rbind(fish_mark_one, fish_mark_two) %>%
   mutate(tag_number = trimws(tag_number)) %>%
@@ -1385,10 +1391,12 @@ any(is.na(fish_mark_prep$created_by))
 
 # Pull out individual_fish data
 dead_ind = dead %>%
+  left_join(header_se, by = "parent_record_id") %>%
   filter(number_fish == 1L) %>%
-  select(parent_record_id, fish_condition_type_id = fish_condition, length_measurement_cm,
-         spawn_condition_type_id = spawn_condition, cwt_snout_sample_number = cwt_label,
-         genetic_sample_number = dna_number, scale_sample_card_number = scale_card_number,
+  select(dead_id = id, parent_record_id, survey_id, fish_condition_type_id = fish_condition,
+         length_measurement_cm, spawn_condition_type_id = spawn_condition,
+         cwt_snout_sample_number = cwt_label, genetic_sample_number = dna_number,
+         scale_sample_card_number = scale_card_number,
          scale_sample_position_number = scale_card_position_number, encounter_comments,
          created_date, created_by, modified_date, modified_by) %>%
   mutate(fish_condition_type_id = trimws(fish_condition_type_id)) %>%
@@ -1428,12 +1436,12 @@ dead_ind = dead %>%
   mutate(fish_trauma_type_id = "92aecee2-4a55-4b0f-ace6-8648d5da560a") %>%         # No data
   mutate(gill_condition_type_id = "33aea984-7639-491b-9663-c641ee78a90a") %>%      # No data
   mutate(cwt_result_type_id = "3b5e368f-11ce-4bb3-8c8f-70c08dde2f7e") %>%          # Not applicable
-  select(parent_record_id, fish_condition_type_id, fish_trauma_type_id,
-         gill_condition_type_id, spawn_condition_type_id, cwt_result_type_id,
-         length_measurement_cm, spawn_condition_type_id, cwt_snout_sample_number,
-         genetic_sample_number, scale_sample_card_number,
-         scale_sample_position_number, encounter_comments,
-         created_date, created_by, modified_date, modified_by)
+  select(dead_id, parent_record_id, survey_id, fish_condition_type_id,
+         fish_trauma_type_id, gill_condition_type_id, spawn_condition_type_id,
+         cwt_result_type_id, length_measurement_cm, spawn_condition_type_id,
+         cwt_snout_sample_number, genetic_sample_number, scale_sample_card_number,
+         scale_sample_position_number, encounter_comments, created_date,
+         created_by, modified_date, modified_by)
 
 # Check
 any(is.na(dead_ind$fish_condition_type_id))
@@ -1443,6 +1451,191 @@ any(is.na(dead_ind$spawn_condition_type_id))
 any(is.na(dead_ind$cwt_result_type_id))
 any(is.na(dead_ind$created_date))
 any(is.na(dead_ind$created_by))
+
+#======================================================================================================================
+# Import from carcass recoveries subform
+#======================================================================================================================
+
+# Function to get dead fish records....No nested subforms
+get_carcass_recoveries = function(profile_id, recaps_page_id, start_id, access_token) {
+  # Define fields
+  fields = glue::glue("parent_page_id, parent_element_id, created_date, created_by, ",
+                      "created_location, created_device_id, modified_date, modified_by, ",
+                      "modified_location, modified_device_id, server_modified_date, ",
+                      "select_recovery_field, recovery_tag_2, recovery_tag_1, recap_species")
+  # Order by id ascending and get all records after start_id
+  field_string = glue('id:<, parent_record_id(>"{start_id}"), {fields}')
+  # Loop through all survey records
+  recaps = iformr::get_all_records(
+    server_name = "wdfw",
+    profile_id = profile_id,
+    page_id = recaps_page_id,
+    fields = "fields",
+    limit = 1000,
+    offset = 0,
+    access_token = access_token,
+    field_string = field_string,
+    since_id = since_id)
+  return(recaps)
+}
+
+# New access token
+access_token = NULL
+while (is.null(access_token)) {
+  access_token = iformr::get_iform_access_token(
+    server_name = "wdfw",
+    client_key_name = "r6production_key",
+    client_secret_name = "r6production_secret")
+}
+
+# Set start_id as the minimum parent_record_id minus one
+start_id = min(header_data$parent_record_id) - 1
+
+# Test...currently 1214 records
+strt = Sys.time()
+recaps = get_carcass_recoveries(profile_id, recaps_page_id, start_id, access_token)
+nd = Sys.time(); nd - strt
+
+# Dump any records that are not in header_data
+# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Filter to header_data with no missing stream or reach_id for now. 2655 records after filter
+recaps = recaps %>%
+  filter(!parent_record_id %in% del_id)
+
+# Process dates
+recaps = recaps %>%
+  mutate(created_date = as.POSIXct(iformr::idate_time(created_date))) %>%
+  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
+  mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
+
+#============ survey_event ==========================
+
+# Pull out survey_event data. Calculate cwt_detection method later...Chum = NA, blank = unknown, other = uuid
+recaps_se = recaps %>%
+  left_join(header_se, by = "parent_record_id") %>%
+  select(recap_id = id, parent_record_id, survey_id, survey_design_type_id,
+         species_id = recap_species, recovery_tag_1, recovery_tag_2,
+         select_recovery_field, created_date, created_by, modified_date,
+         modified_by)
+
+# Verify tag numbers agree, then stack...looks good
+chk_recaps = recaps_se %>%
+  mutate(chk_tag = if_else(recovery_tag_1 == recovery_tag_2 & select_recovery_field == "same",
+                           "ok", "chk")) %>%
+  filter(chk_tag == "chk")
+
+#=========== fish_mark =============================
+
+# Join placed tags to recaps to get mark data
+# In the future...will need to query database to get tag info !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+tag_info_one = fish_mark_prep %>%
+  filter(!is.na(tag_number)) %>%
+  select(tag_number_one = tag_number, mark_type_id_one = mark_type_id,
+         mark_orientation_id_one = mark_orientation_id, mark_size_id_one = mark_size_id,
+         mark_color_id_one = mark_color_id, mark_shape_id_one = mark_shape_id)
+tag_info_two = fish_mark_prep %>%
+  filter(!is.na(tag_number)) %>%
+  select(tag_number_two = tag_number, mark_type_id_two = mark_type_id,
+         mark_orientation_id_two = mark_orientation_id, mark_size_id_two = mark_size_id,
+         mark_color_id_two = mark_color_id, mark_shape_id_two = mark_shape_id)
+
+
+
+
+
+
+
+
+
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!
+
+
+# ADD run values to recaps
+# Get run type from dead to add to recaps
+dead_run = dead %>%
+  select(run_id = run_type, carc_tag_1, carc_tag_2) %>%
+  mutate(tag_number = coalesce(carc_tag_1, carc_tag_2)) %>%
+  filter(!is.na(tag_number) & !tag_number == "") %>%
+  select(tag_number, run_id)
+
+# Inspect tag_number
+head(sort(unique(dead_run$tag_number)), 15)
+tail(sort(unique(dead_run$tag_number)), 15)
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Join to recaps
+recaps_se = recaps_se %>%
+  mutate(tag_number_one = recovery_tag_1) %>%
+  mutate(tag_number_two = recovery_tag_2) %>%
+  left_join(tag_info_one, by = "tag_number_one") %>%
+  left_join(tag_info_two, by = "tag_number_two") %>%
+  mutate(mark_type_id = coalesce(mark_type_id_one, mark_type_id_two)) %>%
+  mutate(mark_orientation_id = coalesce(mark_orientation_id_one, mark_orientation_id_two)) %>%
+  mutate(mark_size_id = coalesce(mark_size_id_one, mark_size_id_two)) %>%
+  mutate(mark_color_id = coalesce(mark_color_id_one, mark_color_id_two)) %>%
+  mutate(mark_shape_id = coalesce(mark_shape_id_one, mark_shape_id_two)) %>%
+  select(recap_id, parent_record_id, survey_id, survey_design_type_id,
+         species_id, tag_number_one, tag_number_two, mark_type_id,
+         mark_orientation_id, mark_size_id, mark_color_id, mark_shape_id,
+         created_date, created_by, modified_date, modified_by) %>%
+  distinct()
+
+# Pull out separately and stack
+recaps_se_one = recaps_se %>%
+  select(recap_id, parent_record_id, survey_id, survey_design_type_id,
+         species_id, tag_number = tag_number_one, mark_type_id,
+         mark_orientation_id, mark_size_id, mark_color_id, mark_shape_id,
+         created_date, created_by, modified_date, modified_by)
+recaps_se_two = recaps_se %>%
+  select(recap_id, parent_record_id, survey_id, survey_design_type_id,
+         species_id, tag_number = tag_number_two, mark_type_id,
+         mark_orientation_id, mark_size_id, mark_color_id, mark_shape_id,
+         created_date, created_by, modified_date, modified_by)
+recaps_se = rbind(recaps_se_one, recaps_se_two) %>%
+  arrange(recap_id, parent_record_id)
+
+# Inspect tag_number
+tail(sort(unique(recaps_se$tag_number)), 15)
+
+# Organize
+recaps_fish_mark_prep = recaps_se %>%
+  mutate(mark_status_id = case_when(
+    nchar(tag_number) >= 4L &
+      stri_detect_regex(tag_number, "[:digit:]") &
+      !stri_detect_regex(tag_number, "[:alpha:]") ~ "68e174c7-ea47-4084-a567-bd33b241f94e",   # Observerd
+    tag_number == "Not present" ~ "cb1dfe91-a782-4cbf-83c9-299137a5df6e",                     # Not present
+    tag_number == "Unknown" ~ "7118fcda-8804-4285-bc1f-5d5c33048d4e",                         # Unknown
+    TRUE ~ "68e174c7-ea47-4084-a567-bd33b241f94e")) %>%                                       # Observed
+  mutate(mark_placement_id = "d35aacb1-20b3-41d7-b24e-00d4941b68a8") %>%                      # Opercle
+  select(recap_id, parent_record_id, survey_id, survey_design_type_id,
+         species_id, mark_type_id, mark_status_id, mark_orientation_id,
+         mark_placement_id, mark_size_id, mark_color_id, mark_shape_id,
+         tag_number, created_date, created_by, modified_date, modified_by)
+
+#=========== fish_capture_event =============================
+
+# Organize
+recaps_fish_capture_event_prep = recaps_se %>%
+  mutate(fish_capture_status_id = "3d115d9f-1e8b-4f5d-b05d-bcfa21a4d87f") %>%                # Recapture
+  mutate(disposition_type_id = "24b51215-f7ea-4480-ba7d-436144969ac3") %>%                   # Carcass returned
+  mutate(disposition_id = "dd6d0cab-1cc8-4b07-af93-5cd0be1a7a7f") %>%                        # Not applicable
+  select(recap_id, parent_record_id, survey_id, survey_design_type_id,
+         species_id, fish_capture_status_id, disposition_type_id,
+         disposition_id, created_date, created_by, modified_date,
+         modified_by)
 
 #======================================================================================================================
 # Import from live fish subform
@@ -1512,8 +1705,10 @@ live = live %>%
 
 # Pull out survey_event data. Calculate cwt_detection method later...Chum = NA, blank = unknown, other = uuid
 live_se = live %>%
-  select(parent_record_id, species_fish, run_type, live_type,
-         created_date, created_by, modified_date, modified_by)
+  left_join(header_se, by = "parent_record_id") %>%
+  select(live_id = id, parent_record_id, survey_id, species_fish,
+         run_type, live_type, created_date, created_by, modified_date,
+         modified_by)
 
 #============ fish_encounter ========================
 
@@ -1652,11 +1847,12 @@ live_fe = live_fe %>%
 
 # Add some columns
 live_fe = live_fe %>%
+  left_join(header_se, by = "parent_record_id") %>%
   mutate(fish_status_id = "6a200904-8a57-4dd5-8c82-2353f91186ac") %>%            # Live fish
   mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%                # Unknown....not in form
   mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...live fish
   mutate(previously_counted_indicator = 0L) %>%                                  # Not in form
-  select(parent_record_id, created_date, created_by, created_location,
+  select(parent_record_id, survey_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, fish_status_id,
          sex_id, origin_id, adipose_clip_status_id, fish_behavior_type_id = live_type,
          mortality_type_id, fish_count, previously_counted_indicator)
@@ -1719,7 +1915,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 10935 records: Checked that I got first and last parent_record_id
+# Test...currently 11025 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -1770,24 +1966,26 @@ redd_loc_info = survey_loc_info %>%
 
 # Add info to redds
 redds = redds %>%
+  rename(redd_id = id) %>%
   left_join(redd_loc_info, by = "parent_record_id")
 
-# Get redd location data: 2818 records
+# Get redd location data: 2829 records
 new_redd_loc = redds %>%
   filter(redd_type == "first_time_redd_encountered") %>%
-  select(id, parent_record_id, created_date, created_by, created_location,
-         modified_date, modified_by, survey_id, survey_date, observers,
-         stream_name, waterbody_id, wria_id,redd_type, river_location_text,
+  select(redd_id, parent_record_id, survey_id, created_date, created_by,
+         created_location, modified_date, modified_by, survey_id, survey_date,
+         observers, stream_name, waterbody_id, wria_id,redd_type, river_location_text,
          sgs_redd_name, redd_latitude, redd_longitude, redd_loc_accuracy,
          redd_orientation, redd_channel_type)
 
-# Get redd location data: 8117 records
+# Get redd location data: 8196 records
 old_redd_loc = redds %>%
   filter(redd_type == "previously_flagged") %>%
-  select(id, parent_record_id, created_date, created_by, created_location,
-         survey_id, survey_date, observers, stream_name, waterbody_id, wria_id,
-         redd_type, river_location_text, sgs_redd_name, redd_latitude, redd_longitude,
-         redd_loc_accuracy, redd_orientation, redd_channel_type)
+  select(redd_id, parent_record_id, survey_id, created_date, created_by,
+         created_location, modified_date, modified_by, survey_id, survey_date,
+         observers, stream_name, waterbody_id, wria_id,redd_type, river_location_text,
+         sgs_redd_name, redd_latitude, redd_longitude, redd_loc_accuracy,
+         redd_orientation, redd_channel_type)
 
 # Format
 new_redd_loc = new_redd_loc %>%
@@ -1836,7 +2034,7 @@ no_redd_coords_or_name_new = new_redd_loc %>%
 # Pull out cases where redd_name is missing: 498 cases...all new redds
 no_redd_name = redds %>%
   filter(is.na(sgs_redd_name)) %>%
-  select(id, parent_record_id, created_date, created_by, created_location,
+  select(redd_id, parent_record_id, survey_id, created_date, created_by, created_location,
          survey_id, survey_date, observers, stream_name, waterbody_id, wria_id, redd_type,
          species_redd, redd_count, new_redd_name, other_redd_name, previous_redd_name,
          sgs_redd_name, redd_location, redd_latitude, redd_longitude, stat_week,
@@ -1852,7 +2050,7 @@ old_redd_names = redds %>%
   filter(redd_type == "previously_flagged") %>%
   # filter(!is.na(sgs_redd_name)) %>%                   # Not needed. All had redd_names
   mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
-  select(id, parent_record_id, created_date, created_by, created_location,
+  select(redd_id, parent_record_id, survey_id, created_date, created_by, created_location,
          survey_id, survey_date, observers, stream_name, waterbody_id, wria_id, redd_type,
          species_redd, redd_count, new_redd_name, other_redd_name, previous_redd_name,
          sgs_redd_name, redd_location, redd_latitude, redd_longitude, stat_week,
@@ -1877,7 +2075,7 @@ new_sgs_redd_names = new_redd_names %>%
 matching_old_redd_names = old_redd_names %>%
   filter(sgs_redd_name %in% new_sgs_redd_names)
 
-# Identify those where no match occurs: 71 cases.
+# Identify those where no match occurs: 27 cases.
 no_match_to_old_redd_names = old_redd_names %>%
   filter(!sgs_redd_name %in% new_sgs_redd_names)
 
@@ -1915,7 +2113,7 @@ no_match_to_old_redd_names = old_redd_names %>%
 
 # Pull out ids of records to dump from redd_location_prep...no coords or redd_name
 redd_dump_ids = no_redd_coords_or_name_new %>%
-  pull(id)
+  pull(redd_id)
 
 # # Pull out created by data
 # by_dat = s_id %>%
@@ -1924,13 +2122,13 @@ redd_dump_ids = no_redd_coords_or_name_new %>%
 
 # Prep redd_location data
 redd_location_prep = new_redd_loc %>%
-  filter(!id %in% redd_dump_ids)
+  filter(!redd_id %in% redd_dump_ids)
 
-# Create and organize needed fields
+# Create and organize needed fields: 2819 records
 redd_location_prep = redd_location_prep %>%
   mutate(location_id = remisc::get_uuid(nrow(redd_location_prep))) %>%
   mutate(location_type_id = "d5edb1c0-f645-4e82-92af-26f5637b2de0") %>%      # Redd encounter
-  select(id, parent_record_id, survey_id, location_id,
+  select(redd_id, parent_record_id, survey_id, location_id,
          waterbody_id, wria_id, location_type_id,
          stream_channel_type_id = redd_channel_type,
          location_orientation_type_id = redd_orientation,
@@ -1942,29 +2140,68 @@ redd_location_prep = redd_location_prep %>%
 
 # Pull out redd_coordinates
 redd_location_coords_prep = redd_location_prep %>%
+  filter(!is.na(latitude) & !is.na(longitude)) %>%
   select(location_id, latitude, longitude, horizonal_accuracy,
          created_datetime, created_by, modified_datetime,
          modified_by)
+
+# Link redd_location back to redds data
+redd_loc_id = redd_location_prep %>%
+  select(redd_id, redd_location_id = location_id) %>%
+  distinct()
+
+# Join back to redds
+redds = redds %>%
+  left_join(redd_loc_id, by = "redd_id")
+
+# Pull out redd survey_event data
+redds_se = redds %>%
+  select(redd_id, parent_record_id, survey_id, sgs_species,
+         sgs_run, created_date, created_by, modified_date,
+         modified_by) %>%
+  left_join(header_se, by = c("survey_id", "parent_record_id"))
+
+#================================================================================================
+# Combine all se tables to calculate survey_event_id...can tie back using subform id
+#================================================================================================
+
+# Prep tables for stacking
+dead_sev = dead_se %>%
+  select(dead_id, survey_id, species_id = species_fish,
+         run_id = run_type, created_date, created_by,
+         modified_date, modified_by) %>%
+  left_join(header_se, by = "survey_id") %>%
+  select(dead_id, survey_id, species_id, survey_design_type_id,
+         run_id)
+
+# Add run to recaps
+recaps_sev = recaps_se %>%
+  left_join(dead_run, by = "tag_number") %>%
+  select(recap_id, survey_id, species_id, )
+
+any(is.na(recaps_sev$tag_number))
+
+# Stack the se tables
+survey_event = bind_rows(dead_sev, recaps_se, live_se, redds_se)
+
+
+
+
+
+
 
 #================================================================================================
 # Pull out redd encounter data
 #================================================================================================
 
+# Notes:
+#  1. Need to record if redd_name is missing in redd_encounter comments
+#  2. Need to record if no match to location in redd_encounter comments
 
-
-# For Tuesday
-# 1. Make sure to only join on survey_id. Parent record ID is duplicated in several cases where
-#    surveys were split. Inspect all earlier code....!!!!!!!!!!!!!!!!!!!!
-# 2. Output dead_se, live_se, live_fe, dead_fe to include survey_id and subform_id. Need to be
-#    able to fully link later, but without using potentially split parent_record_id
-
-
-
-
-
-
-# Pull out redd_encounter data
-redd_encounter = redds
+# Pull out redd_encounter
+redds = redds %>%
+  left_join(redd_loc_id, by = "redd_id") %>%
+  select(redd)
 
 
 
