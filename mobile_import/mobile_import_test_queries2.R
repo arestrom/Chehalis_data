@@ -412,7 +412,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1973 records....approx 4.0 seconds
+# Test...currently 1978 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -1894,7 +1894,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 11025 records: Checked that I got first and last parent_record_id
+# Test...currently 11049 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -2474,57 +2474,78 @@ live_rd = rbind(live_rd_unknown_mark_unknown_sex,
                 live_rd_ad_jack,
                 live_rd_ad_mark_unknown_sex)
 
+# Add species and survey_event
+live_rd_se = survey_event %>%
+  filter(!is.na(redd_id)) %>%
+  select(redd_id, survey_event_id, species_id) %>%
+  distinct()
 
+# Add to live_rd
+live_rd = live_rd %>%
+  left_join(live_rd_se, by = "redd_id")
 
-
-
-# STOPPED HERE....USE CODE BELOW
-
-
-
-
-# # Do a quick check on ad_clip for chum...only UN and NC ok to convert all to NC
-# chk_chum_clip = live_fe %>%
-#   filter(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1")
+# # Do a quick check on ad_clip for chum...No chum in dataset
+# chk_chum_clip = live_rd %>%
+#   filter(species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1")
 # table(chk_chum_clip$adipose_clip_status_id, useNA = "ifany")
 
 # Change any "Unable to check" cases to not checked for chum
-live_fe = live_fe %>%
-  mutate(adipose_clip_status_id = if_else(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1",
+live_rd = live_rd %>%
+  mutate(adipose_clip_status_id = if_else(species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1",
                                           "33b78489-7ad3-4482-9455-3988e05bfb28",
                                           adipose_clip_status_id))
 
 # Add some columns
-live_fe = live_fe %>%
-  left_join(header_se, by = "parent_record_id") %>%
+live_rd = live_rd %>%
   mutate(fish_status_id = "6a200904-8a57-4dd5-8c82-2353f91186ac") %>%            # Live fish
   mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%                # Unknown....not in form
   mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...live fish
+  mutate(fish_behavior_type_id = "99a9ae14-460e-4bcf-b659-047f15591986") %>%     # Spawning
   mutate(previously_counted_indicator = 0L) %>%                                  # Not in form
-  select(parent_record_id, survey_id, created_date, created_by, created_location,
-         modified_date, modified_by, modified_location, fish_status_id,
-         sex_id, origin_id, adipose_clip_status_id, fish_behavior_type_id = live_type,
-         mortality_type_id, fish_count, previously_counted_indicator)
+  mutate(fish_count = as.integer(fish_count)) %>%
+  select(redd_id, survey_id, survey_event_id, fish_location_id, fish_status_id,
+         sex_id, origin_id, adipose_clip_status_id, fish_behavior_type_id,
+         mortality_type_id, fish_count, previously_counted_indicator,
+         fish_on_redd, total_fish_on_redd, created_date, created_by,
+         modified_date, modified_by)
 
+# Verify fish_count == total_fish_on_redd
+chk_count = live_rd %>%
+  group_by(redd_id) %>%
+  mutate(sum_fish_count = sum(fish_count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(redd_id, sum_fish_count, total_fish_on_redd) %>%
+  mutate(count_dif = if_else(!sum_fish_count == total_fish_on_redd, "yes", "no")) %>%
+  filter(count_dif == "yes") %>%
+  distinct()
 
+# Add values for output
+add_chk_fields = redds %>%
+  select(redd_id, parent_record_id, stream_name, survey_date,
+         sgs_redd_name, observers) %>%
+  distinct()
 
+# Add to chk_count
+chk_count = chk_count %>%
+  left_join(add_chk_fields, by = "redd_id") %>%
+  select(redd_id, parent_record_id, stream_name, survey_date,
+         sgs_redd_name, observers, sum_fish_count, total_fish_on_redd)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+# # Output with styling
+# num_cols = ncol(chk_count)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "CheckReddLiveCounts.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "CheckReddLiveCounts", gridLines = TRUE)
+# writeData(wb, sheet = 1, chk_count, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
 #================================================================================================
-# Pull out fish encounter data and add fish_encounter id
+# Combine all fish encounter data and add fish_encounter id
 #================================================================================================
 
 
