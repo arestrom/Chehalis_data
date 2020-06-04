@@ -8,6 +8,8 @@
 #     the headerid in subform imports.
 #  3. Better yet...strongly discourage splitting surveys in IFB. Only do that
 #     using the front-end.
+#  4. Make sure all required fields have default values in case of blanks. For
+#     example cwt_detection_status_id, adipose_clip_status_id, etc.
 #
 # AS 2020-05-20
 #===============================================================================
@@ -1217,6 +1219,14 @@ dead_se = dead %>%
 
 #============ fish_encounter ========================
 
+# Inspect the sex_id...includes maturity info
+unique(dead$fish_sex)
+table(dead$fish_sex, useNA = "ifany")
+
+# Inpect cases where sex is NA
+chk_dead_na = dead %>%
+  filter(is.na(fish_sex))
+
 # Pull out fish_encounter data....calculate maturity later...from sex
 dead_fe = dead %>%
   left_join(header_se, by = "parent_record_id") %>%
@@ -1224,11 +1234,32 @@ dead_fe = dead %>%
   mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%                # Unknown
   mutate(fish_behavior_type_id = "70454429-724e-4ccf-b8a6-893cafba356a") %>%     # Not applicable...dead fish
   mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...not in form
+  mutate(sex_id = if_else(is.na(fish_sex),
+                          "c0f86c86-dc49-406b-805d-c21a6756de91",                # Unknown sex
+                          fish_sex)) %>%
+  mutate(sex_id = if_else(sex_id == "jack",
+                          "ccdde151-4828-4597-8117-4635d8d47a71",                # Male
+                          sex_id)) %>%
+  mutate(maturity_id = if_else(fish_sex == "jack",
+                               "0b0d12cf-ed27-48fb-ade2-b408067520e1",           # Subadult
+                               "68347504-ee22-4632-9856-a4f4366b2bd8")) %>%      # Adult
+  mutate(maturity_id = if_else(is.na(maturity_id),
+                               "68347504-ee22-4632-9856-a4f4366b2bd8",           # Adult
+                               maturity_id)) %>%
   mutate(previously_counted_indicator = 0L) %>%
   select(dead_id = id, parent_record_id, survey_id, created_date, created_by,
          created_location, modified_date, modified_by, modified_location, fish_status_id,
-         sex_id = fish_sex, origin_id, cwt_detected, clip_status, fish_behavior_type_id,
+         sex_id, maturity_id, origin_id, cwt_detected, clip_status, fish_behavior_type_id,
          mortality_type_id, fish_count = number_fish, previously_counted_indicator)
+
+# Inspect some values
+unique(dead_fe$sex_id)
+#table(dead_fe$sex_id, useNA = "ifany")
+unique(dead_fe$maturity_id)
+
+# # Inpect cases where sex is NA
+# chk_dead_fe_na = dead_fe %>%
+#   filter(is.na(sex_id))
 
 #============== fish_capture_event and fish_mark =============
 
@@ -1693,7 +1724,7 @@ live_se = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_unknown_mark_unknown_sex = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = unknown_mark_unknown_sex_count) %>%
   mutate(sex_id = "c0f86c86-dc49-406b-805d-c21a6756de91") %>%                    # Unknown
@@ -1702,7 +1733,7 @@ live_fe_unknown_mark_unknown_sex = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_unmarked_male = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = unmarked_male_count) %>%
   mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
@@ -1711,7 +1742,7 @@ live_fe_unmarked_male = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_unmarked_female = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = unmarked_female_count) %>%
   mutate(sex_id = "1511973c-cbe1-4101-9481-458130041ee7") %>%                    # Female
@@ -1720,7 +1751,7 @@ live_fe_unmarked_female = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_unmarked_jack = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = unmarked_jack_count) %>%
   mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
@@ -1729,7 +1760,7 @@ live_fe_unmarked_jack = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_unmarked_unknown_sex = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = unmarked_unknown_sex_count) %>%
   mutate(sex_id = "c0f86c86-dc49-406b-805d-c21a6756de91") %>%                    # Unknown
@@ -1738,7 +1769,7 @@ live_fe_unmarked_unknown_sex = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_unknown_mark_male = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = unknown_mark_male_count) %>%
   mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
@@ -1747,7 +1778,7 @@ live_fe_unknown_mark_male = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_unknown_mark_female = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = unknown_mark_female_count) %>%
   mutate(sex_id = "1511973c-cbe1-4101-9481-458130041ee7") %>%                    # Female
@@ -1756,7 +1787,7 @@ live_fe_unknown_mark_female = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_unknown_mark_jack = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = unknown_mark_jack_count) %>%
   mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
@@ -1765,7 +1796,7 @@ live_fe_unknown_mark_jack = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_ad_male = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = ad_male_count) %>%
   mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
@@ -1774,7 +1805,7 @@ live_fe_ad_male = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_ad_female = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = ad_female_count) %>%
   mutate(sex_id = "1511973c-cbe1-4101-9481-458130041ee7") %>%                    # Female
@@ -1783,7 +1814,7 @@ live_fe_ad_female = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_ad_jack = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = ad_jack_count) %>%
   mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
@@ -1792,7 +1823,7 @@ live_fe_ad_jack = live %>%
 
 # Pull out fish_encounter data categories
 live_fe_ad_mark_unknown_sex = live %>%
-  select(parent_record_id, created_date, created_by, created_location,
+  select(id, parent_record_id, created_date, created_by, created_location,
          modified_date, modified_by, modified_location, species_fish,
          live_type, fish_count = ad_mark_unknown_sex_count) %>%
   mutate(sex_id = "c0f86c86-dc49-406b-805d-c21a6756de91") %>%                    # Unknown
@@ -1831,10 +1862,16 @@ live_fe = live_fe %>%
   mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%                # Unknown....not in form
   mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...live fish
   mutate(previously_counted_indicator = 0L) %>%                                  # Not in form
-  select(parent_record_id, survey_id, created_date, created_by, created_location,
-         modified_date, modified_by, modified_location, fish_status_id,
-         sex_id, origin_id, adipose_clip_status_id, fish_behavior_type_id = live_type,
+  select(live_id = id, parent_record_id, survey_id, created_date,
+         created_by, created_location, modified_date, modified_by,
+         modified_location, fish_status_id, sex_id, maturity_id,
+         origin_id, adipose_clip_status_id, fish_behavior_type_id = live_type,
          mortality_type_id, fish_count, previously_counted_indicator)
+
+# Inspect some values
+unique(live_fe$sex_id)
+#table(dead_fe$sex_id, useNA = "ifany")
+unique(live_fe$maturity_id)
 
 #======================================================================================================================
 # Import from redds subform
@@ -2504,7 +2541,7 @@ live_rd = live_rd %>%
   mutate(previously_counted_indicator = 0L) %>%                                  # Not in form
   mutate(fish_count = as.integer(fish_count)) %>%
   select(redd_id, survey_id, survey_event_id, fish_location_id, fish_status_id,
-         sex_id, origin_id, adipose_clip_status_id, fish_behavior_type_id,
+         sex_id, maturity_id, origin_id, adipose_clip_status_id, fish_behavior_type_id,
          mortality_type_id, fish_count, previously_counted_indicator,
          fish_on_redd, total_fish_on_redd, created_date, created_by,
          modified_date, modified_by)
@@ -2548,11 +2585,181 @@ chk_count = chk_count %>%
 # Combine all fish encounter data and add fish_encounter id
 #================================================================================================
 
+# Strategy:
+#  1. All fish_mark and recaps derive from dead. So define fish_encounter_id
+#     using combination of live, live_redd, and dead data.
+#  2. Join new fish_encounter_id to fish_mark and fish_capture_event using dead_id
+#  3. Join new fish_encounter_id to recaps data using tag_number (recaps_fish_mark),
+#     then to recaps_fish_capture using recaps_id
+#  4. Join new fish_encounter_id to live_redd using redd_id
 
+# Prep dead data
+dead_se_id = survey_event %>%
+  select(dead_id, survey_event_id) %>%
+  filter(!is.na(dead_id)) %>%
+  distinct()
 
+# Add real_time info in case we want to use carcass_location
+real_time_info = header_data %>%
+  select(survey_id = survey_uuid, data_entry_type) %>%
+  filter(!is.na(data_entry_type)) %>%
+  distinct()
 
+# Join to dead_fe
+dead_fev = dead_fe %>%
+  left_join(dead_se_id, by = "dead_id") %>%
+  left_join(real_time_info, by = "survey_id") %>%
+  mutate(cwt_detection_status_id = if_else(is.na(cwt_detected) | cwt_detected == "",
+                                "bd7c5765-2ca3-4ab4-80bc-ce1a61ad8115", cwt_detected)) %>%   # Not applicable
+  mutate(cwt_detection_status_id = if_else(cwt_detection_status_id == "unknown",
+                                "efe698a8-98dd-45df-ba5b-0d448c88121d",                      # Undetermined
+                                cwt_detection_status_id)) %>%
+  select(dead_id, survey_id, survey_event_id, created_location,
+         data_entry_type, fish_status_id, sex_id, maturity_id, origin_id,
+         cwt_detection_status_id, adipose_clip_status_id = clip_status,
+         fish_behavior_type_id, mortality_type_id, fish_count,
+         previously_counted_indicator, created_date, created_by,
+         modified_date, modified_by) %>%
+  arrange(dead_id)
 
+# Inspect some dead values
+any(is.na(dead_fev$survey_event_id))
+unique(dead_fev$sex_id)
+unique(dead_fev$maturity_id)
+unique(dead_fev$origin_id)
+unique(dead_fev$cwt_detection_status_id)
+table(dead_fev$cwt_detection_status_id, useNA = "ifany")
+unique(dead_fev$adipose_clip_status_id)
+unique(dead_fev$fish_behavior_type_id)
+unique(dead_fev$mortality_type_id)
+unique(dead_fev$data_entry_type)
 
+# Prep live data
+live_se_id = survey_event %>%
+  select(live_id, survey_event_id) %>%
+  filter(!is.na(live_id)) %>%
+  distinct()
+
+# Prep live data from live subform
+live_fev = live_fe %>%
+  left_join(live_se_id, by = "live_id") %>%
+  mutate(cwt_detection_status_id = "bd7c5765-2ca3-4ab4-80bc-ce1a61ad8115") %>%             # Not applicable
+  select(live_id, survey_id, survey_event_id, created_location,
+         fish_status_id, sex_id, maturity_id, origin_id,
+         cwt_detection_status_id, adipose_clip_status_id,
+         fish_behavior_type_id, mortality_type_id, fish_count,
+         previously_counted_indicator, created_date, created_by,
+         modified_date, modified_by)
+
+# Inspect some live values
+any(is.na(live_fev$survey_event_id))
+unique(live_fev$sex_id)
+unique(live_fev$maturity_id)
+unique(live_fev$origin_id)
+unique(live_fev$cwt_detection_status_id)
+table(live_fev$cwt_detection_status_id, useNA = "ifany")
+unique(live_fev$adipose_clip_status_id)
+unique(live_fev$fish_behavior_type_id)
+unique(live_fev$mortality_type_id)
+
+# Prep live data from redd subform
+live_rd_fev = live_rd %>%
+  mutate(cwt_detection_status_id = "bd7c5765-2ca3-4ab4-80bc-ce1a61ad8115") %>%             # Not applicable
+  select(redd_id, survey_id, survey_event_id, fish_location_id,
+         fish_status_id, sex_id, maturity_id, origin_id,
+         cwt_detection_status_id, adipose_clip_status_id,
+         fish_behavior_type_id, mortality_type_id, fish_count,
+         previously_counted_indicator, created_date, created_by,
+         modified_date, modified_by)
+
+# Inspect some live values
+any(is.na(live_rd_fev$survey_event_id))
+unique(live_rd_fev$sex_id)
+unique(live_rd_fev$maturity_id)
+unique(live_rd_fev$origin_id)
+unique(live_rd_fev$cwt_detection_status_id)
+table(live_rd_fev$cwt_detection_status_id, useNA = "ifany")
+unique(live_rd_fev$adipose_clip_status_id)
+unique(live_rd_fev$fish_behavior_type_id)
+unique(live_rd_fev$mortality_type_id)
+
+# Stack the fev tables
+fish_encounter = bind_rows(dead_fev, live_fev, live_rd_fev) %>%
+  select(dead_id, live_id, redd_id, survey_id, survey_event_id,
+         fish_location_id, fish_status_id, sex_id, maturity_id,
+         origin_id, cwt_detection_status_id, adipose_clip_status_id,
+         fish_behavior_type_id, mortality_type_id, fish_count,
+         previously_counted_indicator)
+
+# Verify the columns
+unique(fish_encounter$survey_event_id[!nchar(fish_encounter$survey_event_id) == 36L])
+unique(fish_encounter$fish_location_id[!nchar(fish_encounter$fish_location_id) == 36L])
+unique(fish_encounter$fish_status_id[!nchar(fish_encounter$fish_status_id) == 36L])
+unique(fish_encounter$sex_id[!nchar(fish_encounter$sex_id) == 36L])
+unique(fish_encounter$maturity_id[!nchar(fish_encounter$maturity_id) == 36L])
+unique(fish_encounter$origin_id[!nchar(fish_encounter$origin_id) == 36L])
+unique(fish_encounter$cwt_detection_status_id[!nchar(fish_encounter$cwt_detection_status_id) == 36L])
+unique(fish_encounter$adipose_clip_status_id[!nchar(fish_encounter$adipose_clip_status_id) == 36L])
+unique(fish_encounter$fish_behavior_type_id[!nchar(fish_encounter$fish_behavior_type_id) == 36L])
+unique(fish_encounter$mortality_type_id[!nchar(fish_encounter$mortality_type_id) == 36L])
+unique(fish_encounter$previously_counted_indicator)
+
+# Generate fish_encounter_id
+fish_encounter = fish_encounter %>%
+  group_by(survey_event_id, fish_location_id, fish_status_id,
+           sex_id, maturity_id, origin_id, cwt_detection_status_id,
+           adipose_clip_status_id, fish_behavior_type_id,
+           mortality_type_id, fish_count, previously_counted_indicator) %>%
+  mutate(fish_encounter_id = remisc::get_uuid(1L)) %>%
+  ungroup() %>%
+  select(dead_id, live_id, redd_id, fish_encounter_id, survey_event_id,
+         survey_id, fish_location_id, fish_status_id, sex_id, maturity_id,
+         origin_id, cwt_detection_status_id, adipose_clip_status_id,
+         fish_behavior_type_id, mortality_type_id, fish_count,
+         previously_counted_indicator) %>%
+  arrange(fish_encounter_id)
+
+# Pull out just the table data
+fish_encounter_prep = fish_encounter %>%
+  mutate(fish_encounter_datetime = as.POSIXct(NA)) %>%
+  select(fish_encounter_id, survey_event_id, fish_location_id,
+         fish_status_id, sex_id, maturity_id, origin_id,
+         cwt_detection_status_id, adipose_clip_status_id,
+         fish_behavior_type_id, mortality_type_id,
+         fish_encounter_datetime, fish_count,
+         previously_counted_indicator) %>%
+  distinct()
+
+# Add trailing fields using data from header
+survey_trailing = survey_event_prep %>%
+  select(survey_event_id, created_datetime, created_by,
+         modified_datetime, modified_by) %>%
+  group_by(survey_event_id) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq == 1L) %>%
+  select(-n_seq) %>%
+  distinct()
+
+# Check
+any(duplicated(survey_trailing$survey_event_id))
+
+# Add trailing fields...Now 11286 rows
+fish_encounter_prep = fish_encounter_prep %>%
+  left_join(survey_trailing, by = "survey_event_id") %>%
+  select(fish_encounter_id, survey_event_id, fish_location_id,
+         fish_status_id, sex_id, maturity_id, origin_id,
+         cwt_detection_status_id, adipose_clip_status_id,
+         fish_behavior_type_id, mortality_type_id,
+         fish_encounter_datetime, fish_count,
+         previously_counted_indicator,
+         created_datetime, created_by,
+         modified_datetime, modified_by) %>%
+  distinct()
+
+# Verify values
+any(duplicated(fish_encounter_prep$fish_encounter_id))
+any(is.na(fish_encounter_prep$created_datetime))
 
 #================================================================================================
 # Pull out redd encounter data
