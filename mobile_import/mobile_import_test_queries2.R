@@ -2293,7 +2293,245 @@ survey_event = survey_event %>%
            cwt_detection_method_id, run_id, run_year) %>%
   mutate(survey_event_id = remisc::get_uuid(1L)) %>%
   ungroup() %>%
+  select(dead_id, live_id, recap_id, redd_id, survey_event_id,
+         survey_id, species_id, survey_design_type_id, run_id,
+         cwt_detection_method_id, run_year, fish_count) %>%
   arrange(survey_event_id)
+
+# Pull out just the table data
+survey_event_prep = survey_event %>%
+  mutate(comment_text = NA_character_) %>%
+  mutate(estimated_percent_fish_seen = NA_integer_) %>%
+  select(survey_event_id, survey_id, species_id,
+         survey_design_type_id, cwt_detection_method_id,
+         run_id, run_year, estimated_percent_fish_seen,
+         comment_text) %>%
+  distinct()
+
+# Add trailing fields using data from header
+survey_trailing = header_data %>%
+  select(survey_id = survey_uuid, created_datetime, created_by,
+         modified_datetime, modified_by) %>%
+  group_by(survey_id) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq == 1L) %>%
+  select(-n_seq) %>%
+  distinct()
+
+# Check
+any(duplicated(survey_trailing$survey_id))
+
+# Add trailing fields
+survey_event_prep = survey_event_prep %>%
+  left_join(survey_trailing, by = "survey_id") %>%
+  select(survey_event_id, survey_id, species_id, survey_design_type_id,
+         cwt_detection_method_id, run_id, run_year, estimated_percent_fish_seen,
+         comment_text, created_datetime, created_by, modified_datetime,
+         modified_by) %>%
+  distinct()
+
+# Verify values
+any(duplicated(survey_event_prep$survey_event_id))
+any(is.na(survey_event_prep$created_datetime))
+
+#================================================================================================
+# Pull out live fish encounter data from redds subform
+#================================================================================================
+
+# Live redd data
+live_redd = redds %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date, modified_by,
+         fish_location_id = redd_location_id, fish_on_redd, status_marksex,
+         live_unknown_mark_unknown_sex_count, live_unmarked_unknown_sex_count,
+         live_unmarked_female_count, live_unmarked_male_count,
+         live_ad_clipped_female_count, live_ad_clipped_male_count,
+         live_ad_clipped_unknown_sex_count, live_unknown_mark_female_count,
+         live_unknown_mark_male_count, live_unmarked_jack_count,
+         live_unknown_mark_jack_count, live_ad_clipped_jack_count,
+         encounter_comments, total_fish_on_redd) %>%
+  filter(total_fish_on_redd > 0)
+
+# Pull out fish_encounter data categories
+live_rd_unknown_mark_unknown_sex = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_unknown_mark_unknown_sex_count) %>%
+  mutate(sex_id = "c0f86c86-dc49-406b-805d-c21a6756de91") %>%                    # Unknown
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Unable to check
+
+# Pull out fish_encounter data categories
+live_rd_unmarked_unknown_sex = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_unmarked_unknown_sex_count) %>%
+  mutate(sex_id = "c0f86c86-dc49-406b-805d-c21a6756de91") %>%                    # Unknown
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "66d9a635-a127-4d12-8998-6e86dd93afa6")        # Not clipped
+
+# Pull out fish_encounter data categories
+live_rd_unmarked_female = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_unmarked_female_count) %>%
+  mutate(sex_id = "1511973c-cbe1-4101-9481-458130041ee7") %>%                    # Female
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "66d9a635-a127-4d12-8998-6e86dd93afa6")        # Not clipped
+
+# Pull out fish_encounter data categories
+live_rd_unmarked_male = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_unmarked_male_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "66d9a635-a127-4d12-8998-6e86dd93afa6")        # Not clipped
+
+# Pull out fish_encounter data categories
+live_rd_ad_female = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_ad_clipped_female_count) %>%
+  mutate(sex_id = "1511973c-cbe1-4101-9481-458130041ee7") %>%                    # Female
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Clipped
+
+# Pull out fish_encounter data categories
+live_rd_ad_male = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_ad_clipped_male_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Clipped
+
+# Pull out fish_encounter data categories
+live_rd_ad_mark_unknown_sex = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_ad_clipped_unknown_sex_count) %>%
+  mutate(sex_id = "c0f86c86-dc49-406b-805d-c21a6756de91") %>%                    # Unknown
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Clipped
+
+# Pull out fish_encounter data categories
+live_rd_unknown_mark_female = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_unknown_mark_female_count) %>%
+  mutate(sex_id = "1511973c-cbe1-4101-9481-458130041ee7") %>%                    # Female
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Unable to check
+
+# Pull out fish_encounter data categories
+live_rd_unknown_mark_male = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_unknown_mark_male_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "68347504-ee22-4632-9856-a4f4366b2bd8") %>%               # Adult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Unable to check
+
+# Pull out fish_encounter data categories
+live_rd_unmarked_jack = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_unmarked_jack_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "0b0d12cf-ed27-48fb-ade2-b408067520e1") %>%               # Subadult
+  mutate(adipose_clip_status_id = "66d9a635-a127-4d12-8998-6e86dd93afa6")        # Not clipped
+
+# Pull out fish_encounter data categories
+live_rd_unknown_mark_jack = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_unknown_mark_jack_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "0b0d12cf-ed27-48fb-ade2-b408067520e1") %>%               # Subadult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Unable to check
+
+# Pull out fish_encounter data categories
+live_rd_ad_jack = live_redd %>%
+  select(redd_id, survey_id, created_date, created_by, modified_date,
+         modified_by, fish_location_id, fish_on_redd,
+         total_fish_on_redd, fish_count = live_ad_clipped_jack_count) %>%
+  mutate(sex_id = "ccdde151-4828-4597-8117-4635d8d47a71") %>%                    # Male
+  mutate(maturity_id = "0b0d12cf-ed27-48fb-ade2-b408067520e1") %>%               # Subadult
+  mutate(adipose_clip_status_id = "c989e267-c2cb-4d0a-842c-725f4257ace1")        # Clipped
+
+# Combine
+live_rd = rbind(live_rd_unknown_mark_unknown_sex,
+                live_rd_unmarked_male,
+                live_rd_unmarked_female,
+                live_rd_unmarked_jack,
+                live_rd_unmarked_unknown_sex,
+                live_rd_unknown_mark_male,
+                live_rd_unknown_mark_female,
+                live_rd_unknown_mark_jack,
+                live_rd_ad_male,
+                live_rd_ad_female,
+                live_rd_ad_jack,
+                live_rd_ad_mark_unknown_sex)
+
+
+
+
+
+# STOPPED HERE....USE CODE BELOW
+
+
+
+
+# # Do a quick check on ad_clip for chum...only UN and NC ok to convert all to NC
+# chk_chum_clip = live_fe %>%
+#   filter(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1")
+# table(chk_chum_clip$adipose_clip_status_id, useNA = "ifany")
+
+# Change any "Unable to check" cases to not checked for chum
+live_fe = live_fe %>%
+  mutate(adipose_clip_status_id = if_else(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1",
+                                          "33b78489-7ad3-4482-9455-3988e05bfb28",
+                                          adipose_clip_status_id))
+
+# Add some columns
+live_fe = live_fe %>%
+  left_join(header_se, by = "parent_record_id") %>%
+  mutate(fish_status_id = "6a200904-8a57-4dd5-8c82-2353f91186ac") %>%            # Live fish
+  mutate(origin_id  = "2089de8c-3bd0-48fe-b31b-330a76d840d2") %>%                # Unknown....not in form
+  mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%         # Not applicable...live fish
+  mutate(previously_counted_indicator = 0L) %>%                                  # Not in form
+  select(parent_record_id, survey_id, created_date, created_by, created_location,
+         modified_date, modified_by, modified_location, fish_status_id,
+         sex_id, origin_id, adipose_clip_status_id, fish_behavior_type_id = live_type,
+         mortality_type_id, fish_count, previously_counted_indicator)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#================================================================================================
+# Pull out fish encounter data and add fish_encounter id
+#================================================================================================
+
+
+
+
+
+
 
 #================================================================================================
 # Pull out redd encounter data
