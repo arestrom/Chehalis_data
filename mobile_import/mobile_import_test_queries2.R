@@ -2769,20 +2769,96 @@ any(is.na(fish_encounter_prep$created_datetime))
 #  1. Need to record if redd_name is missing in redd_encounter comments
 #  2. Need to record if no match to location in redd_encounter comments
 
+# Add species and survey_event
+redd_se_id = survey_event %>%
+  filter(!is.na(redd_id)) %>%
+  select(redd_id, survey_event_id) %>%
+  distinct()
+
+# Verify no dups in redd_id
+any(duplicated(redds$redd_id))
+
 # Pull out redd_encounter
-redds = redds %>%
-  left_join(redd_loc_id, by = "redd_id") %>%
-  select(redd)
+redd_enc = redds %>%
+  left_join(redd_se_id, by = "redd_id") %>%
+  select(redd_id, survey_id, survey_event_id, created_date, created_by,
+         modified_date, modified_by, redd_location_id, redd_time_stamp,
+         redd_type, redd_status, sgs_redd_name, redd_count, redd_length,
+         redd_width, redd_degraded, dewatered, dewater_text, si_redd,
+         percent_si, si_by, si_text, sgs_redd_status, new_redd_count,
+         encounter_comments, survey_date, observers, stream_name)
 
+# Check on some columns
+unique(redd_enc$sgs_redd_status)
+table(redd_enc$sgs_redd_status, useNA = "ifany")
 
+# Pull out NAs to check
+chk_redd_status = redd_enc %>%
+  filter(is.na(sgs_redd_status))
 
+# Fill in sgs_redd_status...........HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+redd_enc = redd_enc %>%
+  mutate(redd_status_id = if_else(is.na(sgs_redd_status) &
+                                    redd_type == "first_time_redd_encountered",
+                                  "45fda25c-9120-406c-b159-2aead75623c0",               # New redd
+                                  sgs_redd_status)) %>%
+  mutate(redd_encounter_datetime = created_date) %>%
+  select(redd_id, survey_id, survey_event_id, created_date, created_by,
+         modified_date, modified_by, redd_location_id, redd_time_stamp,
+         redd_encounter_datetime, redd_type, redd_status_id, sgs_redd_name,
+         redd_count, redd_length, redd_width, redd_degraded, dewatered,
+         dewater_text, si_redd, percent_si, si_by, si_text, sgs_redd_status,
+         new_redd_count, encounter_comments, survey_date, observers,
+         stream_name)
 
+# Verify the columns
+unique(redd_enc$survey_event_id[!nchar(redd_enc$survey_event_id) == 36L])
+unique(redd_enc$redd_location_id[!nchar(redd_enc$redd_location_id) == 36L])
+unique(redd_enc$redd_status_id[!nchar(redd_enc$redd_status_id) == 36L])
+unique(redd_enc$redd_count)
 
+# Check the records with no count
+chk_redd_count = redd_enc %>%
+  filter(is.na(redd_count))
+
+# Update redd_count HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+redd_enc$redd_count[redd_enc$redd_id == 7947L] = 1
+
+# Generate redd_encounter_id
+redd_encounter = redd_enc %>%
+  group_by(survey_event_id, redd_location_id, redd_status_id,
+           redd_encounter_datetime, redd_count) %>%
+  mutate(redd_encounter_id = remisc::get_uuid(1L)) %>%
+  ungroup() %>%
+  select(redd_id, redd_encounter_id, survey_id, survey_event_id,
+         created_date, modified_date, redd_location_id,
+         redd_time_stamp, redd_encounter_datetime,
+         redd_type, redd_status_id, sgs_redd_name, redd_count,
+         redd_length, redd_width, redd_degraded, dewatered,
+         dewater_text, si_redd, percent_si, si_by, si_text,
+         sgs_redd_status, new_redd_count, encounter_comments,
+         survey_date, observers, stream_name) %>%
+  arrange(survey_date, stream_name, redd_encounter_id)
+
+# Check for dups..this would be ok....But none this time...created_datetime is unique
+# This matches with redd_id...so probably what I want anyway.
+any(duplicated(redd_encounter$redd_encounter_id))
+any(duplicated(redd_encounter$redd_id))
+
+# Pull out redd_encounter table
+redd_encounter_prep = redd_encounter %>%
+  left_join(survey_trailing, by = "survey_event_id") %>%
+  select(redd_encounter_id, survey_event_id, redd_location_id,
+         redd_status_id, redd_encounter_datetime, redd_count,
+         comment_text = encounter_comments, created_datetime,
+         created_by, modified_datetime, modified_by)
 
 # STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
+# Next individual_redd....then start loading the data....
 
+# Then load from sqlite to SGS.
 
 
 
