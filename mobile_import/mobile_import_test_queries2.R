@@ -3050,6 +3050,9 @@ header_location_coords_prep = header_location %>%
 # Create redd and fish_encounter location tables
 #================================================================================================
 
+# Check
+all(fish_encounter_prep$fish_location_id %in% redd_encounter_prep$redd_location_id)
+
 # Prepare redd_location
 redd_location_prep = redd_location_prep %>%
   select(-c(created_by, modified_by)) %>%
@@ -3085,24 +3088,95 @@ redd_location_coords_prep = redd_location_coords_prep %>%
          created_datetime, created_by, modified_datetime,
          modified_by)
 
+#================================================================================================
+# Combine header, redd, and fish location data
+#================================================================================================
 
+# Combine for one location table
+location_prep = rbind(header_location_prep, redd_location_prep)
 
+# Check
+any(duplicated(location_prep$location_id))
 
+# Combine for one location_coordinates table
+location_coordinates_prep = rbind(header_location_coords_prep, redd_location_coords_prep)
+
+# Check
+any(duplicated(location_coordinates_prep$location_id))
+
+location_coordinates_prep = location_coordinates_prep %>%
+  group_by(location_id) %>%
+  mutate(location_coordinates_id = remisc::get_uuid(1L)) %>%
+  ungroup() %>%
+  select(location_coordinates_id, location_id, horizontal_accuracy,
+         comment_text, created_datetime, created_by, modified_datetime,
+         modified_by)
 
 #================================================================================================
 # Prepare individual_fish...now that fish_encounter_id is available
 #================================================================================================
 
+# Get fish_encounter_id
+fish_enc_id = fish_encounter %>%
+  select(dead_id, fish_encounter_id, survey_event_id) %>%
+  distinct()
 
+# Add fish_encounter_id
+individual_fish = dead_ind %>%
+  left_join(fish_enc_id, by = "dead_id") %>%
+  select(fish_encounter_id, survey_id, fish_condition_type_id, fish_trauma_type_id,
+         gill_condition_type_id, spawn_condition_type_id, cwt_result_type_id,
+         length_measurement_cm, scale_sample_card_number, scale_sample_position_number,
+         cwt_snout_sample_number, genetic_sample_number, comment_text = encounter_comments,
+         created_date, modified_date)
 
-all(fish_encounter_prep$fish_location_id %in% redd_encounter_prep$redd_location_id)
+# Generate individual_fish_id
+individual_fish = individual_fish %>%
+  group_by(fish_encounter_id, fish_condition_type_id, fish_trauma_type_id,
+           gill_condition_type_id, spawn_condition_type_id, cwt_result_type_id,
+           scale_sample_card_number, scale_sample_position_number,
+           cwt_snout_sample_number, genetic_sample_number) %>%
+  mutate(individual_fish_id = remisc::get_uuid(1L)) %>%
+  ungroup() %>%
+  left_join(head_create, by = "survey_id") %>%
+  mutate(mod_diff = modified_date - created_date) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_date)) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
+                               "ronnelmr", modified_by)) %>%
+  select(individual_fish_id, fish_encounter_id, fish_condition_type_id,
+         fish_trauma_type_id, gill_condition_type_id, spawn_condition_type_id,
+         cwt_result_type_id, length_measurement_cm, scale_sample_card_number,
+         scale_sample_position_number, cwt_snout_sample_number,
+         genetic_sample_number, comment_text, created_datetime = created_date,
+         created_by, modified_datetime, modified_by)
 
+# Prepare individual fish
+individual_fish_prep = individual_fish %>%
+  mutate(age_code_id = NA_character_) %>%
+  mutate(percent_eggs_retained = NA_integer_) %>%
+  mutate(eggs_retained_gram = NA_real_) %>%
+  mutate(eggs_retained_number = NA_integer_) %>%
+  mutate(fish_sample_number = NA_character_) %>%
+  mutate(cwt_tag_code = NA_character_) %>%
+  mutate(otolith_sample_number = NA_character_) %>%
+  select(individual_fish_id, fish_encounter_id, fish_condition_type_id,
+         fish_trauma_type_id, gill_condition_type_id, spawn_condition_type_id,
+         cwt_result_type_id, age_code_id, percent_eggs_retained, eggs_retained_gram,
+         eggs_retained_number, fish_sample_number, scale_sample_card_number,
+         scale_sample_position_number, cwt_snout_sample_number, cwt_tag_code,
+         genetic_sample_number, otolith_sample_number, comment_text,
+         created_datetime, created_by, modified_datetime, modified_by)
+
+# Then fish_measurement table
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #================================================================================================
 # Prepare fish_capture_event...now that fish_encounter_id is available
 #================================================================================================
 
-
+# Add recaps as needed to appropriate tables
 
 # Use header metadata for create, mod fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 fish_capture_event_prep = fish_capture_event_prep %>%
@@ -3121,7 +3195,9 @@ fish_capture_event_prep = fish_capture_event_prep %>%
 # Prepare fish_mark...now that fish_encounter_id is available
 #================================================================================================
 
-
+#================================================================================================
+# Prepare media_location table from pictures data
+#================================================================================================
 
 #================================================================================================
 # LOAD TO DBs
