@@ -1019,24 +1019,28 @@ any(is.na(other_obs$survey_id))
 
 # Add survey_id to other_pictures....use survey_id from other_obs
 sp_id = other_obs %>%
-  select(parent_record_id = id, survey_id,
+  select(other_obs_id = id, survey_id,
          head_create_by, head_mod_by) %>%
   distinct()
 
 # Check
-any(is.na(sp_id$parent_record_id))
+any(is.na(sp_id$other_obs_id))
 any(is.na(sp_id$survey_id))
 
 # Dump any records that are not in the filtered other_obs dataset
 # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-other_obs_id = unique(other_obs$id)
+oobs_id = unique(other_obs$id)
 # Filter to data with no missing stream or rms....Still 178 records
 other_pictures = other_pictures %>%
-  filter(parent_record_id %in% other_obs_id)
+  filter(parent_record_id %in% oobs_id)
 
 # Join survey_id to other_pictures
 other_pictures = other_pictures %>%
-  left_join(sp_id, by = "parent_record_id")
+  rename(other_obs_id = parent_record_id) %>%
+  left_join(sp_id, by = "other_obs_id")
+
+# Check
+any(is.na(other_pictures$survey_id))
 
 # Pull out barrier info
 barrier_prep  = other_obs %>%
@@ -1053,7 +1057,7 @@ barrier_prep  = other_obs %>%
   mutate(comment_text = if_else(!is.na(barrier_details),
                                 paste0(physical_desc, "; ", barrier_details),
                                 physical_desc)) %>%
-  select(survey_id, obs_lat, obs_lon, obs_acc = gps_accuracy,
+  select(other_obs_id = id, survey_id, obs_lat, obs_lon, obs_acc = gps_accuracy,
          barrier_type = observation_type, barrier_observed_datetime,
          barrier_height_meter, barrier_ht_type = barrier_ht_meas_est,
          plunge_pool_depth_meter, pp_depth_type = barrier_pp_depth_meas_est,
@@ -1085,7 +1089,7 @@ barrier_prep = barrier_prep %>%
     pp_depth_type == "estimated" ~ "95e6627b-93c9-4e94-b89b-d1e1789ae699",
     is.na(pp_depth_type) ~ as.character(pp_depth_type),
     TRUE ~ as.character(pp_depth_type))) %>%
-  select(fish_barrier_id, survey_id, barrier_location_id, obs_lat, obs_lon,
+  select(other_obs_id, fish_barrier_id, survey_id, barrier_location_id, obs_lat, obs_lon,
          obs_acc, barrier_type_id, barrier_observed_datetime, barrier_height_meter,
          barrier_height_type_id, plunge_pool_depth_meter, plunge_pool_depth_type_id,
          comment_text, created_datetime, created_by, modified_datetime,
@@ -1097,6 +1101,7 @@ other_obs = other_obs %>%
 
 # Process
 other_obs = other_obs %>%
+  mutate(other_obs_id = id) %>%
   mutate(other_observation_id = remisc::get_uuid(nrow(other_obs))) %>%
   mutate(observation_location_id = remisc::get_uuid(nrow(other_obs))) %>%
   mutate(observation_type_id = case_when(
@@ -1112,7 +1117,7 @@ other_obs = other_obs %>%
     observation_type == "high_water_line" ~ "623acb24-ae3c-4c32-9be4-9e64ac0aa342")) %>%
   mutate(observation_datetime = as.POSIXct(NA)) %>%
   mutate(observation_count = NA_integer_) %>%
-  select(other_observation_id, survey_id, observation_location_id, obs_lat, obs_lon,
+  select(other_obs_id, other_observation_id, survey_id, observation_location_id, obs_lat, obs_lon,
          obs_acc, observation_type_id, observation_datetime, observation_count,
          created_datetime, created_by = head_create_by, modified_datetime,
          modified_by = head_mod_by)
@@ -1370,18 +1375,18 @@ unique(fish_mark$fish_capture_status_id)
 any(is.na(fish_mark$survey_id))
 
 # Pull out fish_capture_event
-fish_capture_event_prep = fish_mark %>%
+fish_capture_event = fish_mark %>%
   mutate(disposition_location_id = NA_character_) %>%
   select(dead_id, parent_record_id, survey_id, fish_capture_status_id, disposition_type_id,
          disposition_id, disposition_location_id, created_datetime = created_date,
          created_by, modified_datetime = modified_date, modified_by)
 
 # Check
-any(is.na(fish_capture_event_prep$fish_capture_status_id))
-any(is.na(fish_capture_event_prep$disposition_type_id))
-any(is.na(fish_capture_event_prep$disposition_id))
-any(is.na(fish_capture_event_prep$created_datetime))
-any(is.na(fish_capture_event_prep$created_by))
+any(is.na(fish_capture_event$fish_capture_status_id))
+any(is.na(fish_capture_event$disposition_type_id))
+any(is.na(fish_capture_event$disposition_id))
+any(is.na(fish_capture_event$created_datetime))
+any(is.na(fish_capture_event$created_by))
 
 # Pull out fish mark data separate and combine
 fish_mark_one = fish_mark %>%
@@ -1395,20 +1400,20 @@ fish_mark_two = fish_mark %>%
          mark_shape_id, tag_number = carc_tag_2, created_datetime = created_date,
          created_by, modified_datetime = modified_date, modified_by)
 # Combine
-fish_mark_prep = rbind(fish_mark_one, fish_mark_two) %>%
+fish_mark = rbind(fish_mark_one, fish_mark_two) %>%
   mutate(tag_number = trimws(tag_number)) %>%
   mutate(tag_number = if_else(tag_number == "", NA_character_, tag_number))
 
 # Check
-any(is.na(fish_mark_prep$mark_type_id))
-any(is.na(fish_mark_prep$mark_status_id))
-any(is.na(fish_mark_prep$mark_orientation_id))
-any(is.na(fish_mark_prep$mark_placement_id))
-any(is.na(fish_mark_prep$mark_size_id))
-any(is.na(fish_mark_prep$mark_color_id))
-any(is.na(fish_mark_prep$mark_shape_id))
-any(is.na(fish_mark_prep$created_datetime))
-any(is.na(fish_mark_prep$created_by))
+any(is.na(fish_mark$mark_type_id))
+any(is.na(fish_mark$mark_status_id))
+any(is.na(fish_mark$mark_orientation_id))
+any(is.na(fish_mark$mark_placement_id))
+any(is.na(fish_mark$mark_size_id))
+any(is.na(fish_mark$mark_color_id))
+any(is.na(fish_mark$mark_shape_id))
+any(is.na(fish_mark$created_datetime))
+any(is.na(fish_mark$created_by))
 
 #============ individual_fish =============================================
 
@@ -1564,13 +1569,13 @@ tail(sort(unique(dead_run$tag_number)), 15)
 
 # Join placed tags to recaps to get mark data
 # In the future...will need to query database to get tag info !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-tag_info_one = fish_mark_prep %>%
+tag_info_one = fish_mark %>%
   filter(!is.na(tag_number)) %>%
   left_join(dead_run, by = "tag_number") %>%
   select(tag_number_one = tag_number, run_id_one = run_id, mark_type_id_one = mark_type_id,
          mark_orientation_id_one = mark_orientation_id, mark_size_id_one = mark_size_id,
          mark_color_id_one = mark_color_id, mark_shape_id_one = mark_shape_id)
-tag_info_two = fish_mark_prep %>%
+tag_info_two = fish_mark %>%
   filter(!is.na(tag_number)) %>%
   left_join(dead_run, by = "tag_number") %>%
   select(tag_number_two = tag_number, run_id_two = run_id, mark_type_id_two = mark_type_id,
@@ -1613,7 +1618,7 @@ recaps_se = rbind(recaps_se_one, recaps_se_two) %>%
 tail(sort(unique(recaps_se$tag_number)), 15)
 
 # Organize
-recaps_fish_mark_prep = recaps_se %>%
+recaps_fish_mark = recaps_se %>%
   mutate(mark_status_id = case_when(
     nchar(tag_number) >= 4L &
       stri_detect_regex(tag_number, "[:digit:]") &
@@ -1630,7 +1635,7 @@ recaps_fish_mark_prep = recaps_se %>%
 #=========== fish_capture_event =============================
 
 # Organize
-recaps_fish_capture_event_prep = recaps_se %>%
+recaps_fish_capture_event = recaps_se %>%
   mutate(fish_capture_status_id = "3d115d9f-1e8b-4f5d-b05d-bcfa21a4d87f") %>%                # Recapture
   mutate(disposition_type_id = "24b51215-f7ea-4480-ba7d-436144969ac3") %>%                   # Carcass returned
   mutate(disposition_id = "dd6d0cab-1cc8-4b07-af93-5cd0be1a7a7f") %>%                        # Not applicable
@@ -2588,10 +2593,11 @@ chk_count = chk_count %>%
 #================================================================================================
 
 # Strategy:
-#  1. All fish_mark and recaps derive from dead. So define fish_encounter_id
-#     using combination of live, live_redd, and dead data.
+#  1. All fish_mark data derive from dead. Recaps are a separate encounter.
+#     So define fish_encounter_id using combination of live, live_redd, and recap,
+#     and dead data.
 #  2. Join new fish_encounter_id to fish_mark and fish_capture_event using dead_id
-#  3. Join new fish_encounter_id to recaps data using tag_number (recaps_fish_mark),
+#  3. Join new fish_encounter_id to recaps data using recap_id (recaps_fish_mark),
 #     then to recaps_fish_capture using recaps_id
 #  4. Join new fish_encounter_id to live_redd using redd_id
 
@@ -2635,6 +2641,40 @@ unique(dead_fev$adipose_clip_status_id)
 unique(dead_fev$fish_behavior_type_id)
 unique(dead_fev$mortality_type_id)
 unique(dead_fev$data_entry_type)
+
+# Prep the recap data ===============================
+
+# First get tag_number and dead_id. Needed to link to dead_fev
+dead_tag_number = fish_mark %>%
+  filter(!is.na(dead_id)) %>%
+  filter(!is.na(tag_number)) %>%
+  select(dead_id, tag_number) %>%
+  distinct()
+
+# Get detailed info from match to tag_number and dead_fev
+dead_tag_number = dead_tag_number %>%
+  left_join(dead_fev, by = "dead_id") %>%
+  mutate(previously_counted_indicator = 1L) %>%
+  select(dead_id, tag_number, survey_id, survey_event_id,
+         fish_status_id, sex_id, maturity_id, origin_id,
+         cwt_detection_status_id, adipose_clip_status_id,
+         fish_behavior_type_id, mortality_type_id,
+         fish_count, previously_counted_indicator)
+
+# Check
+unique(dead_tag_number$fish_count)
+
+# Join to recap data
+recap_fev = recaps_fish_mark %>%
+  select(recap_id, tag_number) %>%
+  distinct() %>%
+  left_join(dead_tag_number, by = "tag_number") %>%
+  filter(!is.na(survey_id)) %>%
+  select(recap_id, survey_id, survey_event_id, fish_status_id,
+         sex_id, maturity_id, origin_id, cwt_detection_status_id,
+         adipose_clip_status_id, fish_behavior_type_id, mortality_type_id,
+         fish_count, previously_counted_indicator) %>%
+  distinct()
 
 # Prep live data
 live_se_id = survey_event %>%
@@ -2686,8 +2726,8 @@ unique(live_rd_fev$fish_behavior_type_id)
 unique(live_rd_fev$mortality_type_id)
 
 # Stack the fev tables
-fish_encounter = bind_rows(dead_fev, live_fev, live_rd_fev) %>%
-  select(dead_id, live_id, redd_id, survey_id, survey_event_id,
+fish_encounter = bind_rows(dead_fev, recap_fev,live_fev, live_rd_fev) %>%
+  select(dead_id, recap_id, live_id, redd_id, survey_id, survey_event_id,
          fish_location_id, fish_status_id, sex_id, maturity_id,
          origin_id, cwt_detection_status_id, adipose_clip_status_id,
          fish_behavior_type_id, mortality_type_id, fish_count,
@@ -2723,7 +2763,7 @@ fish_encounter = fish_encounter %>%
            mortality_type_id, fish_count, previously_counted_indicator) %>%
   mutate(fish_encounter_id = remisc::get_uuid(1L)) %>%
   ungroup() %>%
-  select(dead_id, live_id, redd_id, fish_encounter_id, survey_event_id,
+  select(dead_id, recap_id, live_id, redd_id, fish_encounter_id, survey_event_id,
          survey_id, fish_location_id, fish_status_id, sex_id, maturity_id,
          origin_id, cwt_detection_status_id, adipose_clip_status_id,
          fish_behavior_type_id, mortality_type_id, fish_count,
@@ -3223,33 +3263,42 @@ fish_length_measurement_prep = fish_meas %>%
 # Prepare fish_capture_event from dead_fish...now that fish_encounter_id is available
 #================================================================================================
 
-# STOPPED HERE....NOTICE THE TEST_
-
 # Use header metadata for create, mod fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-fish_capture_event_prep_test = fish_capture_event_prep %>%
+fish_capture_event_one = fish_capture_event %>%
+  select(-c(created_by, modified_by)) %>%
   left_join(head_create, by = "survey_id") %>%
-  mutate(mod_diff = modified_date - created_date) %>%
-  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_date)) %>%
+  mutate(mod_diff = modified_datetime - created_datetime) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_datetime)) %>%
   mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
   mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
                                "ronnelmr", modified_by)) %>%
   select(dead_id, parent_record_id, survey_id, fish_capture_status_id, disposition_type_id,
-         disposition_id, disposition_location_id, created_datetime = created_date,
-         created_by, modified_datetime = modified_date, modified_by)
+         disposition_id, disposition_location_id, created_datetime, created_by,
+         modified_datetime, modified_by)
 
 # Add fish_encounter_id
-fish_capture_event_prep = fish_capture_event_prep %>%
+fish_capture_event_one = fish_capture_event_one %>%
   left_join(fish_enc_id, by = "dead_id") %>%
   select(fish_encounter_id, fish_capture_status_id, disposition_type_id,
          disposition_id, disposition_location_id, created_datetime,
          created_by, modified_datetime, modified_by)
+
+# Check
+any(is.na(fish_capture_event_one$fish_encounter_id))
 
 #================================================================================================
 # Prepare fish_capture_event from recaps...now that fish_encounter_id is available
 #================================================================================================
 
 # Use header metadata for create, mod fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-recaps_fish_capture_event_prep = recaps_fish_capture_event_prep %>%
+recaps_fish_capture_event_prep_test = recaps_fish_capture_event_prep %>%
+  select(-c(created_by, modified_by)) %>%
+  left_join(head_create, by = "survey_id") %>%
+  mutate(mod_diff = modified_date - created_date) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_date)) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
+                               "ronnelmr", modified_by)) %>%
 
 
 #================================================================================================
