@@ -415,7 +415,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1984 records....approx 4.0 seconds
+# Test...currently 1993 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -3130,6 +3130,38 @@ individual_fish = dead_ind %>%
          cwt_snout_sample_number, genetic_sample_number, comment_text = encounter_comments,
          created_date, modified_date)
 
+# Check some values
+unique(individual_fish$fish_condition_type_id)
+unique(individual_fish$fish_trauma_type_id)
+unique(individual_fish$gill_condition_type_id)
+unique(individual_fish$spawn_condition_type_id)
+unique(individual_fish$cwt_result_type_id)
+unique(individual_fish$length_measurement_cm)
+unique(individual_fish$scale_sample_card_number)
+unique(individual_fish$scale_sample_position_number)
+unique(individual_fish$cwt_snout_sample_number)
+unique(individual_fish$genetic_sample_number)
+unique(individual_fish$comment_text)
+
+# Dump rows with no data
+individual_fish = individual_fish %>%
+  mutate(dump_rows = if_else(
+    is.na(fish_condition_type_id) &
+      is.na(fish_trauma_type_id) &
+      is.na(gill_condition_type_id) &
+      is.na(spawn_condition_type_id) &
+      is.na(cwt_result_type_id) &
+      is.na(length_measurement_cm) &
+      is.na(scale_sample_card_number) &
+      is.na(scale_sample_position_number) &
+      is.na(cwt_snout_sample_number) &
+      is.na(genetic_sample_number),
+    "dump", "keep"))
+
+# Inspect rows to dump...check for cases with only comments....None...good.
+chk_ind_dump = individual_fish %>%
+  filter(dump_rows == "dump")
+
 # Generate individual_fish_id
 individual_fish = individual_fish %>%
   group_by(fish_encounter_id, fish_condition_type_id, fish_trauma_type_id,
@@ -3168,20 +3200,34 @@ individual_fish_prep = individual_fish %>%
          genetic_sample_number, otolith_sample_number, comment_text,
          created_datetime, created_by, modified_datetime, modified_by)
 
-# Then fish_measurement table
-
-# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 #================================================================================================
-# Prepare fish_capture_event...now that fish_encounter_id is available
+# Prepare fish_length_measurement table
 #================================================================================================
 
-# Add recaps as needed to appropriate tables
+# Pull out data for fish_measurement table
+fish_meas = individual_fish %>%
+  filter(!is.na(length_measurement_cm)) %>%
+  select(individual_fish_id, length_measurement_cm,
+         created_datetime, created_by, modified_datetime,
+         modified_by)
+
+# Generate id and pull out final data
+fish_length_measurement_prep = fish_meas %>%
+  mutate(fish_length_measurement_id = remisc::get_uuid(nrow(fish_meas))) %>%
+  mutate(fish_length_measurement_type_id = "740dbd1a-93fe-4355-8e78-722afba53b9f") %>%       # Fork length
+  select(fish_length_measurement_id, individual_fish_id, fish_length_measurement_type_id,
+         length_measurement_centimeter = length_measurement_cm, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+#================================================================================================
+# Prepare fish_capture_event from dead_fish...now that fish_encounter_id is available
+#================================================================================================
+
+# STOPPED HERE....NOTICE THE TEST_
 
 # Use header metadata for create, mod fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-fish_capture_event_prep = fish_capture_event_prep %>%
+fish_capture_event_prep_test = fish_capture_event_prep %>%
   left_join(head_create, by = "survey_id") %>%
-  left_join() %>%
   mutate(mod_diff = modified_date - created_date) %>%
   mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_date)) %>%
   mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
@@ -3190,6 +3236,21 @@ fish_capture_event_prep = fish_capture_event_prep %>%
   select(dead_id, parent_record_id, survey_id, fish_capture_status_id, disposition_type_id,
          disposition_id, disposition_location_id, created_datetime = created_date,
          created_by, modified_datetime = modified_date, modified_by)
+
+# Add fish_encounter_id
+fish_capture_event_prep = fish_capture_event_prep %>%
+  left_join(fish_enc_id, by = "dead_id") %>%
+  select(fish_encounter_id, fish_capture_status_id, disposition_type_id,
+         disposition_id, disposition_location_id, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+#================================================================================================
+# Prepare fish_capture_event from recaps...now that fish_encounter_id is available
+#================================================================================================
+
+# Use header metadata for create, mod fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+recaps_fish_capture_event_prep = recaps_fish_capture_event_prep %>%
+
 
 #================================================================================================
 # Prepare fish_mark...now that fish_encounter_id is available
