@@ -25,6 +25,7 @@ library(stringi)
 library(tidyr)
 library(lubridate)
 library(openxlsx)
+library(sf)
 
 # Set data for query
 # Profile ID
@@ -414,7 +415,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1978 records....approx 4.0 seconds
+# Test...currently 1984 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -553,16 +554,16 @@ chk_uuid = header_data %>%
 
 # Generate created and modified data
 header_data = header_data %>%
-  mutate(modified_by = if_else(created_datetime == modified_datetime,
-                               NA_character_, modified_by)) %>%
+  mutate(mod_diff = modified_datetime - created_datetime) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
   mutate(modified_by = if_else(substr(modified_by, 1, 3) %in% c("VAR", "FW0"),
                                NA_character_, modified_by)) %>%
   mutate(modified_by = stringi::stri_replace_all_fixed(modified_by, ".", "_")) %>%
   mutate(modified_by = remisc::get_text_item(modified_by, 1, "_")) %>%
   mutate(created_by = if_else(is.na(created_by) & !is.na(modified_by),
                               modified_by, created_by)) %>%
-  mutate(modified_datetime = if_else(created_datetime == modified_datetime,
-                                     as.POSIXct(NA), modified_datetime))
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_datetime)) %>%
+  mutate(created_by = if_else(is.na(created_by), "lea.ronne", created_by))
 
 # Survey =========================================
 
@@ -1128,15 +1129,6 @@ obs_location = other_obs %>%
          lat = obs_lat, lon = obs_lon, acc = obs_acc,
          created_datetime, created_by, modified_datetime,
          modified_by)
-
-# Trim loc_info
-loc_info = survey_loc_info %>%
-  select(survey_id, wria_id, waterbody_id) %>%
-  distinct()
-
-# Combine then add loc info
-header_location = rbind(barrier_location, obs_location) %>%
-  left_join(loc_info, by = "survey_id")
 
 #======================================================================================================================
 # Import from dead fish subform
@@ -1931,7 +1923,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 11049 records: Checked that I got first and last parent_record_id
+# Test...currently 11061 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -2150,14 +2142,14 @@ redd_location_prep = redd_location_prep %>%
          location_orientation_type_id = redd_orientation,
          location_name = sgs_redd_name, latitude = redd_latitude,
          longitude = redd_longitude,
-         horizonal_accuracy = redd_loc_accuracy,
+         horizontal_accuracy = redd_loc_accuracy,
          created_datetime = created_date, created_by,
          modified_datetime = modified_date, modified_by)
 
 # Pull out redd_coordinates
 redd_location_coords_prep = redd_location_prep %>%
   filter(!is.na(latitude) & !is.na(longitude)) %>%
-  select(location_id, latitude, longitude, horizonal_accuracy,
+  select(location_id, latitude, longitude, horizontal_accuracy,
          created_datetime, created_by, modified_datetime,
          modified_by)
 
@@ -2303,6 +2295,11 @@ run_year_info = header_se %>%
          chum_run_year, chinook_run_year) %>%
   distinct()
 
+# Check run
+chk_na_run = survey_event %>%
+  filter(is.na(run_id))
+unique(chk_na_run$species_id)
+
 # Add
 survey_event = survey_event %>%
   left_join(run_year_info, by = "survey_id") %>%
@@ -2312,6 +2309,11 @@ survey_event = survey_event %>%
     species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1" ~ chum_run_year,
     species_id == "e42aa0fc-c591-4fab-8481-55b0df38dcb1" ~ chinook_run_year,
     TRUE ~ chinook_run_year)) %>%
+  mutate(run_id = if_else(species_id %in%
+                            c("2afac5a6-e3b9-4b37-911e-59b93240789d",              # Lamprey
+                              "d29ca246-acfa-48d5-ba55-e61323d59fa7"),            # Lamprey
+                          "59e1e01f-3aef-498c-8755-5862c025eafa",                 # Not applicable
+                          "94e1757f-b9c7-4b06-a461-17a2d804cd2f")) %>%            # Unknown run
   select(dead_id, live_id, recap_id, redd_id, survey_id,
          species_id, survey_design_type_id, run_id,
          cwt_detection_method_id, run_year, fish_count)
@@ -2704,6 +2706,15 @@ unique(fish_encounter$fish_behavior_type_id[!nchar(fish_encounter$fish_behavior_
 unique(fish_encounter$mortality_type_id[!nchar(fish_encounter$mortality_type_id) == 36L])
 unique(fish_encounter$previously_counted_indicator)
 
+# Check the records with no count
+chk_fish_count = fish_encounter %>%
+  filter(is.na(fish_count))
+
+# Update fish_count HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+fish_encounter$fish_count[fish_encounter$redd_id == 4905L & is.na(fish_encounter$fish_count)] = 1L
+fish_encounter$fish_count[fish_encounter$redd_id == 28538L & is.na(fish_encounter$fish_count)] = 1L
+fish_encounter$fish_count[fish_encounter$redd_id == 465L & is.na(fish_encounter$fish_count)] = 1L
+
 # Generate fish_encounter_id
 fish_encounter = fish_encounter %>%
   group_by(survey_event_id, fish_location_id, fish_status_id,
@@ -2845,7 +2856,7 @@ redd_encounter = redd_enc %>%
 any(duplicated(redd_encounter$redd_encounter_id))
 any(duplicated(redd_encounter$redd_id))
 
-# Pull out redd_encounter table
+# Pull out redd_encounter table....one entry for each in individual redd.
 redd_encounter_prep = redd_encounter %>%
   left_join(survey_trailing, by = "survey_event_id") %>%
   select(redd_encounter_id, survey_event_id, redd_location_id,
@@ -2853,22 +2864,381 @@ redd_encounter_prep = redd_encounter %>%
          comment_text = encounter_comments, created_datetime,
          created_by, modified_datetime, modified_by)
 
-# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#================================================================================================
+# Pull out individual_redd data
+#================================================================================================
+
+# Get the individual_redd data
+ind_redd = redd_encounter %>%
+  select(redd_id, redd_encounter_id, survey_id, redd_count,
+         redd_length, redd_width, redd_degraded, dewatered,
+         dewater_text, si_redd, percent_si, si_by, created_date,
+         modified_date, survey_date, observers, stream_name) %>%
+  distinct()
+
+# Check values
+unique(ind_redd$redd_count)
+unique(ind_redd$redd_length)
+unique(ind_redd$redd_width)
+unique(ind_redd$redd_degraded)
+unique(ind_redd$dewatered)
+unique(ind_redd$dewater_text)
+unique(ind_redd$percent_si)
+#unique(ind_redd$si_by)
+
+# First look for cases where redd_count > 1, but ind_redd data occurs
+# Result: None....can safely dump data where redd_count > 1
+chk_redd_count = ind_redd %>%
+  filter(redd_count > 1)
+
+# Trim to only counts of one
+ind_redd = ind_redd %>%
+  filter(redd_count < 2)
+
+# Check values...first three need no treatment
+unique(ind_redd$redd_count)
+unique(ind_redd$redd_length)
+unique(ind_redd$redd_width)
+
+# Correct some values
+ind_redd = ind_redd %>%
+  mutate(redd_degraded = trimws(redd_degraded)) %>%
+  mutate(redd_degraded = if_else(redd_degraded == "", NA_character_, redd_degraded)) %>%
+  mutate(percent_redd_degraded = as.integer(redd_degraded)) %>%
+  mutate(percent_si = trimws(percent_si)) %>%
+  mutate(percent_si = if_else(percent_si == "", NA_character_, percent_si)) %>%
+  mutate(percent_redd_superimposed = as.integer(percent_si)) %>%
+  mutate(si_by = trimws(si_by)) %>%
+  mutate(si_by = if_else(si_by == "", NA_character_, si_by)) %>%
+  mutate(superimposed_redd_name = si_by) %>%
+  mutate(comment_text = NA_character_) %>%                                            # No real info
+  select(redd_encounter_id, survey_id, redd_dewatered_type_id = dewatered, redd_length,
+         redd_width, percent_redd_superimposed, percent_redd_degraded,
+         superimposed_redd_name, comment_text, created_date, modified_date)
+
+# Recheck
+unique(ind_redd$redd_dewatered_type_id)
+unique(ind_redd$percent_redd_superimposed)
+unique(ind_redd$percent_redd_degraded)
+# unique(ind_redd$superimposed_redd_name)
+unique(ind_redd$comment_text)
+
+# Get rid of any fields where no data has been entered
+ind_redd = ind_redd %>%
+  mutate(dump_rows = if_else(is.na(redd_dewatered_type_id) &
+                               is.na(redd_length) &
+                               is.na(redd_width) &
+                               is.na(percent_redd_superimposed) &
+                               is.na(percent_redd_degraded) &
+                               is.na(superimposed_redd_name) &
+                               is.na(comment_text),
+                             "dump", "keep")) %>%
+  filter(dump_rows == "keep")
+
+# Generate individual_redd_id
+individual_redd = ind_redd %>%
+  group_by(redd_encounter_id, redd_dewatered_type_id,
+           redd_length, redd_width, percent_redd_superimposed,
+           percent_redd_degraded, superimposed_redd_name) %>%
+  mutate(individual_redd_id = remisc::get_uuid(1L)) %>%
+  ungroup() %>%
+  select(individual_redd_id, redd_encounter_id, survey_id,
+         redd_dewatered_type_id, redd_length, redd_width,
+         percent_redd_superimposed, percent_redd_degraded,
+         superimposed_redd_name, comment_text, created_date,
+         modified_date)
+
+# Pull out create_by mod_by fields from header data
+head_create = header_se %>%
+  select(survey_id, created_by = head_created_by,
+         modified_by = head_mod_by) %>%
+  distinct()
+
+# Add final set of fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+individual_redd_prep = individual_redd %>%
+  left_join(head_create, by = "survey_id") %>%
+  mutate(mod_diff = modified_date - created_date) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_date)) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
+                               "ronnelmr", modified_by)) %>%
+  mutate(redd_shape_id = "fdbc7d36-eb06-4eba-8df3-6e7145430d64") %>%                     # No data
+  mutate(percent_redd_visible = NA_integer_) %>%
+  mutate(redd_depth_measure_meter = NA_real_) %>%
+  mutate(tailspill_height_measure_meter = NA_real_) %>%
+  select(individual_redd_id, redd_encounter_id, redd_shape_id,
+         redd_dewatered_type_id, percent_redd_visible,
+         redd_length_measure_meter = redd_length,
+         redd_width_measure_meter = redd_width,
+         redd_depth_measure_meter, tailspill_height_measure_meter,
+         percent_redd_superimposed, percent_redd_degraded,
+         superimposed_redd_name, comment_text,
+         created_datetime = created_date, created_by,
+         modified_datetime, modified_by)
+
+# Check for missing values
+any(is.na(individual_redd_prep$individual_redd_id))
+any(is.na(individual_redd_prep$redd_encounter_id))
+any(is.na(individual_redd_prep$redd_shape_id))
+any(is.na(individual_redd_prep$created_datetime))
+any(is.na(individual_redd_prep$created_by))
+
+#================================================================================================
+# Create header location tables
+#================================================================================================
+
+# Get info needed for location table
+survey_loc_trim = survey_loc_info %>%
+  select(survey_id, wria_id, waterbody_id) %>%
+  distinct()
+
+# # Add trailing fields using data from header
+# survey_create = survey_event_prep %>%
+#   select(survey_id, created_datetime, created_by,
+#          modified_datetime, modified_by) %>%
+#   group_by(survey_id) %>%
+#   mutate(n_seq = row_number()) %>%
+#   ungroup() %>%
+#   filter(n_seq == 1L) %>%
+#   select(-n_seq) %>%
+#   distinct()
+
+# Prepare barrier_location
+barrier_location = barrier_location %>%
+  mutate(location_type_id = "8944c684-7cfc-44cf-a2d8-be66723c1ae0")                      # Fish barrier
+
+# Prepare barrier_location
+obs_location = obs_location %>%
+  mutate(location_type_id = "ead419f2-0e72-4d41-9715-7833879b71a8")                      # Other
+
+# Combine then add loc info
+header_location = rbind(barrier_location, obs_location) %>%
+  left_join(survey_loc_trim, by = "survey_id") %>%
+  mutate(stream_channel_type_id = "713a39a5-8e95-4069-b078-066699c321d8") %>%            # No data
+  mutate(location_orientation_type_id = "eb4652b7-5390-43d4-a98e-60ea54a1d518") %>%      # No data
+  mutate(river_mile_measure = NA_real_) %>%
+  mutate(location_code = NA_character_) %>%
+  mutate(location_name = NA_character_) %>%
+  mutate(location_description = NA_character_) %>%
+  mutate(waloc_id = NA_character_) %>%
+  select(location_id, waterbody_id, wria_id, location_type_id,
+         stream_channel_type_id, location_orientation_type_id,
+         river_mile_measure, location_code, location_name,
+         location_description, waloc_id, created_datetime,
+         created_by, modified_datetime, modified_by, lat, lon,
+         acc)
+
+# Pull out just the location data
+header_location_prep = header_location %>%
+  select(location_id, waterbody_id, wria_id, location_type_id,
+         stream_channel_type_id, location_orientation_type_id,
+         river_mile_measure, location_code, location_name,
+         location_description, waloc_id, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Pull out header location_coordinates
+header_location_coords_prep = header_location %>%
+  st_as_sf(., coords = c("lon", "lat"), crs = 4326) %>%
+  st_transform(., 2927) %>%
+  mutate(acc = as.numeric(acc)) %>%
+  mutate(comment_text = NA_character_) %>%
+  select(location_id, horizontal_accuracy = acc, comment_text,
+         created_datetime, created_by, modified_datetime,
+         modified_by)
+
+#================================================================================================
+# Create redd and fish_encounter location tables
+#================================================================================================
+
+# Prepare redd_location
+redd_location_prep = redd_location_prep %>%
+  select(-c(created_by, modified_by)) %>%
+  left_join(head_create, by = "survey_id") %>%
+  mutate(mod_diff = modified_datetime - created_datetime) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_datetime)) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
+                               "ronnelmr", modified_by)) %>%
+  mutate(river_mile_measure = NA_real_) %>%
+  mutate(location_code = NA_character_) %>%
+  mutate(waloc_id = NA_character_) %>%
+  mutate(location_description = NA_character_) %>%
+  select(location_id, waterbody_id, wria_id, location_type_id,
+         stream_channel_type_id, location_orientation_type_id,
+         river_mile_measure, location_code, location_name,
+         location_description, waloc_id, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Pull out create values from above
+redd_loc_create = redd_location_prep %>%
+  select(location_id, created_datetime, created_by,
+         modified_datetime, modified_by)
+
+# Prepare redd_location_coords_prep
+redd_location_coords_prep = redd_location_coords_prep %>%
+  select(-c(created_by, modified_by, created_datetime, modified_datetime)) %>%
+  left_join(redd_loc_create, by = "location_id") %>%
+  st_as_sf(., coords = c("longitude", "latitude"), crs = 4326) %>%
+  st_transform(., 2927) %>%
+  mutate(comment_text = NA_character_) %>%
+  select(location_id, horizontal_accuracy, comment_text,
+         created_datetime, created_by, modified_datetime,
+         modified_by)
 
 
-# Next individual_redd....then start loading the data....
-
-# Then load from sqlite to SGS.
 
 
 
+#================================================================================================
+# Prepare individual_fish...now that fish_encounter_id is available
+#================================================================================================
 
 
 
+all(fish_encounter_prep$fish_location_id %in% redd_encounter_prep$redd_location_id)
+
+
+#================================================================================================
+# Prepare fish_capture_event...now that fish_encounter_id is available
+#================================================================================================
 
 
 
+# Use header metadata for create, mod fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+fish_capture_event_prep = fish_capture_event_prep %>%
+  left_join(head_create, by = "survey_id") %>%
+  left_join() %>%
+  mutate(mod_diff = modified_date - created_date) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_date)) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
+                               "ronnelmr", modified_by)) %>%
+  select(dead_id, parent_record_id, survey_id, fish_capture_status_id, disposition_type_id,
+         disposition_id, disposition_location_id, created_datetime = created_date,
+         created_by, modified_datetime = modified_date, modified_by)
 
+#================================================================================================
+# Prepare fish_mark...now that fish_encounter_id is available
+#================================================================================================
+
+
+
+#================================================================================================
+# LOAD TO DBs
+#  1. Load to local postgres first, so constraints engage,
+#     and also so script does not think data has already been loaded
+#  2. After all tables loaded...load to sqlite
+#  3. Write separate script to load to SGS
+#================================================================================================
+
+# unique(redd_enc$survey_event_id[!nchar(redd_enc$survey_event_id) == 36L])
+
+# Verify survey_prep
+any(is.na(survey_prep$survey_id))
+any(is.na(survey_prep$survey_datetime))
+any(is.na(survey_prep$data_source_id))
+any(is.na(survey_prep$data_source_unit_id))
+any(is.na(survey_prep$survey_method_id))
+any(is.na(survey_prep$data_review_status_id))
+any(is.na(survey_prep$upper_end_point_id))
+any(is.na(survey_prep$lower_end_point_id))
+any(is.na(survey_prep$survey_completion_status_id))
+any(is.na(survey_prep$incomplete_survey_type_id))
+any(is.na(survey_prep$created_datetime))
+any(is.na(survey_prep$created_by))
+
+# Check survey_comment
+any(is.na(comment_prep$survey_comment_id))
+any(is.na(comment_prep$survey_id))
+any(is.na(comment_prep$created_datetime))
+any(is.na(comment_prep$created_by))
+
+# Check survey_intent
+any(is.na(intent_prep$survey_intent_id))
+any(is.na(intent_prep$survey_id))
+any(is.na(intent_prep$species_id))
+any(is.na(intent_prep$count_type_id))
+any(is.na(intent_prep$created_datetime))
+any(is.na(intent_prep$created_by))
+
+# Check waterbody_measurement
+any(is.na(waterbody_meas_prep$survey_id))
+any(is.na(waterbody_meas_prep$water_clarity_type_id))
+any(is.na(waterbody_meas_prep$water_clarity_meter))
+any(is.na(waterbody_meas_prep$created_datetime))
+any(is.na(waterbody_meas_prep$created_by))
+
+# Check mobile_survey_form
+any(is.na(mobile_survey_form_prep$mobile_survey_form_id))
+any(is.na(mobile_survey_form_prep$survey_id))
+any(is.na(mobile_survey_form_prep$parent_form_survey_id))
+any(is.na(mobile_survey_form_prep$parent_form_survey_guid))
+any(is.na(mobile_survey_form_prep$created_datetime))
+any(is.na(mobile_survey_form_prep$created_by))
+
+# Check fish_barrier
+any(is.na(barrier_prep$fish_barrier_id))
+any(is.na(barrier_prep$survey_id))
+any(is.na(barrier_prep$barrier_type_id))
+any(is.na(barrier_prep$barrier_location_id))
+any(is.na(barrier_prep$barrier_height_type_id))
+any(is.na(barrier_prep$plunge_pool_depth_type_id))
+any(is.na(barrier_prep$created_datetime))
+any(is.na(barrier_prep$created_by))
+
+# Check other_observations
+any(is.na(other_obs$other_observation_id))
+any(is.na(other_obs$survey_id))
+any(is.na(other_obs$observation_type_id))
+any(is.na(other_obs$created_datetime))
+any(is.na(other_obs$created_by))
+
+# Check survey_event
+any(is.na(survey_event_prep$survey_event_id))
+any(is.na(survey_event_prep$survey_id))
+any(is.na(survey_event_prep$species_id))
+any(is.na(survey_event_prep$survey_design_type_id))
+any(is.na(survey_event_prep$cwt_detection_method_id))
+any(is.na(survey_event_prep$run_id))
+any(is.na(survey_event_prep$run_year))
+any(is.na(survey_event_prep$created_datetime))
+any(is.na(survey_event_prep$created_by))
+
+# Check fish_encounter
+any(is.na(fish_encounter_prep$fish_encounter_id))
+any(is.na(fish_encounter_prep$survey_event_id))
+any(is.na(fish_encounter_prep$fish_status_id))
+any(is.na(fish_encounter_prep$sex_id))
+any(is.na(fish_encounter_prep$maturity_id))
+any(is.na(fish_encounter_prep$origin_id))
+any(is.na(fish_encounter_prep$cwt_detection_status_id))
+any(is.na(fish_encounter_prep$adipose_clip_status_id))
+any(is.na(fish_encounter_prep$fish_behavior_type_id))
+any(is.na(fish_encounter_prep$mortality_type_id))
+any(is.na(fish_encounter_prep$fish_count))
+any(is.na(fish_encounter_prep$previously_counted_indicator))
+any(is.na(fish_encounter_prep$created_datetime))
+any(is.na(fish_encounter_prep$created_by))
+
+# Check fish_capture_event
+any(is.na(fish_capture_event_prep$fish_capture_event_id))
+any(is.na(fish_capture_event_prep$fish_capture_status_id))
+any(is.na(fish_capture_event_prep$disposition_type_id))
+any(is.na(fish_capture_event_prep$disposition_id))
+any(is.na(fish_capture_event_prep$created_datetime))
+any(is.na(fish_capture_event_prep$created_by))
+
+# Check fish_mark
+any(is.na(fish_mark_prep$fish_mark_id))
+any(is.na(fish_mark_prep$mark_type_id))
+any(is.na(fish_mark_prep$mark_status_id))
+any(is.na(fish_mark_prep$mark_orientation_id))
+any(is.na(fish_mark_prep$mark_placement_id))
+any(is.na(fish_mark_prep$mark_size_id))
+any(is.na(fish_mark_prep$mark_color_id))
+any(is.na(fish_mark_prep$mark_shape_id))
+any(is.na(fish_mark_prep$created_datetime))
+any(is.na(fish_mark_prep$created_by))
 
 
 
