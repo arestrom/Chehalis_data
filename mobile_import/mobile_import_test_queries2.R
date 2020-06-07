@@ -415,7 +415,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1993 records....approx 4.0 seconds
+# Test...currently 1997 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -1165,13 +1165,78 @@ barrier_location = barrier_prep %>%
   select(survey_id, location_id = barrier_location_id,
          lat = obs_lat, lon = obs_lon, acc = obs_acc,
          created_datetime, created_by, modified_datetime,
-         modified_by)
+         modified_by) %>%
+  distinct()
 
 obs_location = other_observation %>%
   select(survey_id, location_id = observation_location_id,
          lat = obs_lat, lon = obs_lon, acc = obs_acc,
          created_datetime, created_by, modified_datetime,
+         modified_by) %>%
+  distinct()
+
+#================================================================================================
+# Create header location tables
+#================================================================================================
+
+# Get info needed for location table
+survey_loc_trim = survey_loc_info %>%
+  select(survey_id, wria_id, waterbody_id) %>%
+  distinct()
+
+# Prepare barrier_location: 76 rows
+barrier_location = barrier_location %>%
+  mutate(location_type_id = "8944c684-7cfc-44cf-a2d8-be66723c1ae0")                      # Fish barrier
+
+# Check
+any(duplicated(barrier_location$location_id))
+
+# Prepare obs_location: 226 rows
+obs_location = obs_location %>%
+  mutate(location_type_id = "ead419f2-0e72-4d41-9715-7833879b71a8")                      # Other
+
+# Check
+any(duplicated(obs_location$location_id))
+
+# Combine then add loc info
+header_location = rbind(barrier_location, obs_location) %>%
+  left_join(survey_loc_trim, by = "survey_id") %>%
+  mutate(stream_channel_type_id = "713a39a5-8e95-4069-b078-066699c321d8") %>%            # No data
+  mutate(location_orientation_type_id = "eb4652b7-5390-43d4-a98e-60ea54a1d518") %>%      # No data
+  mutate(river_mile_measure = NA_real_) %>%
+  mutate(location_code = NA_character_) %>%
+  mutate(location_name = NA_character_) %>%
+  mutate(location_description = NA_character_) %>%
+  mutate(waloc_id = NA_character_) %>%
+  select(location_id, waterbody_id, wria_id, location_type_id,
+         stream_channel_type_id, location_orientation_type_id,
+         river_mile_measure, location_code, location_name,
+         location_description, waloc_id, created_datetime,
+         created_by, modified_datetime, modified_by, lat, lon,
+         acc)
+
+# Pull out just the location data
+header_location_prep = header_location %>%
+  select(location_id, waterbody_id, wria_id, location_type_id,
+         stream_channel_type_id, location_orientation_type_id,
+         river_mile_measure, location_code, location_name,
+         location_description, waloc_id, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Pull out header location_coordinates
+header_location_coords_prep = header_location %>%
+  st_as_sf(., coords = c("lon", "lat"), crs = 4326) %>%
+  st_transform(., 2927) %>%
+  mutate(acc = as.numeric(acc)) %>%
+  mutate(comment_text = NA_character_) %>%
+  select(location_id, horizontal_accuracy = acc, comment_text,
+         created_datetime, created_by, modified_datetime,
          modified_by)
+
+# Check
+any(duplicated(header_location_prep$location_id))
+any(duplicated(header_location_coords_prep$location_id))
+any(is.na(header_location_prep$stream_channel_type_id))
 
 #======================================================================================================================
 # Import from dead fish subform
@@ -3062,82 +3127,13 @@ any(is.na(individual_redd_prep$created_datetime))
 any(is.na(individual_redd_prep$created_by))
 
 #================================================================================================
-# Create header location tables
-#================================================================================================
-
-
-
-
-# STOPPED HERE....GETTING DUPLICATE LOCATION_IDs below !!!!!!!!!!!!!!!!!!!!!
-
-
-
-
-# Get info needed for location table
-survey_loc_trim = survey_loc_info %>%
-  select(survey_id, wria_id, waterbody_id) %>%
-  distinct()
-
-# # Add trailing fields using data from header
-# survey_create = survey_event_prep %>%
-#   select(survey_id, created_datetime, created_by,
-#          modified_datetime, modified_by) %>%
-#   group_by(survey_id) %>%
-#   mutate(n_seq = row_number()) %>%
-#   ungroup() %>%
-#   filter(n_seq == 1L) %>%
-#   select(-n_seq) %>%
-#   distinct()
-
-# Prepare barrier_location
-barrier_location = barrier_location %>%
-  mutate(location_type_id = "8944c684-7cfc-44cf-a2d8-be66723c1ae0")                      # Fish barrier
-
-# Prepare barrier_location
-obs_location = obs_location %>%
-  mutate(location_type_id = "ead419f2-0e72-4d41-9715-7833879b71a8")                      # Other
-
-# Combine then add loc info
-header_location = rbind(barrier_location, obs_location) %>%
-  left_join(survey_loc_trim, by = "survey_id") %>%
-  mutate(stream_channel_type_id = "713a39a5-8e95-4069-b078-066699c321d8") %>%            # No data
-  mutate(location_orientation_type_id = "eb4652b7-5390-43d4-a98e-60ea54a1d518") %>%      # No data
-  mutate(river_mile_measure = NA_real_) %>%
-  mutate(location_code = NA_character_) %>%
-  mutate(location_name = NA_character_) %>%
-  mutate(location_description = NA_character_) %>%
-  mutate(waloc_id = NA_character_) %>%
-  select(location_id, waterbody_id, wria_id, location_type_id,
-         stream_channel_type_id, location_orientation_type_id,
-         river_mile_measure, location_code, location_name,
-         location_description, waloc_id, created_datetime,
-         created_by, modified_datetime, modified_by, lat, lon,
-         acc)
-
-# Pull out just the location data
-header_location_prep = header_location %>%
-  select(location_id, waterbody_id, wria_id, location_type_id,
-         stream_channel_type_id, location_orientation_type_id,
-         river_mile_measure, location_code, location_name,
-         location_description, waloc_id, created_datetime,
-         created_by, modified_datetime, modified_by)
-
-# Pull out header location_coordinates
-header_location_coords_prep = header_location %>%
-  st_as_sf(., coords = c("lon", "lat"), crs = 4326) %>%
-  st_transform(., 2927) %>%
-  mutate(acc = as.numeric(acc)) %>%
-  mutate(comment_text = NA_character_) %>%
-  select(location_id, horizontal_accuracy = acc, comment_text,
-         created_datetime, created_by, modified_datetime,
-         modified_by)
-
-#================================================================================================
 # Create redd and fish_encounter location tables
 #================================================================================================
 
 # Check
 all(fish_encounter_prep$fish_location_id %in% redd_encounter_prep$redd_location_id)
+unique(redd_location_prep$stream_channel_type_id)
+unique(redd_location_prep$location_orientation_type_id)
 
 # Prepare redd_location
 redd_location_prep = redd_location_prep %>%
@@ -3148,6 +3144,12 @@ redd_location_prep = redd_location_prep %>%
   mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
   mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
                                "ronnelmr", modified_by)) %>%
+  mutate(stream_channel_type_id = if_else(is.na(stream_channel_type_id),
+                                          "713a39a5-8e95-4069-b078-066699c321d8",
+                                          stream_channel_type_id)) %>%
+  mutate(location_orientation_type_id = if_else(is.na(location_orientation_type_id),
+                                          "eb4652b7-5390-43d4-a98e-60ea54a1d518",
+                                          location_orientation_type_id)) %>%
   mutate(river_mile_measure = NA_real_) %>%
   mutate(location_code = NA_character_) %>%
   mutate(waloc_id = NA_character_) %>%
@@ -3173,6 +3175,10 @@ redd_location_coords_prep = redd_location_coords_prep %>%
   select(location_id, horizontal_accuracy, comment_text,
          created_datetime, created_by, modified_datetime,
          modified_by)
+
+# Check
+any(is.na(redd_location_prep$stream_channel_type_id))
+any(is.na(redd_location_prep$location_orientation_type_id))
 
 #================================================================================================
 # Combine header, redd, and fish location data
@@ -3481,14 +3487,48 @@ media_location_prep = media_location %>%
          modified_datetime, modified_by, comment_text)
 
 #================================================================================================
-# LOAD TO DBs
-#  1. Load to local postgres first, so constraints engage,
-#     and also so script does not think data has already been loaded
-#  2. After all tables loaded...load to sqlite
-#  3. Write separate script to load to SGS
+# Prepare fish_barrier
+#================================================================================================
+
+# Pull out data for fish_barrier table
+fish_barrier_prep = barrier_prep %>%
+  select(fish_barrier_id, survey_id, barrier_location_id,
+         barrier_type_id, barrier_observed_datetime,
+         barrier_height_meter, barrier_height_type_id,
+         plunge_pool_depth_meter, plunge_pool_depth_type_id,
+         comment_text, created_datetime, created_by,
+         modified_datetime, modified_by)
+
+#================================================================================================
+# Prepare other_observations
+#================================================================================================
+
+# Pull out other_obs data
+other_observation_prep = other_observation %>%
+  select(other_observation_id, survey_id, observation_location_id,
+         observation_type_id, observation_datetime, observation_count,
+         comment_text, created_datetime, created_by, modified_datetime,
+         modified_by)
+
+#================================================================================================
+# CHECK FOR MISSING REQUIRED VALUES
 #================================================================================================
 
 # unique(redd_enc$survey_event_id[!nchar(redd_enc$survey_event_id) == 36L])
+
+# Verify location_prep
+any(is.na(location_prep$location_id))
+any(is.na(location_prep$waterbody_id))
+any(is.na(location_prep$wria_id))
+any(is.na(location_prep$location_type_id))
+any(is.na(location_prep$stream_channel_type_id))
+any(is.na(location_prep$location_orientation_type_id))
+any(is.na(location_prep$created_datetime))
+any(is.na(location_prep$created_by))
+
+# Verify location_coordinates_prep
+any(is.na(location_coordinates_prep$location_coordinates_id))
+any(is.na(location_coordinates_prep$location_id))
 
 # Verify survey_prep
 any(is.na(survey_prep$survey_id))
@@ -3534,21 +3574,21 @@ any(is.na(mobile_survey_form_prep$created_datetime))
 any(is.na(mobile_survey_form_prep$created_by))
 
 # Check fish_barrier
-any(is.na(barrier_prep$fish_barrier_id))
-any(is.na(barrier_prep$survey_id))
-any(is.na(barrier_prep$barrier_type_id))
-any(is.na(barrier_prep$barrier_location_id))
-any(is.na(barrier_prep$barrier_height_type_id))
-any(is.na(barrier_prep$plunge_pool_depth_type_id))
-any(is.na(barrier_prep$created_datetime))
-any(is.na(barrier_prep$created_by))
+any(is.na(fish_barrier_prep$fish_barrier_id))
+any(is.na(fish_barrier_prep$survey_id))
+any(is.na(fish_barrier_prep$barrier_type_id))
+any(is.na(fish_barrier_prep$barrier_location_id))
+any(is.na(fish_barrier_prep$barrier_height_type_id))
+any(is.na(fish_barrier_prep$plunge_pool_depth_type_id))
+any(is.na(fish_barrier_prep$created_datetime))
+any(is.na(fish_barrier_prep$created_by))
 
 # Check other_observations
-any(is.na(other_obs$other_observation_id))
-any(is.na(other_obs$survey_id))
-any(is.na(other_obs$observation_type_id))
-any(is.na(other_obs$created_datetime))
-any(is.na(other_obs$created_by))
+any(is.na(other_observation_prep$other_observation_id))
+any(is.na(other_observation_prep$survey_id))
+any(is.na(other_observation_prep$observation_type_id))
+any(is.na(other_observation_prep$created_datetime))
+any(is.na(other_observation_prep$created_by))
 
 # Check survey_event
 any(is.na(survey_event_prep$survey_event_id))
@@ -3597,11 +3637,45 @@ any(is.na(fish_mark_prep$mark_shape_id))
 any(is.na(fish_mark_prep$created_datetime))
 any(is.na(fish_mark_prep$created_by))
 
+# Check individual_fish
+any(is.na(individual_fish_prep$individual_fish_id))
+any(is.na(individual_fish_prep$fish_encounter_id))
+any(is.na(individual_fish_prep$fish_condition_type_id))
+any(is.na(individual_fish_prep$fish_trauma_type_id))
+any(is.na(individual_fish_prep$gill_condition_type_id))
+any(is.na(individual_fish_prep$spawn_condition_type_id))
+any(is.na(individual_fish_prep$cwt_result_type_id))
+any(is.na(individual_fish_prep$created_datetime))
+any(is.na(individual_fish_prep$created_by))
 
+# Check fish_length_measurement
+any(is.na(fish_length_measurement_prep$fish_length_measurement_id))
+any(is.na(fish_length_measurement_prep$individual_fish_id))
+any(is.na(fish_length_measurement_prep$fish_length_measurement_type_id))
+any(is.na(fish_length_measurement_prep$length_measurement_centimeter))
 
+# Check redd_encounter
+any(is.na(redd_encounter_prep$redd_encounter_id))
+any(is.na(redd_encounter_prep$survey_event_id))
+any(is.na(redd_encounter_prep$redd_status_id))
+any(is.na(redd_encounter_prep$redd_count))
+any(is.na(redd_encounter_prep$created_datetime))
+any(is.na(redd_encounter_prep$created_by))
 
+# Check individual_redd
+any(is.na(individual_redd_prep$individual_redd_id))
+any(is.na(individual_redd_prep$redd_encounter_id))
+any(is.na(individual_redd_prep$redd_shape_id))
+any(is.na(individual_redd_prep$created_datetime))
+any(is.na(individual_redd_prep$created_by))
 
-
+#================================================================================================
+# LOAD TO DBs
+#  1. Load to local postgres first, so constraints engage,
+#     and also so script does not think data has already been loaded
+#  2. After all tables loaded...load to sqlite
+#  3. Write separate script to load to SGS
+#================================================================================================
 
 
 
