@@ -908,10 +908,6 @@ any(is.na(mobile_survey_form_prep$parent_form_survey_guid))
 # Other observations
 #======================================================================================================================
 
-
-# START BACK HERE....HAD TO ADD comment_text for multiple picture per location to media_location
-
-
 # Function to get other observations
 get_other_obs = function(profile_id, other_obs_page_id, start_id, access_token) {
   # Define fields
@@ -1042,16 +1038,16 @@ other_pictures = other_pictures %>%
 other_pictures = other_pictures %>%
   rename(other_obs_id = parent_record_id)
 
-# # Pull out comments from pictures to join to other obs
-# picture_comments = other_pictures %>%
-#   filter(!is.na(comments)) %>%
-#   select(other_obs_id, pic_comments = comments) %>%
-#   distinct() %>%
-#   mutate(pic_comments = trimws(pic_comments)) %>%
-#   mutate(pic_comments = if_else(pic_comments == "",
-#                                 NA_character_, pic_comments)) %>%
-#   filter(!is.na(pic_comments)) %>%
-#   distinct()
+# Pull out comments from pictures to join to other obs
+picture_comments = other_pictures %>%
+  filter(!is.na(comments)) %>%
+  select(other_obs_id, pic_comments = comments) %>%
+  distinct() %>%
+  mutate(pic_comments = trimws(pic_comments)) %>%
+  mutate(pic_comments = if_else(pic_comments == "",
+                                NA_character_, pic_comments)) %>%
+  filter(!is.na(pic_comments)) %>%
+  distinct()
 
 # Combine other_obs and other pictures...need to parse multiple pictures per location
 # So we need one location per picture
@@ -1061,17 +1057,14 @@ pictures_trim = other_pictures %>%
          pic_modify_date = modified_date) %>%
   distinct()
 
-# Add to other obs
+# Generate sigle location_id for each observation. Add pictures to other obs
 other_obs = other_obs %>%
+  mutate(location_id = remisc::get_uuid(nrow(other_obs))) %>%
   rename(other_obs_id = id) %>%
   left_join(pictures_trim, by = "other_obs_id")
 
-# Add location_id
-other_obs = other_obs %>%
-  mutate(location_id = remisc::get_uuid(nrow(other_obs)))
-
 # Pull out barrier info
-barrier  = other_obs %>%
+barrier = other_obs %>%
   filter(!is.na(known_total_barrier)) %>%
   mutate(barrier_observed_datetime = as.POSIXct(NA)) %>%
   mutate(barrier_height_meter = as.numeric(barrier_ht) * 0.3048) %>%
@@ -1085,7 +1078,7 @@ barrier  = other_obs %>%
   mutate(comment_text = if_else(!is.na(barrier_details),
                                 paste0(physical_desc, "; ", barrier_details),
                                 physical_desc)) %>%
-  select(other_obs_id = id, survey_id, obs_lat, obs_lon, obs_acc = gps_accuracy,
+  select(other_obs_id, survey_id, location_id, obs_lat, obs_lon, obs_acc,
          barrier_type = observation_type, barrier_observed_datetime,
          barrier_height_meter, barrier_ht_type = barrier_ht_meas_est,
          plunge_pool_depth_meter, pp_depth_type = barrier_pp_depth_meas_est,
@@ -1094,9 +1087,8 @@ barrier  = other_obs %>%
   distinct()
 
 # Convert types to ids
-barrier_prep = barrier_prep %>%
-  mutate(fish_barrier_id = remisc::get_uuid(nrow(barrier_prep))) %>%
-  mutate(barrier_location_id = remisc::get_uuid(nrow(barrier_prep))) %>%
+barrier_prep = barrier %>%
+  mutate(fish_barrier_id = remisc::get_uuid(nrow(barrier))) %>%
   mutate(barrier_type_id = case_when(
     barrier_type == "waterfall" ~ "0731c4c4-810d-4de6-9649-e0db43207eb3",
     barrier_type == "gradient" ~ "9f6d5a70-c524-4bd5-a4ae-24d4e161469b",
@@ -1117,21 +1109,39 @@ barrier_prep = barrier_prep %>%
     pp_depth_type == "estimated" ~ "95e6627b-93c9-4e94-b89b-d1e1789ae699",
     is.na(pp_depth_type) ~ as.character(pp_depth_type),
     TRUE ~ as.character(pp_depth_type))) %>%
-  select(other_obs_id, fish_barrier_id, survey_id, barrier_location_id, obs_lat, obs_lon,
-         obs_acc, barrier_type_id, barrier_observed_datetime, barrier_height_meter,
-         barrier_height_type_id, plunge_pool_depth_meter, plunge_pool_depth_type_id,
-         comment_text, created_datetime, created_by, modified_datetime,
-         modified_by)
+  select(other_obs_id, fish_barrier_id, survey_id, barrier_location_id = location_id,
+         obs_lat, obs_lon, obs_acc, barrier_type_id, barrier_observed_datetime,
+         barrier_height_meter, barrier_height_type_id, plunge_pool_depth_meter,
+         plunge_pool_depth_type_id, comment_text, created_datetime, created_by,
+         modified_datetime, modified_by)
+
+# Pull out media_location data
+media_loc = other_obs %>%
+  filter(!is.na(pics)) %>%
+  mutate(media_type_id = "2e29bcbc-a8e5-4cf3-9892-9a8329e3960e") %>%             # Photo
+  select(other_obs_id, survey_id, location_id, media_type_id,
+         media_url = pics, pic_comments, pic_create_date,
+         head_create_by, pic_modify_date, head_mod_by) %>%
+  distinct() %>%
+  arrange(other_obs_id)
+
+# Clean up comments
+media_location = media_loc %>%
+  mutate(pic_comments = trimws(pic_comments)) %>%
+  mutate(pic_comments = if_else(pic_comments == "",
+                                NA_character_, pic_comments)) %>%
+  mutate(media_location_id = remisc::get_uuid(nrow(media_loc))) %>%
+  select(media_location_id, location_id, media_type_id, media_url,
+         comment_text = pic_comments, pic_create_date,
+         head_create_by, pic_modify_date, head_mod_by)
 
 # Pull out other obs data...include location info
-other_obs = other_obs %>%
+other_observation = other_obs %>%
   filter(is.na(known_total_barrier))
 
 # Process
-other_obs = other_obs %>%
-  mutate(other_obs_id = id) %>%
-  mutate(other_observation_id = remisc::get_uuid(nrow(other_obs))) %>%
-  mutate(observation_location_id = remisc::get_uuid(nrow(other_obs))) %>%
+other_observation = other_observation %>%
+  mutate(other_observation_id = remisc::get_uuid(nrow(other_observation))) %>%
   mutate(observation_type_id = case_when(
     observation_type == "miscellaneous_observation" ~ "30b93c02-1e8e-4c2a-b316-c961def4955d",
     observation_type == "Japanese Knotweed" ~ "51ec0a5c-23eb-417a-bab6-fa4dd69209d6",
@@ -1143,9 +1153,9 @@ other_obs = other_obs %>%
     observation_type == "forest_gate" ~ "dc037ad0-1d65-45bd-9445-e8ce54a82007",
     observation_type == "lowno_flow" ~ "6a27edc0-ac8c-4fe4-befa-bf88c1692d48",
     observation_type == "high_water_line" ~ "623acb24-ae3c-4c32-9be4-9e64ac0aa342")) %>%
-  mutate(observation_datetime = as.POSIXct(NA)) %>%
+  mutate(observation_datetime = created_date) %>%
   mutate(observation_count = NA_integer_) %>%
-  select(other_obs_id, other_observation_id, survey_id, observation_location_id,
+  select(other_obs_id, other_observation_id, survey_id, observation_location_id = location_id,
          obs_lat, obs_lon, obs_acc, observation_type_id, observation_datetime,
          observation_count, comment_text = comments, created_datetime,
          created_by = head_create_by, modified_datetime, modified_by = head_mod_by)
@@ -1157,7 +1167,7 @@ barrier_location = barrier_prep %>%
          created_datetime, created_by, modified_datetime,
          modified_by)
 
-obs_location = other_obs %>%
+obs_location = other_observation %>%
   select(survey_id, location_id = observation_location_id,
          lat = obs_lat, lon = obs_lon, acc = obs_acc,
          created_datetime, created_by, modified_datetime,
@@ -3055,6 +3065,14 @@ any(is.na(individual_redd_prep$created_by))
 # Create header location tables
 #================================================================================================
 
+
+
+
+# STOPPED HERE....GETTING DUPLICATE LOCATION_IDs below !!!!!!!!!!!!!!!!!!!!!
+
+
+
+
 # Get info needed for location table
 survey_loc_trim = survey_loc_info %>%
   select(survey_id, wria_id, waterbody_id) %>%
@@ -3449,23 +3467,18 @@ any(is.na(fish_mark_prep$fish_encounter_id))
 # Prepare media_location table from pictures data
 #================================================================================================
 
-# Pull out observation comments from other pictures
-
-# Prepare other obs
-other_observation = other_obs %>%
-  select(other_observation_id, survey_id, observation_location_id,
-         observation_type_id, observation_datetime, observation_count,
-         comment_text = comments, )
-
-
-
-
-
-
-
-
-
-
+# Prepare media_location
+media_location_prep = media_location %>%
+  mutate(pic_create_date = as.POSIXct(iformr::idate_time(pic_create_date))) %>%
+  mutate(pic_modify_date = as.POSIXct(iformr::idate_time(pic_modify_date))) %>%
+  mutate(mod_diff = pic_modify_date - pic_create_date) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), pic_modify_date)) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, head_mod_by)) %>%
+  mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
+                               "ronnelmr", modified_by)) %>%
+  select(media_location_id, location_id, media_type_id, media_url,
+         created_datetime = pic_create_date, created_by = head_create_by,
+         modified_datetime, modified_by, comment_text)
 
 #================================================================================================
 # LOAD TO DBs
