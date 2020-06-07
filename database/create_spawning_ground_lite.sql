@@ -118,6 +118,7 @@ CREATE TABLE media_location (
     location_id text NOT NULL,
     media_type_id text NOT NULL,
     media_url text NOT NULL,
+    comment_text text,
     created_datetime text DEFAULT (datetime('now')) NOT NULL,
     created_by text NOT NULL,
     modified_datetime text,

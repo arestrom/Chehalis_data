@@ -908,6 +908,10 @@ any(is.na(mobile_survey_form_prep$parent_form_survey_guid))
 # Other observations
 #======================================================================================================================
 
+
+# START BACK HERE....HAD TO ADD comment_text for multiple picture per location to media_location
+
+
 # Function to get other observations
 get_other_obs = function(profile_id, other_obs_page_id, start_id, access_token) {
   # Define fields
@@ -1034,16 +1038,40 @@ oobs_id = unique(other_obs$id)
 other_pictures = other_pictures %>%
   filter(parent_record_id %in% oobs_id)
 
-# Join survey_id to other_pictures
+# Update id for join
 other_pictures = other_pictures %>%
-  rename(other_obs_id = parent_record_id) %>%
-  left_join(sp_id, by = "other_obs_id")
+  rename(other_obs_id = parent_record_id)
 
-# Check
-any(is.na(other_pictures$survey_id))
+# # Pull out comments from pictures to join to other obs
+# picture_comments = other_pictures %>%
+#   filter(!is.na(comments)) %>%
+#   select(other_obs_id, pic_comments = comments) %>%
+#   distinct() %>%
+#   mutate(pic_comments = trimws(pic_comments)) %>%
+#   mutate(pic_comments = if_else(pic_comments == "",
+#                                 NA_character_, pic_comments)) %>%
+#   filter(!is.na(pic_comments)) %>%
+#   distinct()
+
+# Combine other_obs and other pictures...need to parse multiple pictures per location
+# So we need one location per picture
+pictures_trim = other_pictures %>%
+  select(other_obs_id, pics, pic_comments = comments,
+         pic_create_date = created_date,
+         pic_modify_date = modified_date) %>%
+  distinct()
+
+# Add to other obs
+other_obs = other_obs %>%
+  rename(other_obs_id = id) %>%
+  left_join(pictures_trim, by = "other_obs_id")
+
+# Add location_id
+other_obs = other_obs %>%
+  mutate(location_id = remisc::get_uuid(nrow(other_obs)))
 
 # Pull out barrier info
-barrier_prep  = other_obs %>%
+barrier  = other_obs %>%
   filter(!is.na(known_total_barrier)) %>%
   mutate(barrier_observed_datetime = as.POSIXct(NA)) %>%
   mutate(barrier_height_meter = as.numeric(barrier_ht) * 0.3048) %>%
@@ -1117,10 +1145,10 @@ other_obs = other_obs %>%
     observation_type == "high_water_line" ~ "623acb24-ae3c-4c32-9be4-9e64ac0aa342")) %>%
   mutate(observation_datetime = as.POSIXct(NA)) %>%
   mutate(observation_count = NA_integer_) %>%
-  select(other_obs_id, other_observation_id, survey_id, observation_location_id, obs_lat, obs_lon,
-         obs_acc, observation_type_id, observation_datetime, observation_count,
-         created_datetime, created_by = head_create_by, modified_datetime,
-         modified_by = head_mod_by)
+  select(other_obs_id, other_observation_id, survey_id, observation_location_id,
+         obs_lat, obs_lon, obs_acc, observation_type_id, observation_datetime,
+         observation_count, comment_text = comments, created_datetime,
+         created_by = head_create_by, modified_datetime, modified_by = head_mod_by)
 
 # Pull out location table data for both fish_barrier and other_observations
 barrier_location = barrier_prep %>%
@@ -3291,7 +3319,7 @@ any(is.na(fish_capture_event_one$fish_encounter_id))
 #================================================================================================
 
 # Use header metadata for create, mod fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-recaps_fish_capture_event_prep_test = recaps_fish_capture_event_prep %>%
+fish_capture_event_two = recaps_fish_capture_event %>%
   select(-c(created_by, modified_by)) %>%
   left_join(head_create, by = "survey_id") %>%
   mutate(mod_diff = modified_date - created_date) %>%
@@ -3299,15 +3327,145 @@ recaps_fish_capture_event_prep_test = recaps_fish_capture_event_prep %>%
   mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
   mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
                                "ronnelmr", modified_by)) %>%
+  mutate(disposition_location_id = NA_character_) %>%
+  select(recap_id, parent_record_id, survey_id, fish_capture_status_id, disposition_type_id,
+         disposition_id, disposition_location_id, created_datetime = created_date,
+         created_by, modified_datetime, modified_by)
 
+# Pull out fish_encounter_id for recaps
+fish_enc_recap_id = fish_encounter %>%
+  filter(!is.na(recap_id)) %>%
+  select(recap_id, fish_encounter_id, survey_event_id) %>%
+  distinct()
+
+# Add fish_encounter_id
+fish_capture_event_two = fish_capture_event_two %>%
+  left_join(fish_enc_recap_id, by = "recap_id") %>%
+  select(fish_encounter_id, fish_capture_status_id, disposition_type_id,
+         disposition_id, disposition_location_id, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Check
+any(is.na(fish_capture_event_two$fish_encounter_id))
 
 #================================================================================================
-# Prepare fish_mark...now that fish_encounter_id is available
+# Combine fish_capture_event data from dead and recaps
 #================================================================================================
+
+# Combine
+fish_capture_event_prep = rbind(fish_capture_event_one, fish_capture_event_two) %>%
+  select(fish_encounter_id, fish_capture_status_id, disposition_type_id,
+         disposition_id, disposition_location_id, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+# Add id
+fish_capture_event_prep = fish_capture_event_prep %>%
+  mutate(fish_capture_event_id = remisc::get_uuid(nrow(fish_capture_event_prep))) %>%
+  select(fish_capture_event_id, fish_encounter_id, fish_capture_status_id,
+         disposition_type_id, disposition_id, disposition_location_id,
+         created_datetime, created_by, modified_datetime, modified_by)
+
+#================================================================================================
+# Prepare fish_mark_dead...now that fish_encounter_id is available
+#================================================================================================
+
+# Use header metadata for create, mod fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+fish_mark_dead = fish_mark %>%
+  select(-c(created_by, modified_by)) %>%
+  left_join(head_create, by = "survey_id") %>%
+  mutate(mod_diff = modified_datetime - created_datetime) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_datetime)) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
+                               "ronnelmr", modified_by)) %>%
+  select(dead_id, mark_type_id, mark_status_id, mark_orientation_id,
+         mark_placement_id, mark_size_id, mark_color_id, mark_shape_id,
+         tag_number, created_datetime, created_by, modified_datetime,
+         modified_by)
+
+# Add fish_encounter_id
+fish_mark_dead = fish_mark_dead %>%
+  left_join(fish_enc_id, by = "dead_id") %>%
+  select(fish_encounter_id, mark_type_id, mark_status_id, mark_orientation_id,
+         mark_placement_id, mark_size_id, mark_color_id, mark_shape_id,
+         tag_number, created_datetime, created_by, modified_datetime,
+         modified_by)
+
+# Check
+any(is.na(fish_mark_dead$fish_encounter_id))
+
+#================================================================================================
+# Prepare fish_mark_recap...now that fish_encounter_id is available
+#================================================================================================
+
+# Use header metadata for create, mod fields....HACK WARNING FOR MOD_BY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+fish_mark_recap = recaps_fish_mark %>%
+  select(-c(created_by, modified_by)) %>%
+  left_join(head_create, by = "survey_id") %>%
+  mutate(mod_diff = modified_date - created_date) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_date)) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
+                               "ronnelmr", modified_by)) %>%
+  select(recap_id, mark_type_id, mark_status_id, mark_orientation_id,
+         mark_placement_id, mark_size_id, mark_color_id, mark_shape_id,
+         tag_number, created_datetime = created_date, created_by,
+         modified_datetime, modified_by)
+
+# Add fish_encounter_id
+fish_mark_recap = fish_mark_recap %>%
+  left_join(fish_enc_recap_id, by = "recap_id") %>%
+  select(fish_encounter_id, mark_type_id, mark_status_id, mark_orientation_id,
+         mark_placement_id, mark_size_id, mark_color_id, mark_shape_id,
+         tag_number, created_datetime, created_by, modified_datetime,
+         modified_by)
+
+# Check
+any(is.na(fish_mark_recap$fish_encounter_id))
+
+#================================================================================================
+# Combine fish_mark data from dead and recaps
+#================================================================================================
+
+# Combine
+fish_mark_prep = rbind(fish_mark_dead, fish_mark_recap) %>%
+  select(fish_encounter_id, mark_type_id, mark_status_id, mark_orientation_id,
+         mark_placement_id, mark_size_id, mark_color_id, mark_shape_id,
+         tag_number, created_datetime, created_by, modified_datetime,
+         modified_by)
+
+# Add id
+fish_mark_prep = fish_mark_prep %>%
+  mutate(fish_mark_id = remisc::get_uuid(nrow(fish_mark_prep))) %>%
+  select(fish_mark_id, fish_encounter_id, mark_type_id, mark_status_id,
+         mark_orientation_id, mark_placement_id, mark_size_id, mark_color_id,
+         mark_shape_id, tag_number, created_datetime, created_by,
+         modified_datetime, modified_by)
+
+# Check
+any(is.na(fish_mark_prep$fish_encounter_id))
 
 #================================================================================================
 # Prepare media_location table from pictures data
 #================================================================================================
+
+# Pull out observation comments from other pictures
+
+# Prepare other obs
+other_observation = other_obs %>%
+  select(other_observation_id, survey_id, observation_location_id,
+         observation_type_id, observation_datetime, observation_count,
+         comment_text = comments, )
+
+
+
+
+
+
+
+
+
+
 
 #================================================================================================
 # LOAD TO DBs
