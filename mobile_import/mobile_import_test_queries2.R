@@ -16,6 +16,7 @@
 
 # Load libraries
 library(DBI)
+library(RPostgres)
 library(RSQLite)
 library(dplyr)
 library(tibble)
@@ -31,6 +32,33 @@ library(sf)
 # Profile ID
 profile_id = 417821L
 since_id = 0L
+
+# Function to get user for database
+pg_user <- function(user_label) {
+  Sys.getenv(user_label)
+}
+
+# Function to get pw for database
+pg_pw <- function(pwd_label) {
+  Sys.getenv(pwd_label)
+}
+
+# Function to get pw for database
+pg_host <- function(host_label) {
+  Sys.getenv(host_label)
+}
+
+# Function to connect to postgres
+pg_con_local = function(dbname, port = '5432') {
+  con <- DBI::dbConnect(
+    RPostgres::Postgres(),
+    host = "localhost",
+    dbname = dbname,
+    user = pg_user("pg_user"),
+    password = pg_pw("pg_pwd_local"),
+    port = port)
+  con
+}
 
 #===== Get page_ids of forms =======================
 
@@ -601,16 +629,41 @@ lo_rm_data = river_mile_data %>%
          lo_wria_id = wria_id, lo_wb_id = waterbody_id) %>%
   distinct()
 
+# Identify duplicates
+lo_rm_dups = lo_rm_data %>%
+  group_by(llid, lo_rm) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq > 1L) %>%
+  select(llid, lo_rm, n_seq) %>%
+  left_join(lo_rm_data, by = c("llid", "lo_rm"))
+
 # Pull out upper_rms
 up_rm_data = river_mile_data %>%
   select(upper_end_point_id = location_id, llid, up_rm = river_mile,
          up_wria_id = wria_id, up_wb_id = waterbody_id) %>%
   distinct()
 
+# Identify duplicates
+up_rm_dups = up_rm_data %>%
+  group_by(llid, up_rm) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq > 1L) %>%
+  select(llid, up_rm, n_seq) %>%
+  left_join(up_rm_data, by = c("llid", "up_rm"))
+
+if ( nrow(lo_rm_dups) > 0L | nrow(up_rm_dups) > 0L ) {
+  cat("\nWARNING: Duplicated RMs identified. Fix using front-end\n\n")
+} else {
+  cat("\nNo duplicate RMs found. Ok to proceed.\n\n")
+}
+
 # Join to survey_prep
 survey_prep = survey_prep %>%
   left_join(lo_rm_data, by = c("llid", "lo_rm")) %>%
-  left_join(up_rm_data, by = c("llid", "up_rm"))
+  left_join(up_rm_data, by = c("llid", "up_rm")) %>%
+  distinct()
 
 # Pull out cases where no match exists
 no_reach_point = survey_prep %>%
@@ -3256,12 +3309,7 @@ chk_ind_dump = individual_fish %>%
 
 # Generate individual_fish_id
 individual_fish = individual_fish %>%
-  group_by(fish_encounter_id, fish_condition_type_id, fish_trauma_type_id,
-           gill_condition_type_id, spawn_condition_type_id, cwt_result_type_id,
-           scale_sample_card_number, scale_sample_position_number,
-           cwt_snout_sample_number, genetic_sample_number) %>%
-  mutate(individual_fish_id = remisc::get_uuid(1L)) %>%
-  ungroup() %>%
+  mutate(individual_fish_id = remisc::get_uuid(nrow(individual_fish))) %>%
   left_join(head_create, by = "survey_id") %>%
   mutate(mod_diff = modified_date - created_date) %>%
   mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_date)) %>%
@@ -3291,6 +3339,9 @@ individual_fish_prep = individual_fish %>%
          scale_sample_position_number, cwt_snout_sample_number, cwt_tag_code,
          genetic_sample_number, otolith_sample_number, comment_text,
          created_datetime, created_by, modified_datetime, modified_by)
+
+# Check for dup ids...could be comments
+any(duplicated(individual_fish_prep$individual_fish_id))
 
 #================================================================================================
 # Prepare fish_length_measurement table
@@ -3511,6 +3562,27 @@ other_observation_prep = other_observation %>%
          modified_by)
 
 #================================================================================================
+# Prepare waterbody_measurement
+#================================================================================================
+
+# Finalize waterbody_meas data
+waterbody_meas_prep = waterbody_meas_prep %>%
+  select(-c(created_by, modified_by)) %>%
+  left_join(head_create, by = "survey_id") %>%
+  mutate(mod_diff = modified_datetime - created_datetime) %>%
+  mutate(modified_datetime = if_else(mod_diff < 120, as.POSIXct(NA), modified_datetime)) %>%
+  mutate(modified_by = if_else(mod_diff < 120, NA_character_, modified_by)) %>%
+  mutate(modified_by = if_else(!is.na(modified_datetime) & is.na(modified_by),
+                               "ronnelmr", modified_by)) %>%
+  mutate(waterbody_measurement_id = remisc::get_uuid(nrow(waterbody_meas_prep))) %>%
+  select(waterbody_measurement_id, survey_id, water_clarity_type_id,
+         water_clarity_meter, stream_flow_measurement_cfs, start_water_temperature_datetime,
+         start_water_temperature_celsius, end_water_temperature_datetime,
+         end_water_temperature_celsius, waterbody_ph, created_datetime,
+         created_by, modified_datetime, modified_by) %>%
+  distinct()
+
+#================================================================================================
 # CHECK FOR MISSING REQUIRED VALUES
 #================================================================================================
 
@@ -3518,6 +3590,7 @@ other_observation_prep = other_observation %>%
 
 # Verify location_prep
 any(is.na(location_prep$location_id))
+any(duplicated(location_prep$location_id))
 any(is.na(location_prep$waterbody_id))
 any(is.na(location_prep$wria_id))
 any(is.na(location_prep$location_type_id))
@@ -3527,10 +3600,12 @@ any(is.na(location_prep$created_datetime))
 any(is.na(location_prep$created_by))
 
 # Verify location_coordinates_prep
+any(duplicated(location_coordinates_prep$location_id))
 any(is.na(location_coordinates_prep$location_coordinates_id))
 any(is.na(location_coordinates_prep$location_id))
 
 # Verify survey_prep
+any(duplicated(survey_prep$survey_id))
 any(is.na(survey_prep$survey_id))
 any(is.na(survey_prep$survey_datetime))
 any(is.na(survey_prep$data_source_id))
@@ -3545,12 +3620,14 @@ any(is.na(survey_prep$created_datetime))
 any(is.na(survey_prep$created_by))
 
 # Check survey_comment
+any(duplicated(comment_prep$survey_comment_id))
 any(is.na(comment_prep$survey_comment_id))
 any(is.na(comment_prep$survey_id))
 any(is.na(comment_prep$created_datetime))
 any(is.na(comment_prep$created_by))
 
 # Check survey_intent
+any(duplicated(intent_prep$survey_intent_id))
 any(is.na(intent_prep$survey_intent_id))
 any(is.na(intent_prep$survey_id))
 any(is.na(intent_prep$species_id))
@@ -3559,6 +3636,7 @@ any(is.na(intent_prep$created_datetime))
 any(is.na(intent_prep$created_by))
 
 # Check waterbody_measurement
+any(duplicated(waterbody_meas_prep$waterbody_measurement_id))
 any(is.na(waterbody_meas_prep$survey_id))
 any(is.na(waterbody_meas_prep$water_clarity_type_id))
 any(is.na(waterbody_meas_prep$water_clarity_meter))
@@ -3566,6 +3644,7 @@ any(is.na(waterbody_meas_prep$created_datetime))
 any(is.na(waterbody_meas_prep$created_by))
 
 # Check mobile_survey_form
+any(duplicated(mobile_survey_form_prep$mobile_survey_form_id))
 any(is.na(mobile_survey_form_prep$mobile_survey_form_id))
 any(is.na(mobile_survey_form_prep$survey_id))
 any(is.na(mobile_survey_form_prep$parent_form_survey_id))
@@ -3574,6 +3653,7 @@ any(is.na(mobile_survey_form_prep$created_datetime))
 any(is.na(mobile_survey_form_prep$created_by))
 
 # Check fish_barrier
+any(duplicated(fish_barrier_prep$fish_barrier_id))
 any(is.na(fish_barrier_prep$fish_barrier_id))
 any(is.na(fish_barrier_prep$survey_id))
 any(is.na(fish_barrier_prep$barrier_type_id))
@@ -3584,6 +3664,7 @@ any(is.na(fish_barrier_prep$created_datetime))
 any(is.na(fish_barrier_prep$created_by))
 
 # Check other_observations
+any(duplicated(other_observation_prep$other_observation_id))
 any(is.na(other_observation_prep$other_observation_id))
 any(is.na(other_observation_prep$survey_id))
 any(is.na(other_observation_prep$observation_type_id))
@@ -3591,6 +3672,7 @@ any(is.na(other_observation_prep$created_datetime))
 any(is.na(other_observation_prep$created_by))
 
 # Check survey_event
+any(duplicated(survey_event_prep$survey_event_id))
 any(is.na(survey_event_prep$survey_event_id))
 any(is.na(survey_event_prep$survey_id))
 any(is.na(survey_event_prep$species_id))
@@ -3602,6 +3684,7 @@ any(is.na(survey_event_prep$created_datetime))
 any(is.na(survey_event_prep$created_by))
 
 # Check fish_encounter
+any(duplicated(fish_encounter_prep$fish_encounter_id))
 any(is.na(fish_encounter_prep$fish_encounter_id))
 any(is.na(fish_encounter_prep$survey_event_id))
 any(is.na(fish_encounter_prep$fish_status_id))
@@ -3618,6 +3701,7 @@ any(is.na(fish_encounter_prep$created_datetime))
 any(is.na(fish_encounter_prep$created_by))
 
 # Check fish_capture_event
+any(duplicated(fish_capture_event_prep$fish_capture_event_id))
 any(is.na(fish_capture_event_prep$fish_capture_event_id))
 any(is.na(fish_capture_event_prep$fish_capture_status_id))
 any(is.na(fish_capture_event_prep$disposition_type_id))
@@ -3626,6 +3710,7 @@ any(is.na(fish_capture_event_prep$created_datetime))
 any(is.na(fish_capture_event_prep$created_by))
 
 # Check fish_mark
+any(duplicated(fish_mark_prep$fish_mark_id))
 any(is.na(fish_mark_prep$fish_mark_id))
 any(is.na(fish_mark_prep$mark_type_id))
 any(is.na(fish_mark_prep$mark_status_id))
@@ -3638,6 +3723,7 @@ any(is.na(fish_mark_prep$created_datetime))
 any(is.na(fish_mark_prep$created_by))
 
 # Check individual_fish
+any(duplicated(individual_fish_prep$individual_fish_id))
 any(is.na(individual_fish_prep$individual_fish_id))
 any(is.na(individual_fish_prep$fish_encounter_id))
 any(is.na(individual_fish_prep$fish_condition_type_id))
@@ -3649,12 +3735,14 @@ any(is.na(individual_fish_prep$created_datetime))
 any(is.na(individual_fish_prep$created_by))
 
 # Check fish_length_measurement
+any(duplicated(fish_length_measurement_prep$fish_length_measurement_id))
 any(is.na(fish_length_measurement_prep$fish_length_measurement_id))
 any(is.na(fish_length_measurement_prep$individual_fish_id))
 any(is.na(fish_length_measurement_prep$fish_length_measurement_type_id))
 any(is.na(fish_length_measurement_prep$length_measurement_centimeter))
 
 # Check redd_encounter
+any(duplicated(redd_encounter_prep$redd_encounter_id))
 any(is.na(redd_encounter_prep$redd_encounter_id))
 any(is.na(redd_encounter_prep$survey_event_id))
 any(is.na(redd_encounter_prep$redd_status_id))
@@ -3663,6 +3751,7 @@ any(is.na(redd_encounter_prep$created_datetime))
 any(is.na(redd_encounter_prep$created_by))
 
 # Check individual_redd
+any(duplicated(individual_redd_prep$individual_redd_id))
 any(is.na(individual_redd_prep$individual_redd_id))
 any(is.na(individual_redd_prep$redd_encounter_id))
 any(is.na(individual_redd_prep$redd_shape_id))
@@ -3677,6 +3766,54 @@ any(is.na(individual_redd_prep$created_by))
 #  3. Write separate script to load to SGS
 #================================================================================================
 
+# Create and rd file to hold copy of survey_ids and survey_event_ids in case test fails
+test_upload_ids = survey_prep %>%
+  left_join(survey_event_prep, by = "survey_id") %>%
+  select(survey_id, survey_event_id) %>%
+  distinct()
+
+# Output redd_encounter to rds: 724591 records
+saveRDS(object = test_upload_ids, file = "data/test_upload_ids.rds")
+# Load redd_encounter
+# test_upload_ids = readRDS("data/test_upload_ids.rds")
+
+#==========================================================================================
+# Load data table
+#==========================================================================================
+
+#======== Location tables ===============
+
+# location: 3160 rows
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'location', location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# location_coordinates: 3100 rows
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'location', location_coordinates_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+#======== Survey level tables ===============
+
+# survey: 2000 rows
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'survey', survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# survey_comment: 1997 rows
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'survey_comment', comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# survey_intent: 2000 rows
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'survey_intent', intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# waterbody_measurement: 2000 rows
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'waterbody_measurement', waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
 
 
 
