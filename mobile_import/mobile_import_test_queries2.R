@@ -3815,11 +3815,66 @@ db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'waterbody_measurement', waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
+# mobile_survey_form
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'mobile_survey_form', mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
 
+# fish_barrier
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'fish_barrier', fish_barrier_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
 
+# other_observation
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'other_observation', other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
 
+#======== Survey event ===============
 
+# survey_event
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'survey_event', survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
 
+#======== fish data ===============
+
+# fish_encounter
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'fish_encounter', fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# fish_capture_event
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'fish_capture_event', fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# fish_mark
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'fish_mark', fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# Check individual_fish
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'individual_fish', individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# fish_length_measurement
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'fish_length_measurement', fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+#======== redd data ===============
+
+# redd_encounter
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'redd_encounter', redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# individual_redd
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'individual_redd', individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
 
 
 
