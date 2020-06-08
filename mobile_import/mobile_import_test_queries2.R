@@ -3795,7 +3795,7 @@ dbDisconnect(db_con)
 
 #======== Survey level tables ===============
 
-# survey: 2000 rows
+# survey: 1997 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey', survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
@@ -3805,73 +3805,73 @@ db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_comment', comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_intent: 2000 rows
+# survey_intent: 22252 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_intent', intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# waterbody_measurement: 2000 rows
+# waterbody_measurement: 1997 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'waterbody_measurement', waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# mobile_survey_form
+# mobile_survey_form: 1997 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'mobile_survey_form', mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_barrier
+# fish_barrier: 76 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'fish_barrier', fish_barrier_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# other_observation
+# other_observation: 238 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'other_observation', other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event
+# survey_event: 1811 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_event', survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== fish data ===============
 
-# fish_encounter
+# fish_encounter: 11150 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'fish_encounter', fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_capture_event
+# fish_capture_event: 4654 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'fish_capture_event', fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_mark
+# fish_mark: 4452 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'fish_mark', fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# Check individual_fish
+# individual_fish: 2536 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'individual_fish', individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_length_measurement
+# fish_length_measurement: 2263 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'fish_length_measurement', fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== redd data ===============
 
-# redd_encounter
+# redd_encounter: 11149 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'redd_encounter', redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_redd
+# individual_redd: 7498 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'individual_redd', individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
