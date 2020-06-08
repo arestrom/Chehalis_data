@@ -164,7 +164,7 @@ get_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   qry = glue("select distinct s.survey_id ",
              "from survey as s")
   # Checkout connection
-  con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+  con = pg_con_local("spawning_ground")
   #con = poolCheckout(pool)
   existing_surveys = DBI::dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -211,7 +211,7 @@ get_mobile_streams = function() {
              "from waterbody_lut as wb ",
              "left join stream as st on wb.waterbody_id = st.waterbody_id ",
              "order by waterbody_display_name")
-  con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+  con = pg_con_local("spawning_ground")
   #con = poolCheckout(pool)
   streams = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -229,7 +229,7 @@ get_mobile_river_miles = function() {
              "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
              "where wria_code in ('22', '23')")
   # Checkout connection
-  con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+  con = pg_con_local("spawning_ground")
   #con = poolCheckout(pool)
   river_mile_data = DBI::dbGetQuery(con, qry) %>%
     filter(!is.na(llid) & !is.na(river_mile))
@@ -237,6 +237,86 @@ get_mobile_river_miles = function() {
   #poolReturn(con)
   return(river_mile_data)
 }
+
+# # Get new survey data
+# get_new_surveys = function(profile_id, parent_form_page_id, access_token) {
+#   # Define query for new mobile surveys
+#   qry = glue("select distinct s.survey_id ",
+#              "from survey as s")
+#   # Checkout connection
+#   con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+#   #con = poolCheckout(pool)
+#   existing_surveys = DBI::dbGetQuery(con, qry)
+#   DBI::dbDisconnect(con)
+#   #poolReturn(con)
+#   # Define fields...just parent_id and survey_id this time
+#   fields = paste0("id, headerid, survey_date, stream_name, ",
+#                   "stream_name_text, new_stream_name, reach, ",
+#                   "reach_text, new_reach, gps_loc_lower, ",
+#                   "gps_loc_upper")
+#   start_id = 0L
+#   # Get list of all survey_ids and parent_form iform ids on server
+#   field_string <- paste0("id:<(>\"", start_id, "\"),", fields)
+#   # Loop through all survey records
+#   header_data = iformr::get_all_records(
+#     server_name = "wdfw",
+#     profile_id = profile_id,
+#     page_id = parent_form_page_id,
+#     fields = "fields",
+#     limit = 1000,
+#     offset = 0,
+#     access_token = access_token,
+#     field_string = field_string,
+#     since_id = start_id)
+#   # Keep only records where headerid is not in survey_id
+#   new_survey_data = header_data %>%
+#     mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
+#     mutate(reach_trim = remisc::get_text_item(reach, 2, "_")) %>%
+#     mutate(lo_rm = remisc::get_text_item(reach_trim, 1, "-")) %>%
+#     mutate(up_rm = remisc::get_text_item(reach_trim, 2, "-")) %>%
+#     select(parent_form_survey_id = id, survey_id = headerid, survey_date,
+#            stream_name, stream_name_text, new_stream_name, llid,
+#            reach, reach_text, lo_rm, up_rm, new_reach, gps_loc_lower,
+#            gps_loc_upper) %>%
+#     distinct() %>%
+#     anti_join(existing_surveys, by = "survey_id") %>%
+#     arrange(as.Date(survey_date))
+#   return(new_survey_data)
+# }
+#
+# # Get all stream data in DB
+# get_mobile_streams = function() {
+#   qry = glue("select distinct wb.waterbody_id, wb.waterbody_display_name, ",
+#              "wb.latitude_longitude_id as llid, st.stream_id as stream_geometry_id ",
+#              "from waterbody_lut as wb ",
+#              "left join stream as st on wb.waterbody_id = st.waterbody_id ",
+#              "order by waterbody_display_name")
+#   con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+#   #con = poolCheckout(pool)
+#   streams = dbGetQuery(con, qry)
+#   DBI::dbDisconnect(con)
+#   #poolReturn(con)
+#   return(streams)
+# }
+#
+# # Get existing rm_data
+# get_mobile_river_miles = function() {
+#   qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
+#              "wb.waterbody_id, wb.waterbody_display_name, wr.wria_id, ",
+#              "wr.wria_code, loc.river_mile_measure as river_mile ",
+#              "from location as loc ",
+#              "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
+#              "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
+#              "where wria_code in ('22', '23')")
+#   # Checkout connection
+#   con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+#   #con = poolCheckout(pool)
+#   river_mile_data = DBI::dbGetQuery(con, qry) %>%
+#     filter(!is.na(llid) & !is.na(river_mile))
+#   DBI::dbDisconnect(con)
+#   #poolReturn(con)
+#   return(river_mile_data)
+# }
 
 #==========================================================================
 # Reactives from mobile_import_srv.R
@@ -3782,6 +3862,27 @@ saveRDS(object = test_upload_ids, file = "data/test_upload_ids.rds")
 saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
 # Load redd_encounter
 # test_upload_ids = readRDS("data/test_upload_ids.rds")
+# test_location_ids = readRDS("data/test_location_ids.rds")
+
+#==========================================================================================
+# Delete test data
+#==========================================================================================
+
+# location: 3160 rows
+loc_ids = unique(test_location_ids$location_id)
+loc_ids = paste0(paste0("'", loc_ids, "'"), collapse = ", ")
+
+# Location coordinates
+qry = glue("delete from location_coordinates where location_id in ({loc_ids})")
+db_con = pg_con_local("spawning_ground")
+dbExecute(db_con, qry)
+dbDisconnect(db_con)
+
+# Location
+qry = glue("delete from location where location_id in ({loc_ids})")
+db_con = pg_con_local("spawning_ground")
+dbExecute(db_con, qry)
+dbDisconnect(db_con)
 
 #==========================================================================================
 # Load data table
