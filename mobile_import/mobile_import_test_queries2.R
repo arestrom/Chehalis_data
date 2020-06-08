@@ -3772,8 +3772,14 @@ test_upload_ids = survey_prep %>%
   select(survey_id, survey_event_id) %>%
   distinct()
 
+# Create and rd file to hold copy of survey_ids and survey_event_ids in case test fails
+test_location_ids = location_prep %>%
+  select(location_id) %>%
+  distinct()
+
 # Output redd_encounter to rds: 724591 records
 saveRDS(object = test_upload_ids, file = "data/test_upload_ids.rds")
+saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
 # Load redd_encounter
 # test_upload_ids = readRDS("data/test_upload_ids.rds")
 
@@ -3788,12 +3794,47 @@ db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'location', location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# location_coordinates: 3100 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'location', location_coordinates_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
+# Get the current max_gid from the location_coordinates table
+qry = "select max(gid) from location_coordinates"
+db_con = pg_con_local(dbname = "spawning_ground")
+max_gid = DBI::dbGetQuery(db_con, qry)
+DBI::dbDisconnect(db_con)
+next_gid = max_gid$max + 1
+
+# Pull out data for location_coordinates table
+location_coordinates_temp = location_coordinates_prep %>%
+  mutate(gid = seq(next_gid, nrow(location_coordinates_prep) + next_gid - 1)) %>%
+  select(location_coordinates_id, location_id, horizontal_accuracy,
+         comment_text, gid, created_datetime, created_by,
+         modified_datetime, modified_by)
+
+# Write coords_only data
+db_con = pg_con_local(dbname = "spawning_ground")
+st_write(obj = location_coordinates_temp, dsn = db_con, layer = "location_coordinates_temp")
+DBI::dbDisconnect(db_con)
+
+# Use select into query to get data into location_coordinates
+qry = glue::glue("INSERT INTO location_coordinates ",
+                 "SELECT CAST(location_coordinates_id AS UUID), CAST(location_id AS UUID), ",
+                 "horizontal_accuracy, comment_text, gid, geometry AS geom, ",
+                 "CAST(created_datetime AS timestamptz), created_by, ",
+                 "CAST(modified_datetime AS timestamptz), modified_by ",
+                 "FROM location_coordinates_temp")
+
+# Insert select to spawning_ground
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, qry)
+DBI::dbDisconnect(db_con)
+
+# Drop temp
+db_con = pg_con_local(dbname = "spawning_ground")
+DBI::dbExecute(db_con, "DROP TABLE location_coordinates_temp")
+DBI::dbDisconnect(db_con)
 
 #======== Survey level tables ===============
+
+# Error: COPY returned error: ERROR:  insert or update on table "survey" violates foreign key constraint "fk_location__survey__upper_end_point"
+# DETAIL:  Key (upper_end_point_id)=(cf1bb6bc-3b09-4976-8e4a-2dde2bb7563b) is not present in table "location".
 
 # survey: 1997 rows
 db_con = pg_con_local("spawning_ground")
