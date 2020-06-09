@@ -883,8 +883,7 @@ get_mobile_intent = function() {
   qry = glue("select species_id as target_species, ",
              "common_name as target_species_name ",
              "from species_lut")
-  con = DBI::dbConnect(RSQLite::SQLite(),
-                       dbname = 'database/spawning_ground_lite.sqlite')
+  con = pg_con_local("spawning_ground")
   #con = poolCheckout(pool)
   intent = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -978,14 +977,26 @@ species_ids = get_mobile_intent() %>%
 get_mobile_count_type = function() {
   qry = glue("select count_type_id, count_type_code as count_categories ",
              "from count_type_lut")
-  con = DBI::dbConnect(RSQLite::SQLite(),
-                       dbname = 'database/spawning_ground_lite.sqlite')
+  con = pg_con_local("spawning_ground")
   #con = poolCheckout(pool)
   count_type = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
   #poolReturn(con)
   return(count_type)
 }
+
+# # Get all stream data in DB
+# get_mobile_count_type = function() {
+#   qry = glue("select count_type_id, count_type_code as count_categories ",
+#              "from count_type_lut")
+#   con = DBI::dbConnect(RSQLite::SQLite(),
+#                        dbname = 'database/spawning_ground_lite.sqlite')
+#   #con = poolCheckout(pool)
+#   count_type = dbGetQuery(con, qry)
+#   DBI::dbDisconnect(con)
+#   #poolReturn(con)
+#   return(count_type)
+# }
 
 # Pull out needed data
 intent_prep = intent_prep %>%
@@ -3878,25 +3889,34 @@ saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
 # test_upload_ids = readRDS("data/test_upload_ids.rds")
 # test_location_ids = readRDS("data/test_location_ids.rds")
 
-#==========================================================================================
-# Delete test data
-#==========================================================================================
+# # Check if any surveys were uploaded
+# s_id = unique(test_upload_ids$survey_id)
+# s_id = s_id[!is.na(s_id)]
+# s_ids = paste0(paste0("'", s_id, "'"), collapse = ", ")
+# qry = glue("select * from survey where survey_id in ({s_ids})")
+# db_con = pg_con_local("spawning_ground")
+# uploaded_surveys = dbGetQuery(db_con, qry)
+# dbDisconnect(db_con)
 
-# location: 3160 rows
-loc_ids = unique(test_location_ids$location_id)
-loc_ids = paste0(paste0("'", loc_ids, "'"), collapse = ", ")
-
-# Location coordinates
-qry = glue("delete from location_coordinates where location_id in ({loc_ids})")
-db_con = pg_con_local("spawning_ground")
-dbExecute(db_con, qry)
-dbDisconnect(db_con)
-
-# Location
-qry = glue("delete from location where location_id in ({loc_ids})")
-db_con = pg_con_local("spawning_ground")
-dbExecute(db_con, qry)
-dbDisconnect(db_con)
+# #==========================================================================================
+# # Delete test data
+# #==========================================================================================
+#
+# # location: 3160 rows
+# loc_ids = unique(test_location_ids$location_id)
+# loc_ids = paste0(paste0("'", loc_ids, "'"), collapse = ", ")
+#
+# # Location coordinates
+# qry = glue("delete from location_coordinates where location_id in ({loc_ids})")
+# db_con = pg_con_local("spawning_ground")
+# dbExecute(db_con, qry)
+# dbDisconnect(db_con)
+#
+# # Location
+# qry = glue("delete from location where location_id in ({loc_ids})")
+# db_con = pg_con_local("spawning_ground")
+# dbExecute(db_con, qry)
+# dbDisconnect(db_con)
 
 #==========================================================================================
 # Load data table
@@ -3947,9 +3967,6 @@ DBI::dbExecute(db_con, "DROP TABLE location_coordinates_temp")
 DBI::dbDisconnect(db_con)
 
 #======== Survey level tables ===============
-
-# Error: COPY returned error: ERROR:  insert or update on table "survey" violates foreign key constraint "fk_location__survey__upper_end_point"
-# DETAIL:  Key (upper_end_point_id)=(cf1bb6bc-3b09-4976-8e4a-2dde2bb7563b) is not present in table "location".
 
 # survey: 1997 rows
 db_con = pg_con_local("spawning_ground")
