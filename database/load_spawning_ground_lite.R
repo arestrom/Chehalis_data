@@ -1596,8 +1596,37 @@ dbDisconnect(db_con)
 rm(list = c("dat", "loc", "lc"))
 
 #=================================================================================================
-# Will need media location later....none yet
+# Media location
 #=================================================================================================
+
+# Get location and location coordinates data relevant to WRIAs 22 and 23
+qry = glue("select distinct md.media_location_id, md.location_id, ",
+           "md.media_type_id, md.media_url, md.comment_text, ",
+           "md.created_datetime, md.created_by, md.modified_datetime, ",
+           "md.modified_by ",
+           "from media_location as md ",
+           "left join location as loc on md.location_id = loc.location_id ",
+           "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
+           "where wr.wria_code in ('22', '23')")
+
+# Get values from source
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbGetQuery(pg_con, qry)
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
+  mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
+  distinct()
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+dbWriteTable(db_con, 'media_location', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
 
 #=================================================================================================
 # Stock
