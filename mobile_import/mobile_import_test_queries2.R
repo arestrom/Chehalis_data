@@ -892,6 +892,20 @@ get_mobile_intent = function() {
   return(intent)
 }
 
+# # Get all stream data in DB
+# get_mobile_intent = function() {
+#   qry = glue("select species_id as target_species, ",
+#              "common_name as target_species_name ",
+#              "from species_lut")
+#   con = DBI::dbConnect(RSQLite::SQLite(),
+#                        dbname = 'database/spawning_ground_lite.sqlite')
+#   #con = poolCheckout(pool)
+#   intent = dbGetQuery(con, qry)
+#   DBI::dbDisconnect(con)
+#   #poolReturn(con)
+#   return(intent)
+# }
+
 # Add to intent_pred
 intent_prep = intent_prep %>%
   left_join(get_mobile_intent(), by = "target_species")
