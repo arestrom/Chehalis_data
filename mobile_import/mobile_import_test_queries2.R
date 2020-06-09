@@ -11,6 +11,9 @@
 #  4. Make sure all required fields have default values in case of blanks. For
 #     example cwt_detection_status_id, adipose_clip_status_id, etc.
 #
+#  Successfully uploaded first batch on 2020-06-09 9:50 AM
+#  The only ones now being pulled are those with no survey_uuid.
+#
 # AS 2020-05-20
 #===============================================================================
 
@@ -1018,6 +1021,15 @@ any(is.na(intent_prep$created_by))
 
 # Check stream_temp column
 unique(header_data$stream_temp)
+unique(header_data$clarity_code)
+
+# Save corrections in case need to correct again later
+clarity_type_corrections = header_data %>%
+  select(survey_id = survey_uuid, clarity_code) %>%
+  filter(clarity_code %in% c("1", "2", "3"))
+
+# Check occurances
+table(header_data$clarity_code, useNA = "ifany")
 
 # Pull out waterbody_meas data
 waterbody_meas_prep = header_data %>%
@@ -1030,13 +1042,23 @@ waterbody_meas_prep = header_data %>%
   filter(!is.na(clarity_ft)) %>%
   mutate(water_clarity_meter = as.numeric(clarity_ft) * 0.3048) %>%
   mutate(water_clarity_meter = round(water_clarity_meter, digits = 2)) %>%
-  mutate(clarity_code = if_else(is.na(clarity_code), "282d8ea4-4e78-4c4d-be05-dfd7fa457c09", clarity_code)) %>%
+  mutate(clarity_code = case_when(
+    clarity_code == "1" ~ "03f7595f-1a18-47a2-ae5c-e5e817a25080",               # To bottom
+    clarity_code == "2" ~ "37d458a2-7dc9-48a3-92c3-dd7928a4dc53",               # Actual depth greater
+    clarity_code == "3" ~ "ad71c310-3d86-41bd-8b86-ff76f6373c94",               # Actual depth meas
+    clarity_code == "03f7595f-1a18-47a2-ae5c-e5e817a25080" ~ "03f7595f-1a18-47a2-ae5c-e5e817a25080",
+    clarity_code == "37d458a2-7dc9-48a3-92c3-dd7928a4dc53" ~ "37d458a2-7dc9-48a3-92c3-dd7928a4dc53",
+    clarity_code == "ad71c310-3d86-41bd-8b86-ff76f6373c94" ~ "ad71c310-3d86-41bd-8b86-ff76f6373c94",
+    is.na(clarity_code) ~ "282d8ea4-4e78-4c4d-be05-dfd7fa457c09")) %>%          # No data
   select(survey_id = survey_uuid, water_clarity_type_id = clarity_code,
          water_clarity_meter, stream_flow_measurement_cfs, start_water_temperature_datetime,
          start_water_temperature_celsius, end_water_temperature_datetime,
          end_water_temperature_celsius, waterbody_ph, created_datetime,
          created_by, modified_datetime, modified_by) %>%
   distinct()
+
+# Check occurances
+table(waterbody_meas_prep$water_clarity_type_id, useNA = "ifany")
 
 # Check
 any(is.na(waterbody_meas_prep$survey_id))
@@ -1622,7 +1644,7 @@ fish_mark = fish_mark %>%
   mutate(mark_color_id = "66076cfd-f4a2-4ec8-861a-346e41c626b5") %>%               # Not applicable
   mutate(mark_shape_id = "469c9ba7-3288-404e-9c75-d9b8d9a7600b") %>%               # Not applicable
   mutate(fish_capture_status_id = case_when(
-    mark_status_one == "Not present" | mark_status_two == "Not present" ~ "v03f32160-6426-4c41-a088-3580a7d1a0c5",
+    mark_status_one == "Not present" | mark_status_two == "Not present" ~ "03f32160-6426-4c41-a088-3580a7d1a0c5",
     mark_status_one == "Unknown" & mark_status_two == "Unknown" ~ "105ce6c3-1d14-4ca0-8730-bb72527295e5",
     mark_status_one == "Applied" | mark_status_two == "Applied" ~ "03f32160-6426-4c41-a088-3580a7d1a0c5",
     TRUE ~ "105ce6c3-1d14-4ca0-8730-bb72527295e5")) %>%
@@ -3445,6 +3467,11 @@ individual_fish_prep = individual_fish %>%
          genetic_sample_number, otolith_sample_number, comment_text,
          created_datetime, created_by, modified_datetime, modified_by)
 
+# HACK ALERT...UPDATE ONE INCORRECT UUID
+individual_fish_prep = individual_fish_prep %>%
+  mutate(spawn_condition_type_id = if_else(spawn_condition_type_id == "d8129c5a-8005-4ef6-90cb-5950325ac0e",
+                                           "d8129c5a-8005-4ef6-90cb-5950325ac0e1", spawn_condition_type_id))
+
 # Check for dup ids...could be comments
 any(duplicated(individual_fish_prep$individual_fish_id))
 
@@ -3544,6 +3571,11 @@ fish_capture_event_prep = fish_capture_event_prep %>%
   select(fish_capture_event_id, fish_encounter_id, fish_capture_status_id,
          disposition_type_id, disposition_id, disposition_location_id,
          created_datetime, created_by, modified_datetime, modified_by)
+
+# ONLY THIS ONCE...correct UUID...WARNING..HACK ALERT !!!!!!!!!!!!!!!!!!!!!!!!!
+fish_capture_event_prep = fish_capture_event_prep %>%
+  mutate(fish_capture_status_id = if_else(fish_capture_status_id == "v03f32160-6426-4c41-a088-3580a7d1a0c5",
+                                          "03f32160-6426-4c41-a088-3580a7d1a0c5", fish_capture_status_id))
 
 #================================================================================================
 # Prepare fish_mark_dead...now that fish_encounter_id is available
@@ -3885,6 +3917,7 @@ test_location_ids = location_prep %>%
 # Output redd_encounter to rds: 724591 records
 saveRDS(object = test_upload_ids, file = "data/test_upload_ids.rds")
 saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
+# saveRDS(object = clarity_type_corrections, file = "data/clarity_type_corrections.rds")
 # Load redd_encounter
 # test_upload_ids = readRDS("data/test_upload_ids.rds")
 # test_location_ids = readRDS("data/test_location_ids.rds")
@@ -3896,6 +3929,12 @@ saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
 # qry = glue("select * from survey where survey_id in ({s_ids})")
 # db_con = pg_con_local("spawning_ground")
 # uploaded_surveys = dbGetQuery(db_con, qry)
+# dbDisconnect(db_con)
+
+# # Check for incorrectly loaded waterbody_meas data
+# qry = glue("select * from waterbody_measurement where survey_id in ({s_ids})")
+# db_con = pg_con_local("spawning_ground")
+# wbmeas = dbGetQuery(db_con, qry)
 # dbDisconnect(db_con)
 
 # #==========================================================================================
