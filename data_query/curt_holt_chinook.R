@@ -1,8 +1,8 @@
 #================================================================
-# Export Chinook data to excel in Curt Holt format
+# Export all WRIA 22 and 23 data to excel in Curt Holt format
 #
-# Notes: 
-#  1. Added sort_order ...see below
+# Notes:
+#  1.
 #
 # AS 2020-06-09
 #================================================================
@@ -52,16 +52,18 @@ pg_con_local = function(dbname, port = '5432') {
 }
 
 #============================================================================
-# Get data: Chinook 
+# Get data: Chinook
 #============================================================================
 
 # Set selectable values
-run_year = 2016
-species = "Chin"
-run = "Fall"      # Fall or Spring
-#wria = "22.0360"
+# run_year = 2016
+# species = "Chin"
+# run = "Fall"      # Fall or Spring
+# #wria = "22.0360"
+start_month = sep
+end_month = feb
 
-# Get header data...first function 
+# Get header data...first function
 qry = glue("select up_wr.wria_code as up_wria, lo_wr.wria_code as lo_wria, ",
            "wb.stream_catalog_code as cat_code, wb.waterbody_display_name as stream_name, ",
            "sd.survey_design_type_code as type, s.survey_datetime as survey_date, ",
@@ -75,7 +77,7 @@ qry = glue("select up_wr.wria_code as up_wria, lo_wr.wria_code as lo_wria, ",
 
 
 
-# STOPPED HERE .... 
+# STOPPED HERE ....
 
 
 
@@ -86,7 +88,7 @@ close(con)
 # Get CWT label
 con = sgs_con()
 ic = sqlQuery(con, as.is = TRUE,
-               paste(sep='', 
+               paste(sep='',
                      "SELECT * FROM ChehalisCWT_View"))
 close(con)
 
@@ -99,73 +101,73 @@ table(dat$Type, useNA = "ifany")
 dat$Type[dat$Type == "INDX"] = "Index"
 dat$Type[dat$Type == "SPOT"] = "Spot"
 dat$Type[dat$Type == "SUPP"] = "Supp"
-dat = dat %>% 
-  mutate(Date = substr(Date, 1, 10)) %>% 
-  mutate(StatWeek = fish_stat_week(Date, start_day = "Sun")) %>%                
-  mutate(RML = if_else(substr(RML, 1, 1) == ".", paste0("0", RML), RML)) %>%    
+dat = dat %>%
+  mutate(Date = substr(Date, 1, 10)) %>%
+  mutate(StatWeek = fish_stat_week(Date, start_day = "Sun")) %>%
+  mutate(RML = if_else(substr(RML, 1, 1) == ".", paste0("0", RML), RML)) %>%
   mutate(RMU = if_else(substr(RMU, 1, 1) == ".", paste0("0", RMU), RMU)) %>%
   mutate(RML = if_else(substr(RML, 1, 3) == "00.", substr(RML, 2, nchar(RML)), RML)) %>%
-  mutate(RMU = if_else(substr(RMU, 1, 3) == "00.", substr(RMU, 2, nchar(RMU)), RMU)) %>%  
-  mutate(RMLn = as.numeric(RML)) %>% 
-  mutate(RMUn = as.numeric(RMU)) %>%                                            
-  mutate(Method = str_to_title(Method)) %>% 
+  mutate(RMU = if_else(substr(RMU, 1, 3) == "00.", substr(RMU, 2, nchar(RMU)), RMU)) %>%
+  mutate(RMLn = as.numeric(RML)) %>%
+  mutate(RMUn = as.numeric(RMU)) %>%
+  mutate(Method = str_to_title(Method)) %>%
   mutate(Species = str_to_title(Species))
 
 # Fill in zeros where NA in summary rows
-dat[,15:22] = lapply(dat[,15:22], set_na_zero)                                  
-dat[,27:35] = lapply(dat[,27:35], set_na_zero)                                        
+dat[,15:22] = lapply(dat[,15:22], set_na_zero)
+dat[,27:35] = lapply(dat[,27:35], set_na_zero)
 
 # Compute RVIS
-dat = dat %>% 
-  arrange(Type, WRIA, RMLn, RMUn, as.Date(Date)) %>% 
-  mutate(sort_order = seq(1, nrow(dat))) %>% 
+dat = dat %>%
+  arrange(Type, WRIA, RMLn, RMUn, as.Date(Date)) %>%
+  mutate(sort_order = seq(1, nrow(dat))) %>%
   mutate(Reach = paste0(Type, "_", WRIA, "_", RML, "_", RMU)) %>%
-  mutate(RCOMB = comb_redds) %>% 
+  mutate(RCOMB = comb_redds) %>%
   mutate(RVIS = if_else(
     !is.na(RNEW) & !is.na(old_redds) & !is.na(comb_redds), RNEW + old_redds + comb_redds,
     if_else(!is.na(RNEW) & !is.na(old_redds) & is.na(comb_redds), RNEW + old_redds,
-            if_else(!is.na(RNEW) & is.na(old_redds) & is.na(comb_redds), RNEW, 
+            if_else(!is.na(RNEW) & is.na(old_redds) & is.na(comb_redds), RNEW,
                     if_else(is.na(RNEW) & is.na(old_redds) & !is.na(comb_redds), comb_redds, NA_integer_)))))
 
 # Compute RCUM
-dat = dat %>% 
+dat = dat %>%
   mutate(RNEW_comb = if_else(!is.na(RNEW) & !is.na(comb_redds), RNEW + comb_redds,
-                             if_else(!is.na(RNEW) & is.na(comb_redds), RNEW, 
-                                     if_else(is.na(RNEW) & !is.na(comb_redds), comb_redds, NA_integer_)))) %>% 
-  group_by(Reach) %>% 
-  mutate(RCUM = if_else(Type == "Supp", 
+                             if_else(!is.na(RNEW) & is.na(comb_redds), RNEW,
+                                     if_else(is.na(RNEW) & !is.na(comb_redds), comb_redds, NA_integer_)))) %>%
+  group_by(Reach) %>%
+  mutate(RCUM = if_else(Type == "Supp",
                         cumsum(RNEW_comb),
                         cumsum(RNEW))) %>%
-  ungroup() %>% 
-  select(Survey_Detail_Id, WRIA, StreamName, Type, Date, StatWeek, RML, RMU, 
-         Method, Flow, RiffleVis, LM, LF, LSND, LJ, DM, DF, 
-         DSND, DJ, RNEW, RVIS, RCUM, RCOMB, Comments, Reach, ADClippedBeep,        
+  ungroup() %>%
+  select(Survey_Detail_Id, WRIA, StreamName, Type, Date, StatWeek, RML, RMU,
+         Method, Flow, RiffleVis, LM, LF, LSND, LJ, DM, DF,
+         DSND, DJ, RNEW, RVIS, RCUM, RCOMB, Comments, Reach, ADClippedBeep,
          ADClippedNoBeep, ADClippedNoHead, UnMarkBeep, UnMarkNoBeep,
-         UnMarkNoHead, UnknownMarkBeep, UnknownMarkNoBeep, 
+         UnMarkNoHead, UnknownMarkBeep, UnknownMarkNoBeep,
          UnknownMarkNoHead, sort_order)
 
 # Add CWTHeadLabels
-ic = ic %>% 
-  distinct() %>% 
+ic = ic %>%
+  distinct() %>%
   arrange(Survey_Detail_Id)
 
 # Pivot out cwt_labels
-icp = ic %>% 
-  group_by(Survey_Detail_Id) %>% 
-  mutate(key = row_number(CWTHeadLabels)) %>% 
-  spread(key = key, value = CWTHeadLabels) %>% 
-  ungroup() 
+icp = ic %>%
+  group_by(Survey_Detail_Id) %>%
+  mutate(key = row_number(CWTHeadLabels)) %>%
+  spread(key = key, value = CWTHeadLabels) %>%
+  ungroup()
 
 # Concatenate cwt_labels to one variable
-icpc = icp %>% 
-  mutate(cwts = apply(icp[,2:ncol(icp)], 1, paste0, collapse = ", ")) %>% 
-  select(Survey_Detail_Id, cwts) %>% 
-  mutate(CWTHeadLabels = stri_replace_all_fixed(cwts, pattern = ", NA", replacement = "")) %>% 
+icpc = icp %>%
+  mutate(cwts = apply(icp[,2:ncol(icp)], 1, paste0, collapse = ", ")) %>%
+  select(Survey_Detail_Id, cwts) %>%
+  mutate(CWTHeadLabels = stri_replace_all_fixed(cwts, pattern = ", NA", replacement = "")) %>%
   select(Survey_Detail_Id, CWTHeadLabels)
 
 # Add to dat
-dat = dat %>% 
-  left_join(icpc, by = "Survey_Detail_Id") %>% 
+dat = dat %>%
+  left_join(icpc, by = "Survey_Detail_Id") %>%
   select(-Survey_Detail_Id)
 
 # Pull out unique set of Reaches to add blank rows
@@ -176,16 +178,16 @@ dat_empty = unique(dat_empty)
 dat = rbind(dat, dat_empty)
 
 # Add sort order to all rows by reach
-sort_dat = dat %>% 
-  select(Reach, sort_order) %>% 
-  filter(as.integer(sort_order) > 0) %>% 
-  mutate(sort_order = as.integer(sort_order)) %>% 
-  group_by(Reach) %>% 
-  mutate(sort_seq = row_number(Reach)) %>% 
-  ungroup() %>% 
-  filter(sort_seq == 1) %>% 
-  distinct() %>% 
-  arrange(sort_order) %>% 
+sort_dat = dat %>%
+  select(Reach, sort_order) %>%
+  filter(as.integer(sort_order) > 0) %>%
+  mutate(sort_order = as.integer(sort_order)) %>%
+  group_by(Reach) %>%
+  mutate(sort_seq = row_number(Reach)) %>%
+  ungroup() %>%
+  filter(sort_seq == 1) %>%
+  distinct() %>%
+  arrange(sort_order) %>%
   select(Reach, sort_two = sort_order)
 
 # Add sort_dat to dat
@@ -193,16 +195,16 @@ dat = dat %>%
   left_join(sort_dat, by = "Reach")
 
 # Order as before
-dat = dat %>% 
-  arrange(sort_two, as.Date(Date)) %>% 
-  mutate(Comments = if_else(is.na(Comments), "", Comments)) %>% 
-  mutate(CWTHeadLabels = if_else(is.na(CWTHeadLabels), "", CWTHeadLabels)) %>% 
+dat = dat %>%
+  arrange(sort_two, as.Date(Date)) %>%
+  mutate(Comments = if_else(is.na(Comments), "", Comments)) %>%
+  mutate(CWTHeadLabels = if_else(is.na(CWTHeadLabels), "", CWTHeadLabels)) %>%
   select(-c(Reach, sort_order))
 
-# Format date mm/dd/yyyy   
-dat = dat %>% 
-  mutate(Date = format(as.Date(Date), format = "%m/%d/%Y")) %>% 
-  mutate(Date = if_else(is.na(Date), "", Date)) %>% 
+# Format date mm/dd/yyyy
+dat = dat %>%
+  mutate(Date = format(as.Date(Date), format = "%m/%d/%Y")) %>%
+  mutate(Date = if_else(is.na(Date), "", Date)) %>%
   select(-sort_two)
 
 #============================================================================
