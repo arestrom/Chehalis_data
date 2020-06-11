@@ -19,6 +19,7 @@ library(tidyr)
 library(remisc)
 library(stringi)
 library(openxlsx)
+library(lubridate)
 
 #============================================================================
 # Define functions
@@ -52,7 +53,7 @@ pg_con_local = function(dbname, port = '5432') {
 }
 
 #============================================================================
-# Get data: Chinook
+# Get all surveys within data-range for WRIAs 22 and 23
 #============================================================================
 
 # Set selectable values
@@ -60,37 +61,146 @@ pg_con_local = function(dbname, port = '5432') {
 # species = "Chin"
 # run = "Fall"      # Fall or Spring
 # #wria = "22.0360"
-start_month = sep
-end_month = feb
+start_date = "2019-09-01"
+end_date = "2020-02-29"
 
-# Get header data...first function
-qry = glue("select up_wr.wria_code as up_wria, lo_wr.wria_code as lo_wria, ",
-           "wb.stream_catalog_code as cat_code, wb.waterbody_display_name as stream_name, ",
-           "sd.survey_design_type_code as type, s.survey_datetime as survey_date, ",
-           "lo_loc.river_mile_measure as rml, up_loc.river_mile_measure as rmu, ",
-           "sm.survey_method_code as method, sf.flow_type_short_description as flow, ",
-           "vc.visibility_condition as rifflevis ",
-           "from survey as s ",
-           "inner join location as up_loc on s.upper_end_point_id = up_loc.location_id ",
-           "inner join location as lo_loc on s.lower_end_point_id = lo_loc.location_id ",
-           "inner join ")
+# Function to get header data...use multiselect for year
+get_header_data = function(start_date, end_date) {
+  qry = glue("select distinct wr.wria_code, s.survey_id, wb.stream_catalog_code as cat_code, ",
+             "wb.waterbody_display_name as stream_name, wb.latitude_longitude_id as llid, ",
+             "se.survey_event_id, sd.survey_design_type_code as type, s.survey_datetime as survey_date, ",
+             "locl.river_mile_measure as rml, locu.river_mile_measure as rmu, ",
+             "sm.survey_method_code as method, sf.flow_type_short_description as flow, ",
+             "vt.visibility_type_short_description as rifflevis, s.observer_last_name as obs ",
+             "from waterbody_lut as wb ",
+             "inner join stream as st on wb.waterbody_id = st.waterbody_id ",
+             "inner join wria_lut as wr on st_intersects(st.geom, wr.geom) ",
+             "left join location as loc on wb.waterbody_id = loc.waterbody_id ",
+             "left join survey as s on (loc.location_id = s.upper_end_point_id or ",
+             "loc.location_id = s.lower_end_point_id) ",
+             "left join survey_event as se on s.survey_id = se.survey_id ",
+             "inner join survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+             "left join survey_design_type_lut as sd on se.survey_design_type_id = sd.survey_design_type_id ",
+             "left join location as locu on s.upper_end_point_id = locu.location_id ",
+             "left join location as locl on s.lower_end_point_id = locl.location_id ",
+             "left join survey_comment as sc on s.survey_id = sc.survey_id ",
+             "left join stream_flow_type_lut as sf on sc.stream_flow_type_id = sf.stream_flow_type_id ",
+             "left join visibility_type_lut as vt on sc.visibility_type_id = vt.visibility_type_id ",
+             "where survey_datetime between '{start_date}' and '{end_date}' ",
+             "and wr.wria_code in ('22', '23')")
+  con = pg_con_local("spawning_ground")
+  surveys = DBI::dbGetQuery(con, qry)
+  dbDisconnect(con)
+  surveys = surveys %>%
+    mutate(statweek = remisc::fish_stat_week(as.Date(survey_date), start_day = "Sun")) %>%
+    mutate(survey_date = format(survey_date, "%m/%d/%Y")) %>%
+    select(survey_id, survey_event_id, wria = cat_code, stream_name, type,
+           survey_date, rml, rmu, method, flow, rifflevis, obs) %>%
+    arrange(stream_name, as.Date(survey_date, format = "%m/%d/%Y"))
+  return(surveys)
+}
 
+# Run the function
+header_data = get_header_data(start_date, end_date)
 
+#============================================================================
+# Get all live and dead counts for surveys above
+#============================================================================
 
-# STOPPED HERE ....
+# Function to get fish_counts
+get_fish_counts = function(header_data) {
+  # Pull out the survey_event_ids
+  se_id = header_data %>%
+    filter(!is.na(survey_event_id)) %>%
+    pull(survey_event_id)
+  se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
+  # Query to pull out all counts by species and sex-maturity-mark groups
+  qry = glue("select se.survey_event_id, fe.fish_encounter_id, sp.common_name as species, ",
+             "fs.fish_status_description as fish_status, se.comment_text as fish_comments, ",
+             "sx.sex_description as sex, mat.maturity_short_description as maturity, ",
+             "ad.adipose_clip_status_code as clip_status, cwt.detection_status_description as cwt_detect, ",
+             "fe.fish_count, fe.previously_counted_indicator as prev_count ",
+             "from survey_event as se ",
+             "left join fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
+             "left join species_lut as sp on se.species_id = sp.species_id ",
+             "left join fish_status_lut as fs on fe.fish_status_id = fs.fish_status_id ",
+             "left join sex_lut as sx on fe.sex_id = sx.sex_id ",
+             "left join maturity_lut as mat on fe.maturity_id = mat.maturity_id ",
+             "left join adipose_clip_status_lut as ad on fe.adipose_clip_status_id = ad.adipose_clip_status_id ",
+             "left join cwt_detection_status_lut as cwt on fe.cwt_detection_status_id = cwt.cwt_detection_status_id ",
+             "where se.survey_event_id in ({se_ids})")
+  con = pg_con_local("spawning_ground")
+  fish_counts = DBI::dbGetQuery(con, qry)
+  dbDisconnect(con)
+  fish_counts = fish_counts %>%
+    select(survey_event_id, fish_encounter_id, species, fish_status, sex,
+           maturity, clip_status, cwt_detect, fish_count, prev_count,
+           fish_comments)
+  return(fish_counts)
+}
 
+# Run the function
+fish_counts = get_fish_counts(header_data)
 
+#============================================================================
+# Get all redd counts for surveys above
+#============================================================================
 
-db_con = pg_con_local(dbname = "spawning_ground")
-dat = dbGetQuery(con, qry)
-close(con)
+# Function to get redd counts
+get_redd_counts = function(header_data) {
+  se_id = header_data %>%
+    filter(!is.na(survey_event_id)) %>%
+    pull(survey_event_id)
+  se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
+  qry = glue("select se.survey_event_id, rd.redd_encounter_id, ",
+             "rs.redd_status_short_description as redd_status, ",
+             "rd.redd_count, rd.comment_text as redd_comments ",
+             "from survey_event as se ",
+             "left join redd_encounter as rd on se.survey_event_id = rd.survey_event_id ",
+             "left join redd_status_lut as rs on rd.redd_status_id = rs.redd_status_id ",
+             "where se.survey_event_id in ({se_ids})")
+  con = pg_con_local("spawning_ground")
+  redd_counts = DBI::dbGetQuery(con, qry)
+  dbDisconnect(con)
+  redd_counts = redd_counts %>%
+    select(survey_event_id, redd_encounter_id, redd_status, redd_count,
+           redd_comments)
+  return(redd_counts)
+}
 
-# Get CWT label
-con = sgs_con()
-ic = sqlQuery(con, as.is = TRUE,
-               paste(sep='',
-                     "SELECT * FROM ChehalisCWT_View"))
-close(con)
+# Run the function
+redd_counts = get_redd_counts(header_data)
+
+#============================================================================
+# Get the cwt labels for surveys above
+#============================================================================
+
+# Function to get cwt labels
+get_head_labels = function(fish_counts) {
+  fe_id = fish_counts %>%
+    filter(!is.na(fish_encounter_id)) %>%
+    pull(fish_encounter_id)
+  fe_ids = paste0(paste0("'", fe_id, "'"), collapse = ", ")
+  qry = glue("select fe.fish_encounter_id, indf.individual_fish_id, ",
+             "indf.cwt_snout_sample_number as cwt_head_label ",
+             "from fish_encounter as fe ",
+             "left join individual_fish as indf on fe.fish_encounter_id = indf.fish_encounter_id ",
+             "where fe.fish_encounter_id in ({fe_ids}) and ",
+             "indf.cwt_snout_sample_number is not null")
+  con = pg_con_local("spawning_ground")
+  head_labels = DBI::dbGetQuery(con, qry)
+  dbDisconnect(con)
+  head_labels = head_labels %>%
+    select(fish_encounter_id, individual_fish_id, cwt_head_label)
+  return(head_labels)
+}
+
+# Run the function
+head_labels = get_head_labels(fish_counts)
+
+# STOPPED HERE....NEXT pivot out head labels into one cell
+# then stuff below.....
+
 
 #============================================================================
 # Format data
