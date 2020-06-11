@@ -10,6 +10,7 @@
 #     using the front-end.
 #  4. Make sure all required fields have default values in case of blanks. For
 #     example cwt_detection_status_id, adipose_clip_status_id, etc.
+#  5. Reset the time zone in IFB company to UTC or local...but not New York !!!!!
 #
 # ToDo:
 #  1. Update fish_encounter -- live esp. to avoid counts of zero in categories   !!!!!!!!!!!!!!!!!!!!!
@@ -1465,6 +1466,7 @@ while (is.null(access_token)) {
 
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
+#start_id = 1
 
 # Test...currently 2655 records
 strt = Sys.time()

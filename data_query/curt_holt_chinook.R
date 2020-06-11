@@ -92,7 +92,11 @@ get_header_data = function(start_date, end_date) {
   surveys = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   surveys = surveys %>%
-    mutate(statweek = remisc::fish_stat_week(as.Date(survey_date), start_day = "Sun")) %>%
+    # HACK WARNING: TimeZone was screwed up !!!!!!!!! Using New York in profile !!!!!
+    # as.Date uses local timezone so conversion should come out correctly
+    # But may need to adjust after dates are corrected in DB !!!!!!!!!!!!!!!
+    mutate(survey_date = as.Date(survey_date)) %>%
+    mutate(statweek = remisc::fish_stat_week(survey_date, start_day = "Sun")) %>%
     mutate(survey_date = format(survey_date, "%m/%d/%Y")) %>%
     select(survey_id, survey_event_id, wria = cat_code, stream_name, type,
            survey_date, rml, rmu, method, flow, rifflevis, obs) %>%
@@ -100,7 +104,7 @@ get_header_data = function(start_date, end_date) {
   return(surveys)
 }
 
-# Run the function
+# Run the function: 1777 rows
 header_data = get_header_data(start_date, end_date)
 
 #============================================================================
@@ -139,7 +143,7 @@ get_fish_counts = function(header_data) {
   return(fish_counts)
 }
 
-# Run the function
+# Run the function: 2504 rows
 fish_counts = get_fish_counts(header_data)
 
 #============================================================================
@@ -152,10 +156,10 @@ get_redd_counts = function(header_data) {
     filter(!is.na(survey_event_id)) %>%
     pull(survey_event_id)
   se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
-  qry = glue("select se.survey_event_id, rd.redd_encounter_id, ",
-             "rs.redd_status_short_description as redd_status, ",
-             "rd.redd_count, rd.comment_text as redd_comments ",
+  qry = glue("select se.survey_event_id, rd.redd_encounter_id, sp.common_name as species, ",
+             "rs.redd_status_short_description as redd_status, rd.redd_count ",
              "from survey_event as se ",
+             "left join species_lut as sp on se.species_id = sp.species_id ",
              "left join redd_encounter as rd on se.survey_event_id = rd.survey_event_id ",
              "left join redd_status_lut as rs on rd.redd_status_id = rs.redd_status_id ",
              "where se.survey_event_id in ({se_ids})")
@@ -163,12 +167,11 @@ get_redd_counts = function(header_data) {
   redd_counts = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   redd_counts = redd_counts %>%
-    select(survey_event_id, redd_encounter_id, redd_status, redd_count,
-           redd_comments)
+    select(survey_event_id, redd_encounter_id, species, redd_status, redd_count)
   return(redd_counts)
 }
 
-# Run the function
+# Run the function: 7059 rows
 redd_counts = get_redd_counts(header_data)
 
 #============================================================================
@@ -176,35 +179,245 @@ redd_counts = get_redd_counts(header_data)
 #============================================================================
 
 # Function to get cwt labels
-get_head_labels = function(fish_counts) {
-  fe_id = fish_counts %>%
-    filter(!is.na(fish_encounter_id)) %>%
-    pull(fish_encounter_id)
-  fe_ids = paste0(paste0("'", fe_id, "'"), collapse = ", ")
-  qry = glue("select fe.fish_encounter_id, indf.individual_fish_id, ",
-             "indf.cwt_snout_sample_number as cwt_head_label ",
-             "from fish_encounter as fe ",
+get_head_labels = function(header_data) {
+  se_id = header_data %>%
+    filter(!is.na(survey_event_id)) %>%
+    pull(survey_event_id)
+  se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
+  qry = glue("select se.survey_event_id, indf.cwt_snout_sample_number as cwt_head_label ",
+             "from survey_event as se ",
+             "left join fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
              "left join individual_fish as indf on fe.fish_encounter_id = indf.fish_encounter_id ",
-             "where fe.fish_encounter_id in ({fe_ids}) and ",
+             "where se.survey_event_id in ({se_ids}) and ",
              "indf.cwt_snout_sample_number is not null")
   con = pg_con_local("spawning_ground")
   head_labels = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   head_labels = head_labels %>%
-    select(fish_encounter_id, individual_fish_id, cwt_head_label)
+    select(survey_event_id, cwt_head_label)
   return(head_labels)
 }
 
-# Run the function
-head_labels = get_head_labels(fish_counts)
+# Run the function: 3 rows .... all from fake data
+head_labels = get_head_labels(header_data)
 
-# STOPPED HERE....NEXT pivot out head labels into one cell
-# then stuff below.....
+#============================================================================
+# Calculate fish counts by status, sex, and maturity
+#============================================================================
+
+# Cases occur with live detection method NA and dead detection method electronic
+# So need to combine again by survey_id and species to avoid duplicate rows
+
+# Add some helper fields from header_data
+head_dat = header_data %>%
+  filter(!is.na(survey_event_id)) %>%
+  select(survey_id, survey_event_id, stream_name,
+         survey_date, type, rml, rmu, method, obs) %>%
+  distinct()
+
+# Add to fish_counts
+dat = fish_counts %>%
+  left_join(head_dat, by = "survey_event_id") %>%
+  select(survey_id, survey_event_id, fish_encounter_id, stream_name, survey_date, type,
+         rml, rmu, method, obs, species, fish_status, sex, maturity, clip_status,
+         cwt_detect, fish_count, prev_count, fish_comments) %>%
+  arrange(stream_name, as.Date(survey_date, format = "%m/%d/%Y"), rml, rmu)
+
+# Compute sums for live and dead categories
+fish_sums = dat %>%
+  filter(!is.na(fish_encounter_id)) %>%
+  filter(!prev_count == TRUE) %>%
+  mutate(lv_male_count = if_else(fish_status == "Live" & sex == "Male" & maturity == "Adult",
+                                 fish_count, 0L)) %>%
+  mutate(lv_female_count = if_else(fish_status == "Live" & sex == "Female" & maturity == "Adult",
+                                   fish_count, 0L)) %>%
+  mutate(lv_snd_count = if_else(fish_status == "Live" & sex == "Unknown" & maturity == "Adult",
+                                fish_count, 0L)) %>%
+  mutate(lv_jack_count = if_else(fish_status == "Live" & sex == "Male" & maturity == "Subadult",
+                                 fish_count, 0L)) %>%
+  mutate(dd_male_count = if_else(fish_status == "Dead" & sex == "Male" & maturity == "Adult",
+                                 fish_count, 0L)) %>%
+  mutate(dd_female_count = if_else(fish_status == "Dead" & sex == "Female" & maturity == "Adult",
+                                   fish_count, 0L)) %>%
+  mutate(dd_snd_count = if_else(fish_status == "Dead" & sex == "Unknown" & maturity == "Adult",
+                                fish_count, 0L)) %>%
+  mutate(dd_jack_count = if_else(fish_status == "Dead" & sex == "Male" & maturity == "Subadult",
+                                 fish_count, 0L)) %>%
+  group_by(survey_id, species) %>%
+  mutate(lv_male_sum = sum(lv_male_count, na.rm = TRUE)) %>%
+  mutate(lv_female_sum = sum(lv_female_count, na.rm = TRUE)) %>%
+  mutate(lv_snd_sum = sum(lv_snd_count, na.rm = TRUE)) %>%
+  mutate(lv_jack_sum = sum(lv_jack_count, na.rm = TRUE)) %>%
+  mutate(dd_male_sum = sum(dd_male_count, na.rm = TRUE)) %>%
+  mutate(dd_female_sum = sum(dd_female_count, na.rm = TRUE)) %>%
+  mutate(dd_snd_sum = sum(dd_snd_count, na.rm = TRUE)) %>%
+  mutate(dd_jack_sum = sum(dd_jack_count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(survey_id, species, lv_male_sum, lv_female_sum, lv_snd_sum,
+         lv_jack_sum, dd_male_sum, dd_female_sum, dd_snd_sum,
+         dd_jack_sum) %>%
+  distinct()
+
+# Add back to dat
+base_sums = dat %>%
+  select(survey_id, species, stream_name, survey_date, type, rml,
+         rmu, method, obs) %>%
+  distinct() %>%
+  left_join(fish_sums, by = c("survey_id", "species"))
+
+#============================================================================
+# Calculate fish counts by clip and cwt detection status
+#============================================================================
+
+# Compute sums for live and dead categories
+fish_clip_sums = dat %>%
+  filter(!is.na(fish_encounter_id)) %>%
+  filter(!prev_count == TRUE) %>%
+  filter(!cwt_detect == "Not applicable") %>%
+  mutate(clip_beep = if_else(clip_status == "AD" & cwt_detect == "Coded-wire tag detected",
+                                 fish_count, 0L)) %>%
+  mutate(clip_nobeep = if_else(clip_status == "AD" & cwt_detect == "Coded-wire tag not detected",
+                                   fish_count, 0L)) %>%
+  mutate(clip_nohead = if_else(clip_status == "AD" & cwt_detect == "Coded-wire tag undetermined, e.g., no head",
+                                fish_count, 0L)) %>%
+  mutate(noclip_beep = if_else(clip_status == "UM" & cwt_detect == "Coded-wire tag detected",
+                             fish_count, 0L)) %>%
+  mutate(noclip_nobeep = if_else(clip_status == "UM" & cwt_detect == "Coded-wire tag not detected",
+                               fish_count, 0L)) %>%
+  mutate(noclip_nohead = if_else(clip_status == "UM" & cwt_detect == "Coded-wire tag undetermined, e.g., no head",
+                               fish_count, 0L)) %>%
+  mutate(unclip_beep = if_else(clip_status == "UN" & cwt_detect == "Coded-wire tag detected",
+                               fish_count, 0L)) %>%
+  mutate(unclip_nobeep = if_else(clip_status == "UN" & cwt_detect == "Coded-wire tag not detected",
+                                 fish_count, 0L)) %>%
+  mutate(unclip_nohead = if_else(clip_status == "UN" & cwt_detect == "Coded-wire tag undetermined, e.g., no head",
+                                 fish_count, 0L)) %>%
+  group_by(survey_id, species) %>%
+  mutate(clip_beep_sum = sum(clip_beep, na.rm = TRUE)) %>%
+  mutate(clip_nobeep_sum = sum(clip_nobeep, na.rm = TRUE)) %>%
+  mutate(clip_nohead_sum = sum(clip_nohead, na.rm = TRUE)) %>%
+  mutate(noclip_beep_sum = sum(noclip_beep, na.rm = TRUE)) %>%
+  mutate(noclip_nobeep_sum = sum(noclip_nobeep, na.rm = TRUE)) %>%
+  mutate(noclip_nohead_sum = sum(noclip_nohead, na.rm = TRUE)) %>%
+  mutate(unclip_beep_sum = sum(unclip_beep, na.rm = TRUE)) %>%
+  mutate(unclip_nobeep_sum = sum(unclip_nobeep, na.rm = TRUE)) %>%
+  mutate(unclip_nohead_sum = sum(unclip_nohead, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(survey_id, species, ADClippedBeep = clip_beep_sum, ADClippedNoBeep = clip_nobeep_sum,
+         ADClippedNoHead = clip_nohead_sum, UnMarkBeep = noclip_beep_sum,
+         UnMarkNoBeep = noclip_nobeep_sum, UnMarkNoHead = noclip_nohead_sum,
+         UnknownMarkBeep = unclip_beep_sum, UnknownMarkNoBeep = unclip_nobeep_sum,
+         UnknownMarkNoHead = unclip_nohead_sum) %>%
+  distinct()
+
+#============================================================================
+# Calculate redd sums
+#============================================================================
+
+# Add to fish_counts
+redd_dat = redd_counts %>%
+  left_join(head_dat, by = "survey_event_id") %>%
+  select(survey_id, survey_event_id, redd_encounter_id, stream_name, survey_date, type,
+         rml, rmu, method, obs, species, redd_status, redd_count) %>%
+  arrange(stream_name, as.Date(survey_date, format = "%m/%d/%Y"), rml, rmu)
+
+# Compute sums for redd categories
+redd_sums = redd_dat %>%
+  filter(!is.na(redd_encounter_id)) %>%
+  mutate(reach = paste0(type, "_", stream_name, "_", rml, "_", rmu)) %>%
+  mutate(rcomb = if_else(redd_status == "Combined visible redds", redd_count, 0L)) %>%
+  mutate(rnew = )
+
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+  mutate(lv_male_count = if_else(fish_status == "Live" & sex == "Male" & maturity == "Adult",
+                                 fish_count, 0L)) %>%
+  mutate(lv_female_count = if_else(fish_status == "Live" & sex == "Female" & maturity == "Adult",
+                                   fish_count, 0L)) %>%
+  mutate(lv_snd_count = if_else(fish_status == "Live" & sex == "Unknown" & maturity == "Adult",
+                                fish_count, 0L)) %>%
+  mutate(lv_jack_count = if_else(fish_status == "Live" & sex == "Male" & maturity == "Subadult",
+                                 fish_count, 0L)) %>%
+  mutate(dd_male_count = if_else(fish_status == "Dead" & sex == "Male" & maturity == "Adult",
+                                 fish_count, 0L)) %>%
+  mutate(dd_female_count = if_else(fish_status == "Dead" & sex == "Female" & maturity == "Adult",
+                                   fish_count, 0L)) %>%
+  mutate(dd_snd_count = if_else(fish_status == "Dead" & sex == "Unknown" & maturity == "Adult",
+                                fish_count, 0L)) %>%
+  mutate(dd_jack_count = if_else(fish_status == "Dead" & sex == "Male" & maturity == "Subadult",
+                                 fish_count, 0L)) %>%
+  group_by(survey_id, species) %>%
+  mutate(lv_male_sum = sum(lv_male_count, na.rm = TRUE)) %>%
+  mutate(lv_female_sum = sum(lv_female_count, na.rm = TRUE)) %>%
+  mutate(lv_snd_sum = sum(lv_snd_count, na.rm = TRUE)) %>%
+  mutate(lv_jack_sum = sum(lv_jack_count, na.rm = TRUE)) %>%
+  mutate(dd_male_sum = sum(dd_male_count, na.rm = TRUE)) %>%
+  mutate(dd_female_sum = sum(dd_female_count, na.rm = TRUE)) %>%
+  mutate(dd_snd_sum = sum(dd_snd_count, na.rm = TRUE)) %>%
+  mutate(dd_jack_sum = sum(dd_jack_count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(survey_id, species, lv_male_sum, lv_female_sum, lv_snd_sum,
+         lv_jack_sum, dd_male_sum, dd_female_sum, dd_snd_sum,
+         dd_jack_sum) %>%
+  distinct()
+
+
+
+
+
+
+# Compute RVIS
+dat = dat %>%
+  arrange(Type, WRIA, RMLn, RMUn, as.Date(Date)) %>%
+  mutate(sort_order = seq(1, nrow(dat))) %>%
+  mutate(Reach = paste0(Type, "_", WRIA, "_", RML, "_", RMU)) %>%
+  mutate(RCOMB = comb_redds) %>%
+  mutate(RVIS = if_else(
+    !is.na(RNEW) & !is.na(old_redds) & !is.na(comb_redds), RNEW + old_redds + comb_redds,
+    if_else(!is.na(RNEW) & !is.na(old_redds) & is.na(comb_redds), RNEW + old_redds,
+            if_else(!is.na(RNEW) & is.na(old_redds) & is.na(comb_redds), RNEW,
+                    if_else(is.na(RNEW) & is.na(old_redds) & !is.na(comb_redds), comb_redds, NA_integer_)))))
+
+# Compute RCUM
+dat = dat %>%
+  mutate(RNEW_comb = if_else(!is.na(RNEW) & !is.na(comb_redds), RNEW + comb_redds,
+                             if_else(!is.na(RNEW) & is.na(comb_redds), RNEW,
+                                     if_else(is.na(RNEW) & !is.na(comb_redds), comb_redds, NA_integer_)))) %>%
+  group_by(Reach) %>%
+  mutate(RCUM = if_else(Type == "Supp",
+                        cumsum(RNEW_comb),
+                        cumsum(RNEW))) %>%
+  ungroup() %>%
+  select(Survey_Detail_Id, WRIA, StreamName, Type, Date, StatWeek, RML, RMU,
+         Method, Flow, RiffleVis, LM, LF, LSND, LJ, DM, DF,
+         DSND, DJ, RNEW, RVIS, RCUM, RCOMB, Comments, Reach, ADClippedBeep,
+         ADClippedNoBeep, ADClippedNoHead, UnMarkBeep, UnMarkNoBeep,
+         UnMarkNoHead, UnknownMarkBeep, UnknownMarkNoBeep,
+         UnknownMarkNoHead, sort_order)
+
+
+
+
 
 
 #============================================================================
-# Format data
+# Pivot out cwt_labels
 #============================================================================
+
+# OK TO HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+
+
+
+
+
+
 
 # Format
 table(dat$Type, useNA = "ifany")
@@ -260,6 +473,10 @@ dat = dat %>%
 ic = ic %>%
   distinct() %>%
   arrange(Survey_Detail_Id)
+
+# # Join to header data to see when labels were found
+# header_data = header_data %>%
+#   left_join(head_labels, by = "survey_event_id")
 
 # Pivot out cwt_labels
 icp = ic %>%
