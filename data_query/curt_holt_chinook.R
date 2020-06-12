@@ -319,88 +319,51 @@ redd_dat = redd_counts %>%
   left_join(head_dat, by = "survey_event_id") %>%
   select(survey_id, survey_event_id, redd_encounter_id, stream_name, survey_date, type,
          rml, rmu, method, obs, species, redd_status, redd_count) %>%
+  filter(!is.na(redd_encounter_id)) %>%
   arrange(stream_name, as.Date(survey_date, format = "%m/%d/%Y"), rml, rmu)
 
 # Compute sums for redd categories
 redd_sums = redd_dat %>%
-  filter(!is.na(redd_encounter_id)) %>%
+  arrange(type, stream_name, rml, rmu, as.Date(survey_date, format = "%m/%d/%Y")) %>%
   mutate(reach = paste0(type, "_", stream_name, "_", rml, "_", rmu)) %>%
-  mutate(rcomb = if_else(redd_status == "Combined visible redds", redd_count, 0L)) %>%
-  mutate(rnew = )
-
-
-# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-  mutate(lv_male_count = if_else(fish_status == "Live" & sex == "Male" & maturity == "Adult",
-                                 fish_count, 0L)) %>%
-  mutate(lv_female_count = if_else(fish_status == "Live" & sex == "Female" & maturity == "Adult",
-                                   fish_count, 0L)) %>%
-  mutate(lv_snd_count = if_else(fish_status == "Live" & sex == "Unknown" & maturity == "Adult",
-                                fish_count, 0L)) %>%
-  mutate(lv_jack_count = if_else(fish_status == "Live" & sex == "Male" & maturity == "Subadult",
-                                 fish_count, 0L)) %>%
-  mutate(dd_male_count = if_else(fish_status == "Dead" & sex == "Male" & maturity == "Adult",
-                                 fish_count, 0L)) %>%
-  mutate(dd_female_count = if_else(fish_status == "Dead" & sex == "Female" & maturity == "Adult",
-                                   fish_count, 0L)) %>%
-  mutate(dd_snd_count = if_else(fish_status == "Dead" & sex == "Unknown" & maturity == "Adult",
-                                fish_count, 0L)) %>%
-  mutate(dd_jack_count = if_else(fish_status == "Dead" & sex == "Male" & maturity == "Subadult",
-                                 fish_count, 0L)) %>%
+  mutate(rcomb = if_else(redd_status == "Combined visible redds", redd_count, NA_integer_)) %>%
+  mutate(rnew = if_else(redd_status == "New redd", redd_count, 0L)) %>%
+  mutate(old_redds = if_else(redd_status == "Previous redd, still visible", redd_count, 0L)) %>%
+  mutate(rvis = rnew + old_redds + rcomb) %>%
+  mutate(rnew_comb = if_else(!is.na(rcomb), rnew + rcomb, rcomb)) %>%
   group_by(survey_id, species) %>%
-  mutate(lv_male_sum = sum(lv_male_count, na.rm = TRUE)) %>%
-  mutate(lv_female_sum = sum(lv_female_count, na.rm = TRUE)) %>%
-  mutate(lv_snd_sum = sum(lv_snd_count, na.rm = TRUE)) %>%
-  mutate(lv_jack_sum = sum(lv_jack_count, na.rm = TRUE)) %>%
-  mutate(dd_male_sum = sum(dd_male_count, na.rm = TRUE)) %>%
-  mutate(dd_female_sum = sum(dd_female_count, na.rm = TRUE)) %>%
-  mutate(dd_snd_sum = sum(dd_snd_count, na.rm = TRUE)) %>%
-  mutate(dd_jack_sum = sum(dd_jack_count, na.rm = TRUE)) %>%
+  mutate(rnew_sum = sum(rnew, na.rm = TRUE)) %>%
+  mutate(rvis_sum = sum(rvis, na.rm = TRUE)) %>%
+  mutate(rnew_comb_sum = sum(rnew_comb, na.rm = TRUE)) %>%
   ungroup() %>%
-  select(survey_id, species, lv_male_sum, lv_female_sum, lv_snd_sum,
-         lv_jack_sum, dd_male_sum, dd_female_sum, dd_snd_sum,
-         dd_jack_sum) %>%
+  select(survey_id, stream_name, species, survey_date, type, reach,
+         rml, rmu, rnew_sum, rvis_sum, rnew_comb_sum) %>%
   distinct()
 
-
-
-
-
-
-# Compute RVIS
-dat = dat %>%
-  arrange(Type, WRIA, RMLn, RMUn, as.Date(Date)) %>%
-  mutate(sort_order = seq(1, nrow(dat))) %>%
-  mutate(Reach = paste0(Type, "_", WRIA, "_", RML, "_", RMU)) %>%
-  mutate(RCOMB = comb_redds) %>%
-  mutate(RVIS = if_else(
-    !is.na(RNEW) & !is.na(old_redds) & !is.na(comb_redds), RNEW + old_redds + comb_redds,
-    if_else(!is.na(RNEW) & !is.na(old_redds) & is.na(comb_redds), RNEW + old_redds,
-            if_else(!is.na(RNEW) & is.na(old_redds) & is.na(comb_redds), RNEW,
-                    if_else(is.na(RNEW) & is.na(old_redds) & !is.na(comb_redds), comb_redds, NA_integer_)))))
-
 # Compute RCUM
-dat = dat %>%
-  mutate(RNEW_comb = if_else(!is.na(RNEW) & !is.na(comb_redds), RNEW + comb_redds,
-                             if_else(!is.na(RNEW) & is.na(comb_redds), RNEW,
-                                     if_else(is.na(RNEW) & !is.na(comb_redds), comb_redds, NA_integer_)))) %>%
-  group_by(Reach) %>%
-  mutate(RCUM = if_else(Type == "Supp",
-                        cumsum(RNEW_comb),
-                        cumsum(RNEW))) %>%
+redd_sums = redd_sums %>%
+  group_by(reach) %>%
+  mutate(rcum = if_else(type == "Supp", cumsum(rnew_comb_sum), cumsum(rnew_sum))) %>%
   ungroup() %>%
-  select(Survey_Detail_Id, WRIA, StreamName, Type, Date, StatWeek, RML, RMU,
-         Method, Flow, RiffleVis, LM, LF, LSND, LJ, DM, DF,
-         DSND, DJ, RNEW, RVIS, RCUM, RCOMB, Comments, Reach, ADClippedBeep,
-         ADClippedNoBeep, ADClippedNoHead, UnMarkBeep, UnMarkNoBeep,
-         UnMarkNoHead, UnknownMarkBeep, UnknownMarkNoBeep,
-         UnknownMarkNoHead, sort_order)
+  select(survey_id, stream_name, species, survey_date, type, reach,
+         rml, rmu, rnew = rnew_sum, rvis = rvis_sum, rcum,
+         rcomb = rnew_comb_sum)
+
+# Add sort_order
+redd_sums = redd_sums %>%
+  arrange(type, stream_name, rml, rmu, as.Date(survey_date, format = "%m/%d/%Y")) %>%
+  mutate(sort_order = seq(1, nrow(redd_sums))) %>%
+  select(survey_id, stream_name, species, survey_date, type, reach,
+         rml, rmu, rnew, rvis, rcum, rcomb, sort_order) %>%
+  arrange(sort_order)
+
+
+# STOPPED HERE....NEED TO STUDY HOW RCOMB IS COMPUTED !!!!! Do some sorting of excel spreadsheet
 
 
 
-
+unique(redd_sums$redd_status)
+unique(redd_sums$type)
 
 
 #============================================================================
