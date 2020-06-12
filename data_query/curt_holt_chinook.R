@@ -216,7 +216,7 @@ head_dat = header_data %>%
   distinct()
 
 # Add to fish_counts
-dat = fish_counts %>%
+fish_dat = fish_counts %>%
   left_join(head_dat, by = "survey_event_id") %>%
   select(survey_id, survey_event_id, fish_encounter_id, stream_name, survey_date, type,
          rml, rmu, method, obs, species, fish_status, sex, maturity, clip_status,
@@ -224,7 +224,7 @@ dat = fish_counts %>%
   arrange(stream_name, as.Date(survey_date, format = "%m/%d/%Y"), rml, rmu)
 
 # Compute sums for live and dead categories
-fish_sums = dat %>%
+fish_sums = fish_dat %>%
   filter(!is.na(fish_encounter_id)) %>%
   filter(!prev_count == TRUE) %>%
   mutate(lv_male_count = if_else(fish_status == "Live" & sex == "Male" & maturity == "Adult",
@@ -258,8 +258,8 @@ fish_sums = dat %>%
          dd_jack_sum) %>%
   distinct()
 
-# Add back to dat
-base_sums = dat %>%
+# Add back to fish_dat...for inspection
+base_sums = fish_dat %>%
   select(survey_id, species, stream_name, survey_date, type, rml,
          rmu, method, obs) %>%
   distinct() %>%
@@ -270,7 +270,7 @@ base_sums = dat %>%
 #============================================================================
 
 # Compute sums for live and dead categories
-fish_clip_sums = dat %>%
+fish_clip_sums = fish_dat %>%
   filter(!is.na(fish_encounter_id)) %>%
   filter(!prev_count == TRUE) %>%
   filter(!cwt_detect == "Not applicable") %>%
@@ -326,134 +326,98 @@ redd_dat = redd_counts %>%
 redd_sums = redd_dat %>%
   arrange(type, stream_name, rml, rmu, as.Date(survey_date, format = "%m/%d/%Y")) %>%
   mutate(reach = paste0(type, "_", stream_name, "_", rml, "_", rmu)) %>%
-  mutate(rcomb = if_else(redd_status == "Combined visible redds", redd_count, NA_integer_)) %>%
   mutate(rnew = if_else(redd_status == "New redd", redd_count, 0L)) %>%
   mutate(old_redds = if_else(redd_status == "Previous redd, still visible", redd_count, 0L)) %>%
-  mutate(rvis = rnew + old_redds + rcomb) %>%
-  mutate(rnew_comb = if_else(!is.na(rcomb), rnew + rcomb, rcomb)) %>%
+  mutate(comb_redds = if_else(redd_status == "Combined visible redds", redd_count, NA_integer_)) %>%
+  mutate(rcomb = comb_redds) %>%
+  mutate(rvis = if_else(!is.na(comb_redds), rnew + old_redds + comb_redds, rnew + old_redds)) %>%
+  mutate(rnew_comb = if_else(!is.na(comb_redds), rnew + comb_redds, rnew)) %>%
   group_by(survey_id, species) %>%
   mutate(rnew_sum = sum(rnew, na.rm = TRUE)) %>%
   mutate(rvis_sum = sum(rvis, na.rm = TRUE)) %>%
+  mutate(rcomb_sum = if_else(!is.na(rcomb), sum(rcomb, na.rm = TRUE), NA_integer_)) %>%
   mutate(rnew_comb_sum = sum(rnew_comb, na.rm = TRUE)) %>%
   ungroup() %>%
   select(survey_id, stream_name, species, survey_date, type, reach,
-         rml, rmu, rnew_sum, rvis_sum, rnew_comb_sum) %>%
+         rml, rmu, rnew_sum, rvis_sum, rcomb_sum, rnew_comb_sum) %>%
   distinct()
 
-# Compute RCUM
+# Compute RCUM....Check later if Exploratory surveys should be cumsum same way as index
 redd_sums = redd_sums %>%
   group_by(reach) %>%
-  mutate(rcum = if_else(type == "Supp", cumsum(rnew_comb_sum), cumsum(rnew_sum))) %>%
+  mutate(rcum = if_else(type %in% c("Supp", "Explor"), cumsum(rnew_comb_sum), cumsum(rnew_sum))) %>%
   ungroup() %>%
   select(survey_id, stream_name, species, survey_date, type, reach,
          rml, rmu, rnew = rnew_sum, rvis = rvis_sum, rcum,
-         rcomb = rnew_comb_sum)
+         rcomb = rcomb_sum)
 
 # Add sort_order
 redd_sums = redd_sums %>%
+  # Temporarily change Explor to xplore to set at bottom in sort order
+  mutate(type = if_else(type == "Explor", "xplor", type)) %>%
   arrange(type, stream_name, rml, rmu, as.Date(survey_date, format = "%m/%d/%Y")) %>%
   mutate(sort_order = seq(1, nrow(redd_sums))) %>%
+  mutate(type = if_else(type == "xplor", "Explor", type)) %>%
   select(survey_id, stream_name, species, survey_date, type, reach,
          rml, rmu, rnew, rvis, rcum, rcomb, sort_order) %>%
   arrange(sort_order)
 
-
-# STOPPED HERE....NEED TO STUDY HOW RCOMB IS COMPUTED !!!!! Do some sorting of excel spreadsheet
-
-
-
-unique(redd_sums$redd_status)
-unique(redd_sums$type)
-
-
 #============================================================================
 # Pivot out cwt_labels
 #============================================================================
 
-# OK TO HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-
-
-
-
-
-
-
-
-# Format
-table(dat$Type, useNA = "ifany")
-dat$Type[dat$Type == "INDX"] = "Index"
-dat$Type[dat$Type == "SPOT"] = "Spot"
-dat$Type[dat$Type == "SUPP"] = "Supp"
-dat = dat %>%
-  mutate(Date = substr(Date, 1, 10)) %>%
-  mutate(StatWeek = fish_stat_week(Date, start_day = "Sun")) %>%
-  mutate(RML = if_else(substr(RML, 1, 1) == ".", paste0("0", RML), RML)) %>%
-  mutate(RMU = if_else(substr(RMU, 1, 1) == ".", paste0("0", RMU), RMU)) %>%
-  mutate(RML = if_else(substr(RML, 1, 3) == "00.", substr(RML, 2, nchar(RML)), RML)) %>%
-  mutate(RMU = if_else(substr(RMU, 1, 3) == "00.", substr(RMU, 2, nchar(RMU)), RMU)) %>%
-  mutate(RMLn = as.numeric(RML)) %>%
-  mutate(RMUn = as.numeric(RMU)) %>%
-  mutate(Method = str_to_title(Method)) %>%
-  mutate(Species = str_to_title(Species))
-
-# Fill in zeros where NA in summary rows
-dat[,15:22] = lapply(dat[,15:22], set_na_zero)
-dat[,27:35] = lapply(dat[,27:35], set_na_zero)
-
-# Compute RVIS
-dat = dat %>%
-  arrange(Type, WRIA, RMLn, RMUn, as.Date(Date)) %>%
-  mutate(sort_order = seq(1, nrow(dat))) %>%
-  mutate(Reach = paste0(Type, "_", WRIA, "_", RML, "_", RMU)) %>%
-  mutate(RCOMB = comb_redds) %>%
-  mutate(RVIS = if_else(
-    !is.na(RNEW) & !is.na(old_redds) & !is.na(comb_redds), RNEW + old_redds + comb_redds,
-    if_else(!is.na(RNEW) & !is.na(old_redds) & is.na(comb_redds), RNEW + old_redds,
-            if_else(!is.na(RNEW) & is.na(old_redds) & is.na(comb_redds), RNEW,
-                    if_else(is.na(RNEW) & is.na(old_redds) & !is.na(comb_redds), comb_redds, NA_integer_)))))
-
-# Compute RCUM
-dat = dat %>%
-  mutate(RNEW_comb = if_else(!is.na(RNEW) & !is.na(comb_redds), RNEW + comb_redds,
-                             if_else(!is.na(RNEW) & is.na(comb_redds), RNEW,
-                                     if_else(is.na(RNEW) & !is.na(comb_redds), comb_redds, NA_integer_)))) %>%
-  group_by(Reach) %>%
-  mutate(RCUM = if_else(Type == "Supp",
-                        cumsum(RNEW_comb),
-                        cumsum(RNEW))) %>%
-  ungroup() %>%
-  select(Survey_Detail_Id, WRIA, StreamName, Type, Date, StatWeek, RML, RMU,
-         Method, Flow, RiffleVis, LM, LF, LSND, LJ, DM, DF,
-         DSND, DJ, RNEW, RVIS, RCUM, RCOMB, Comments, Reach, ADClippedBeep,
-         ADClippedNoBeep, ADClippedNoHead, UnMarkBeep, UnMarkNoBeep,
-         UnMarkNoHead, UnknownMarkBeep, UnknownMarkNoBeep,
-         UnknownMarkNoHead, sort_order)
-
-# Add CWTHeadLabels
-ic = ic %>%
-  distinct() %>%
-  arrange(Survey_Detail_Id)
-
-# # Join to header data to see when labels were found
-# header_data = header_data %>%
-#   left_join(head_labels, by = "survey_event_id")
-
 # Pivot out cwt_labels
-icp = ic %>%
-  group_by(Survey_Detail_Id) %>%
-  mutate(key = row_number(CWTHeadLabels)) %>%
-  spread(key = key, value = CWTHeadLabels) %>%
+label_pivot = head_labels %>%
+  group_by(survey_event_id) %>%
+  mutate(key = row_number(cwt_head_label)) %>%
+  spread(key = key, value = cwt_head_label) %>%
   ungroup()
 
 # Concatenate cwt_labels to one variable
-icpc = icp %>%
-  mutate(cwts = apply(icp[,2:ncol(icp)], 1, paste0, collapse = ", ")) %>%
-  select(Survey_Detail_Id, cwts) %>%
+label_concat = label_pivot %>%
+  mutate(cwts = apply(label_pivot[,2:ncol(label_pivot)], 1, paste0, collapse = ", ")) %>%
+  select(survey_event_id, cwts) %>%
   mutate(CWTHeadLabels = stri_replace_all_fixed(cwts, pattern = ", NA", replacement = "")) %>%
-  select(Survey_Detail_Id, CWTHeadLabels)
+  select(survey_event_id, CWTHeadLabels)
+
+#============================================================================
+# Combine and format to final table
+#============================================================================
+
+# Combine fish sums and redd sums
+fr_sums = fish_sums %>%
+  left_join(redd_sums, by = c("survey_id", "species")) %>%
+  select(survey_id, species, LM = lv_male_sum, LF = lv_female_sum,
+         LSND = lv_snd_sum, LJ = lv_jack_sum, DM = dd_male_sum,
+         DF = dd_female_sum, DSND = dd_snd_sum, DJ = dd_jack_sum,
+         RNEW = rnew, RVIS = rvis, RCUM = rcum, RCOMB = rcomb)
+
+# Add clip sums to fr_sums
+frc_sums = fr_sums %>%
+  left_join(fish_clip_sums, by = c("survey_id", "species")) %>%
+
+# Pull out comments, pivot and concatenate
+fish_comments = fish_dat %>%
+  filter(!is.na(fish_comments)) %>%
+  select(survey_id, species, Comments = fish_comments)
+
+# Pivot
+comment_pivot = fish_comments %>%
+  group_by(survey_id, species) %>%
+  mutate(key = row_number(Comments)) %>%
+  spread(key = key, value = Comments) %>%
+  ungroup()
+
+# Concatenate to one variable
+comment_concat = comment_pivot %>%
+  mutate(comments = apply(comment_pivot[,3:ncol(comment_pivot)], 1, paste0, collapse = ", ")) %>%
+  select(survey_id, species, comments) %>%
+  mutate(comments = stri_replace_all_fixed(comments, pattern = ", NA", replacement = "")) %>%
+  select(survey_id, species, comments)
+
+# Then add cwts
+
+
 
 # Add to dat
 dat = dat %>%
