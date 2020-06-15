@@ -251,13 +251,15 @@ get_header_data = function(start_date, end_date) {
              "se.survey_event_id, sd.survey_design_type_code as type, s.survey_datetime as survey_date, ",
              "sp.common_name as species, locl.river_mile_measure as rml, locu.river_mile_measure as rmu, ",
              "sm.survey_method_code as method, sf.flow_type_short_description as flow, ",
-             "vt.visibility_type_short_description as rifflevis, s.observer_last_name as obs ",
+             "vt.visibility_type_short_description as rifflevis, s.observer_last_name as obs, ",
+             "cs.completion_status_description as survey_status ",
              "from waterbody_lut as wb ",
              "inner join stream as st on wb.waterbody_id = st.waterbody_id ",
              "inner join wria_lut as wr on st_intersects(st.geom, wr.geom) ",
              "left join location as loc on wb.waterbody_id = loc.waterbody_id ",
              "left join survey as s on (loc.location_id = s.upper_end_point_id or ",
              "loc.location_id = s.lower_end_point_id) ",
+             "left join survey_completion_status_lut as cs on s.survey_completion_status_id = cs.survey_completion_status_id ",
              "left join survey_event as se on s.survey_id = se.survey_id ",
              "left join species_lut as sp on se.species_id = sp.species_id ",
              "inner join survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
@@ -280,8 +282,8 @@ get_header_data = function(start_date, end_date) {
     mutate(statweek = remisc::fish_stat_week(survey_date, start_day = "Sun")) %>%
     mutate(survey_date = format(survey_date, "%m/%d/%Y")) %>%
     select(survey_id, survey_event_id, wria = cat_code, stream_name,
-           type, survey_date, statweek, species, rml, rmu, method, flow,
-           rifflevis, obs) %>%
+           llid, type, survey_date, statweek, species, rml, rmu, method, flow,
+           rifflevis, obs, survey_status) %>%
     arrange(stream_name, as.Date(survey_date, format = "%m/%d/%Y"))
   return(surveys)
 }
@@ -666,9 +668,10 @@ frc_sums = frc_sums %>%
 # Add remaining missing columns
 head_fields = header_data %>%
   select(survey_id, WRIA = wria, StreamName = stream_name,
-         Type = type, Date = survey_date, StatWeek = statweek,
+         LLID = llid, Type = type, Date = survey_date,
+         StatWeek = statweek, Observer = obs,
          RML = rml, RMU = rmu, Method = method, Flow = flow,
-         RiffleVis = rifflevis) %>%
+         RiffleVis = rifflevis, SurveyStatus = survey_status) %>%
   distinct()
 any(duplicated(head_fields$survey_id))
 
@@ -690,8 +693,12 @@ intent_concat = intent_pivot %>%
 all_surveys = intent_concat %>%
   left_join(head_fields, by = "survey_id") %>%
   left_join(frc_sums, by = c("survey_id", "species")) %>%
-  select(WRIA, StreamName, Type, Date, StatWeek, RML, RMU, Method,
-         Flow, RiffleVis, Species = species, SurveyIntent, LM, LF,
+  mutate(drop_row = if_else(!is.na(Observer) & Observer == "Fake",
+                            "drop", "keep")) %>%
+  filter(drop_row == "keep") %>%
+  select(WRIA, StreamName, LLID, Type, Date, StatWeek,
+         Observer, RML, RMU, Method, Flow, RiffleVis,
+         Species = species, SurveyIntent, SurveyStatus, LM, LF,
          LSND, LJ, DM, DF, DSND, DJ, RNEW, RVIS, RCUM, RCOMB,
          Comments = comments, ADClippedBeep, ADClippedNoBeep,
          ADClippedNoHead, UnMarkBeep, UnMarkNoBeep,
@@ -702,48 +709,26 @@ all_surveys = intent_concat %>%
 #unique(all_surveys$StreamName)
 #unique(all_surveys$WRIA)
 all_surveys = all_surveys %>%
-  mutate(reach = paste0(Type, "_", WRIA, "_", StreamName, "_", RML, "_", RMU))
+  mutate(Type = if_else(Type == "Explor", "xplor", Type)) %>%
+  mutate(reach = paste0(Type, "_", WRIA, "_", StreamName, "_", RML, "_", RMU)) %>%
+  mutate(nWRIA = as.numeric(substr(WRIA, 1, 7))) %>%
+  mutate(aWRIA = if_else(nchar(WRIA) > 7, substr(WRIA, 8, 8), "A")) %>%
+  arrange(Type, nWRIA, aWRIA, StreamName, RML, RMU, as.Date(Date, format = "%m/%d/%Y")) %>%
+  mutate(sort_order = seq(1, nrow(all_surveys))) %>%
+  mutate(Type = if_else(Type == "xplor", "Explor", Type))
 
 # Pull out unique set of Reaches to add blank rows
-dat_empty = all_surveys
-dat_empty[,1:35] = ""
-dat_empty = unique(dat_empty)
-dat = rbind(all_surveys, dat_empty)
-
-# Add sort_order
-dat = dat %>%
-  arrange(Type, WRIA, RML, RMU, as.Date(Date, format = "%m/%d/%Y")) %>%
-  mutate(sort_order = seq(1, nrow(dat)))
-
-# Add sort order to all rows by reach
-sort_dat = dat %>%
-  select(reach, sort_order) %>%
-  filter(as.integer(sort_order) > 0) %>%
-  mutate(sort_order = as.integer(sort_order)) %>%
-  group_by(reach) %>%
-  mutate(sort_seq = row_number(reach)) %>%
-  ungroup() %>%
-  filter(sort_seq == 1) %>%
+dat_empty = all_surveys %>%
+  mutate(sort_order = NA_integer_)
+dat_empty[,1:37] = ""
+dat_empty = dat_empty %>%
   distinct() %>%
-  arrange(sort_order) %>%
-  select(reach, sort_two = sort_order)
+  arrange(reach)
 
-# Add sort_dat to dat
-dat = dat %>%
-  left_join(sort_dat, by = "reach")
-
-# Order as before
-dat = dat %>%
-  arrange(sort_two, as.Date(Date, format = "%m/%d/%Y")) %>%
-  mutate(Comments = if_else(is.na(Comments), "", Comments)) %>%
-  mutate(CWTHeadLabels = if_else(is.na(CWTHeadLabels), "", CWTHeadLabels)) %>%
-  select(-c(reach, sort_order))
-
-# Format date mm/dd/yyyy
-dat = dat %>%
-  mutate(Date = format(as.Date(Date), format = "%m/%d/%Y")) %>%
-  mutate(Date = if_else(is.na(Date), "", Date)) %>%
-  select(-sort_two)
+# Combine
+dat = rbind(all_surveys, dat_empty) %>%
+  arrange(reach, sort_order) %>%
+  select(-c(reach, nWRIA, aWRIA, sort_order))
 
 #============================================================================
 # Output to Excel
@@ -754,14 +739,14 @@ dat = dat %>%
 # write.xlsx(dat, file = out_name, colNames = TRUE, sheetName = "Chinook")
 
 # Or fancier with styling
-out_name = paste0(run_year, "_", run, "_", "Chinook.xlsx")
+out_name = paste0("WRIAs_22-23_Surveys.xlsx")
 wb <- createWorkbook(out_name)
-addWorksheet(wb, "Chinook", gridLines = TRUE)
+addWorksheet(wb, "Sept-Feb_Surveys", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)
 ## create and add a style to the column headers
 headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:33, gridExpand = TRUE)
+addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(dat), gridExpand = TRUE)
 saveWorkbook(wb, out_name, overwrite = TRUE)
 
 
