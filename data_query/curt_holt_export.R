@@ -739,7 +739,7 @@ dat = rbind(all_surveys, dat_empty) %>%
 # write.xlsx(dat, file = out_name, colNames = TRUE, sheetName = "Chinook")
 
 # Or fancier with styling
-out_name = paste0("WRIAs_22-23_Surveys.xlsx")
+out_name = paste0("data_query/WRIAs_22-23_Surveys.xlsx")
 wb <- createWorkbook(out_name)
 addWorksheet(wb, "Sept-Feb_Surveys", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)
