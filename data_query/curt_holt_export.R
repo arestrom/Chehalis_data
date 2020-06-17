@@ -2,13 +2,25 @@
 # Export all WRIA 22 and 23 data to excel in Curt Holt format
 #
 # Notes:
-#  1. Consider entering one zero for each species and intent
-#     This would allow pulling up survey_type for each species
-#     and survey for use in Curts export.
-#  2. Still not right...getting duplicates and too many rows
-#     for NF and SF Newaukum. Add observer to data !!!!!!!!!!
-#     Or it may be ok...just need to sort better????
-#  3. Need to get rid of fake surveys.
+#  1. Need to add an entry in survey_event for each species
+#     in survey_intent to record survey_design_type. Lea
+#     has this data in the header, and Curt needs a Type for
+#     each survey.
+#  2. Do not add "unknown redd status" to count totals.
+#  3. Add run
+#  4. Add zeros
+#  5. Add NoSurvey reason right after SurveyIntent
+#  6. Look at SF Newaukum 12.3 to 13.6, 10/31/2019. Why are
+#     no redd_counts showing up...there should be 5 still
+#     visible and 8 either unknown or not visible.
+#  7. See line 571. Need to separate by species, run, and
+#     origin before computing sums for redds. These are
+#     already taken care of by survey_event (I think) in
+#     the fish_counts summaries.
+#  8. Add a "No survey conducted" indicator to any species
+#     (of the four) that was not entered in the survey_intent
+#     table. This will make the intent explicit in the export
+#     that no survey was conducted for that species.
 #
 # AS 2020-06-12
 #================================================================
@@ -564,7 +576,7 @@ redd_dat = redd_counts %>%
   filter(!is.na(redd_encounter_id)) %>%
   arrange(stream_name, as.Date(survey_date, format = "%m/%d/%Y"), rml, rmu)
 
-# Compute sums for redd categories
+# Compute sums for redd categories.....Need to add in species and run...and origin? before computing totals
 redd_sums = redd_dat %>%
   arrange(type, stream_name, rml, rmu, as.Date(survey_date, format = "%m/%d/%Y")) %>%
   mutate(reach = paste0(type, "_", stream_name, "_", rml, "_", rmu)) %>%

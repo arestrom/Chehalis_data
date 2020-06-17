@@ -13,9 +13,13 @@
 #  5. Reset the time zone in IFB company to UTC or local...but not New York !!!!!
 #
 # ToDo:
-#  1. Update fish_encounter -- live esp. to avoid counts of zero in categories   !!!!!!!!!!!!!!!!!!!!!
-#     There should be no zero counts entered....I think. For now update directly
-#     in fish_encounter table...make sure fish_location is also deleted.
+#  1. Adjust timezone for the New York snafu
+#  2. Add survey_type, origin, and run to each entry in survey that has a
+#     survey_intent and species entered. Use "Unknown" for both origin
+#     and survey type...Based on directions from Lea. I will separate
+#     origin into categories based on species and date for Kim and Curt
+#     when exporting to Curts format.
+#
 #
 #  Successfully reloaded first batch on 2020-06-09 2:31 PM
 #  The only ones now being pulled are those with no survey_uuid.
@@ -353,7 +357,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Get new survey_data: currently 1973 records
+# Get new survey_data: currently 2040 records
 new_survey_data = get_new_survey_data(profile_id, parent_form_page_id, access_token)
 
 # Reactive to process gps data
@@ -460,34 +464,34 @@ get_add_end_points = function(core_survey_data) {
   return(no_reach_point)
 }
 
-# Run
+# Run: All good...just zeros
 missing_stream_vals = get_missing_stream_vals(core_survey_data)
 missing_reach_vals = get_missing_reach_vals(core_survey_data)
 add_end_points = get_add_end_points(core_survey_data)
 
-#======================================================================================================================
-# For now, get rid of data with missing fields so I can develop the remaining functions...JUST FOR NOW !!!!!!!!!!!!!!!!
-#======================================================================================================================
-
-# Pull stream_ids
-del_stream_id = missing_stream_vals %>%
-  select(parent_form_survey_id) %>%
-  distinct()
-
-# Pull reach_ids
-del_reach_id = missing_reach_vals %>%
-  select(parent_form_survey_id) %>%
-  distinct()
-
-# Pull reach_ids
-del_end_id = add_end_points %>%
-  select(parent_form_survey_id) %>%
-  distinct()
-
-# Combine
-del_id = bind_rows(del_stream_id, del_reach_id, del_end_id) %>%
-  distinct() %>%
-  pull(parent_form_survey_id)
+# #======================================================================================================================
+# # For now, get rid of data with missing fields so I can develop the remaining functions...JUST FOR NOW !!!!!!!!!!!!!!!!
+# #======================================================================================================================
+#
+# # Pull stream_ids
+# del_stream_id = missing_stream_vals %>%
+#   select(parent_form_survey_id) %>%
+#   distinct()
+#
+# # Pull reach_ids
+# del_reach_id = missing_reach_vals %>%
+#   select(parent_form_survey_id) %>%
+#   distinct()
+#
+# # Pull reach_ids
+# del_end_id = add_end_points %>%
+#   select(parent_form_survey_id) %>%
+#   distinct()
+#
+# # Combine
+# del_id = bind_rows(del_stream_id, del_reach_id, del_end_id) %>%
+#   distinct() %>%
+#   pull(parent_form_survey_id)
 
 #======================================================================================
 # Get top-level header data
@@ -532,7 +536,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 1997 records....approx 4.0 seconds
+# Test...currently 2040 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -543,18 +547,17 @@ nd = Sys.time(); nd - strt
 
 # Check some date and time values
 any(is.na(header_data$survey_date))
-# chk_date = header_data %>%
-#   filter(is.na(survey_date))
-# # TEMPORARY FIX !!!!!!!!!!!!
-# header_data = header_data %>%
-#   filter(!is.na(survey_date))
+
+# # Test how to handle timezone issue. Profile is set to New York
+# chk_time = header_data %>%
+#   mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles"))
 
 # Process dates etc
 # Rename id to parent_record_id for more explicit joins to subform data...convert dates, etc.
 header_data = header_data %>%
   rename(parent_record_id = id, survey_uuid = headerid) %>%
-  mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date))) %>%
-  mutate(modified_datetime = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles")) %>%
+  mutate(modified_datetime = as.POSIXct(iformr::idate_time(modified_date), tz = "America/Los_Angeles")) %>%
   mutate(survey_start_datetime = as.POSIXct(paste0(survey_date, " ", start_time), tz = "America/Los_Angeles")) %>%
   mutate(survey_end_datetime = as.POSIXct(paste0(survey_date, " ", end_time), tz = "America/Los_Angeles")) %>%
   mutate(created_datetime = with_tz(created_datetime, tzone = "UTC")) %>%
@@ -581,10 +584,10 @@ header_data = header_data %>%
          coho_run_year, steelhead_run_year, chum_run_year, chinook_run_year,
          carcass_tagging, code_reach)
 
-# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now: 1949
-header_data = header_data %>%
-  filter(!parent_record_id %in% del_id)
+# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # Filter to header_data with no missing stream or reach_id for now: 1949
+# header_data = header_data %>%
+#   filter(!parent_record_id %in% del_id)
 
 # Pull out data with issues below for inspection
 chk_hack = header_data %>%
@@ -945,7 +948,12 @@ chum_intent = intent_prep %>%
   select(survey_id, common_name, target_species_name, count_type = chum_count_type,
          created_datetime, created_by, modified_datetime, modified_by)
 
-# Combine
+# Get surveys where no survey for species was intended
+no_survey_intent = rbind(chinook_intent, coho_intent, sthd_intent, chum_intent) %>%
+  filter(count_type == "no_survey") %>%
+  arrange(survey_id)
+
+# Combine        VALIDATE THIS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 intent_prep = rbind(chinook_intent, coho_intent, sthd_intent, chum_intent) %>%
   filter(!count_type == "no_survey") %>%
   arrange(survey_id)
@@ -1135,16 +1143,16 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 301 records
+# Test...currently 302 records
 strt = Sys.time()
 other_obs = get_other_obs(profile_id, other_obs_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
-# Dump any records that are not in header_data
-# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 301 records after filter
-other_obs = other_obs %>%
-  filter(!parent_record_id %in% del_id)
+# # Dump any records that are not in header_data
+# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # Filter to header_data with no missing stream or reach_id for now. 301 records after filter
+# other_obs = other_obs %>%
+#   filter(!parent_record_id %in% del_id)
 
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(other_obs$id) - 1
@@ -1178,8 +1186,8 @@ nd = Sys.time(); nd - strt
 
 # Format other obs
 other_obs = other_obs %>%
-  mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date))) %>%
-  mutate(modified_datetime = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles")) %>%
+  mutate(modified_datetime = as.POSIXct(iformr::idate_time(modified_date), tz = "America/Los_Angeles")) %>%
   mutate(created_datetime = with_tz(created_datetime, tzone = "UTC")) %>%
   mutate(modified_datetime = with_tz(modified_datetime, tzone = "UTC")) %>%
   mutate(obs_lat = as.numeric(gps_latitude)) %>%
@@ -1473,16 +1481,16 @@ strt = Sys.time()
 dead = get_dead(profile_id, dead_fish_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
-# Dump any records that are not in header_data
-# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 2655 records after filter
-dead = dead %>%
-  filter(!parent_record_id %in% del_id)
+# # Dump any records that are not in header_data
+# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # Filter to header_data with no missing stream or reach_id for now. 2655 records after filter
+# dead = dead %>%
+#   filter(!parent_record_id %in% del_id)
 
 # Process dates
 dead = dead %>%
-  mutate(created_date = as.POSIXct(iformr::idate_time(created_date))) %>%
-  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_date = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles")) %>%
+  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date), tz = "America/Los_Angeles")) %>%
   mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
   mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
 
@@ -1815,16 +1823,16 @@ strt = Sys.time()
 recaps = get_carcass_recoveries(profile_id, recaps_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
-# Dump any records that are not in header_data
-# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 2655 records after filter
-recaps = recaps %>%
-  filter(!parent_record_id %in% del_id)
+# # Dump any records that are not in header_data
+# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # Filter to header_data with no missing stream or reach_id for now. 2655 records after filter
+# recaps = recaps %>%
+#   filter(!parent_record_id %in% del_id)
 
 # Process dates
 recaps = recaps %>%
-  mutate(created_date = as.POSIXct(iformr::idate_time(created_date))) %>%
-  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_date = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles")) %>%
+  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date), tz = "America/Los_Angeles")) %>%
   mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
   mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
 
@@ -1986,16 +1994,16 @@ strt = Sys.time()
 live = get_live(profile_id, live_fish_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
-# Dump any records that are not in header_data
-# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 859 records after filter
-live = live %>%
-  filter(!parent_record_id %in% del_id)
+# # Dump any records that are not in header_data
+# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # Filter to header_data with no missing stream or reach_id for now. 859 records after filter
+# live = live %>%
+#   filter(!parent_record_id %in% del_id)
 
 # Process dates
 live = live %>%
-  mutate(created_date = as.POSIXct(iformr::idate_time(created_date))) %>%
-  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_date = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles")) %>%
+  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date), tz = "America/Los_Angeles")) %>%
   mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
   mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
 
@@ -2225,21 +2233,21 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 11061 records: Checked that I got first and last parent_record_id
+# Test...currently 11507 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
-# Dump any records that are not in header_data
-# FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Filter to header_data with no missing stream or reach_id for now. 10651 records after filter
-redds = redds %>%
-  filter(!parent_record_id %in% del_id)
+# # Dump any records that are not in header_data
+# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # Filter to header_data with no missing stream or reach_id for now. 10651 records after filter
+# redds = redds %>%
+#   filter(!parent_record_id %in% del_id)
 
 # Process dates
 redds = redds %>%
-  mutate(created_date = as.POSIXct(iformr::idate_time(created_date))) %>%
-  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date))) %>%
+  mutate(created_date = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles")) %>%
+  mutate(modified_date = as.POSIXct(iformr::idate_time(modified_date), tz = "America/Los_Angeles")) %>%
   mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
   mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
 
@@ -2546,10 +2554,27 @@ redds_sev = redds_sev %>%
   select(redd_id, survey_id, species_id = filled_species,
          survey_design_type_id, run_id)
 
+#==============================================================
+# Add sev data from survey_intent
+#==============================================================
+
+# Pull out and create needed columns for intent_sev
+intent_sev = intent_prep %>%
+  select(survey_id, species_id, count_type_id) %>%
+  mutate(count_type = case_when(
+    count_type_id =="0e1980b4-aa59-4e8e-a820-ce5e4629a549" ~ "carcass",
+    count_type_id == "68a9427b-c856-4751-a7ea-e35b515a36d7" ~ "redd",
+    count_type_id == "7a785819-3a9f-4728-88db-7e77e580cd41" ~ "live")) %>%
+  mutate(run_id = "94e1757f-b9c7-4b06-a461-17a2d804cd2f") %>%
+  left_join(header_se, by = "survey_id") %>%
+  select(count_type, survey_id, species_id, survey_design_type_id, run_id) %>%
+  distinct()
+
 # Stack the sev tables
-survey_event = bind_rows(dead_sev, recaps_sev, live_sev, redds_sev) %>%
-  select(dead_id, live_id, recap_id, redd_id, survey_id,
-         species_id, survey_design_type_id, run_id)
+survey_event = bind_rows(intent_sev, dead_sev, recaps_sev,
+                         live_sev, redds_sev) %>%
+  select(count_type, dead_id, live_id, recap_id, redd_id,
+         survey_id, species_id, survey_design_type_id, run_id)
 
 # Correct the species cases
 survey_event = survey_event %>%
@@ -2612,11 +2637,11 @@ survey_event = survey_event %>%
     species_id == "e42aa0fc-c591-4fab-8481-55b0df38dcb1" ~ chinook_run_year,
     TRUE ~ chinook_run_year)) %>%
   mutate(run_id = if_else(species_id %in%
-                            c("2afac5a6-e3b9-4b37-911e-59b93240789d",              # Lamprey
+                            c("2afac5a6-e3b9-4b37-911e-59b93240789d",             # Lamprey
                               "d29ca246-acfa-48d5-ba55-e61323d59fa7"),            # Lamprey
                           "59e1e01f-3aef-498c-8755-5862c025eafa",                 # Not applicable
                           "94e1757f-b9c7-4b06-a461-17a2d804cd2f")) %>%            # Unknown run
-  select(dead_id, live_id, recap_id, redd_id, survey_id,
+  select(count_type, dead_id, live_id, recap_id, redd_id, survey_id,
          species_id, survey_design_type_id, run_id,
          cwt_detection_method_id, run_year, fish_count)
 
@@ -2634,7 +2659,7 @@ survey_event = survey_event %>%
            cwt_detection_method_id, run_id, run_year) %>%
   mutate(survey_event_id = remisc::get_uuid(1L)) %>%
   ungroup() %>%
-  select(dead_id, live_id, recap_id, redd_id, survey_event_id,
+  select(count_type, dead_id, live_id, recap_id, redd_id, survey_event_id,
          survey_id, species_id, survey_design_type_id, run_id,
          cwt_detection_method_id, run_year, fish_count) %>%
   arrange(survey_event_id)
@@ -3028,7 +3053,7 @@ unique(live_rd_fev$fish_behavior_type_id)
 unique(live_rd_fev$mortality_type_id)
 
 # Stack the fev tables
-fish_encounter = bind_rows(dead_fev, recap_fev,live_fev, live_rd_fev) %>%
+fish_encounter = bind_rows(dead_fev, recap_fev, live_fev, live_rd_fev) %>%
   select(dead_id, recap_id, live_id, redd_id, survey_id, survey_event_id,
          fish_location_id, fish_status_id, sex_id, maturity_id,
          origin_id, cwt_detection_status_id, adipose_clip_status_id,
@@ -3702,10 +3727,13 @@ media_location_prep = media_location %>%
 #================================================================================================
 
 # Pull out data for fish_barrier table
-fish_barrier_prep = barrier_prep %>%
-  select(fish_barrier_id, survey_id, barrier_location_id,
-         barrier_type_id, barrier_observed_datetime,
-         barrier_height_meter, barrier_height_type_id,
+fish_passage_feature_prep = barrier_prep %>%
+  select(fish_passage_feature_id = fish_barrier_id, survey_id,
+         feature_location_id = barrier_location_id,
+         passage_feature_type_id = barrier_type_id,
+         feature_observed_datetime = barrier_observed_datetime,
+         feature_height_meter = barrier_height_meter,
+         feature_height_type_id = barrier_height_type_id,
          plunge_pool_depth_meter, plunge_pool_depth_type_id,
          comment_text, created_datetime, created_by,
          modified_datetime, modified_by)
@@ -3820,16 +3848,16 @@ any(is.na(mobile_survey_form_prep$parent_form_survey_guid))
 any(is.na(mobile_survey_form_prep$created_datetime))
 any(is.na(mobile_survey_form_prep$created_by))
 
-# Check fish_barrier
-any(duplicated(fish_barrier_prep$fish_barrier_id))
-any(is.na(fish_barrier_prep$fish_barrier_id))
-any(is.na(fish_barrier_prep$survey_id))
-any(is.na(fish_barrier_prep$barrier_type_id))
-any(is.na(fish_barrier_prep$barrier_location_id))
-any(is.na(fish_barrier_prep$barrier_height_type_id))
-any(is.na(fish_barrier_prep$plunge_pool_depth_type_id))
-any(is.na(fish_barrier_prep$created_datetime))
-any(is.na(fish_barrier_prep$created_by))
+# Check fish_passage_feature
+any(duplicated(fish_passage_feature_prep$fish_passage_feature_id))
+any(is.na(fish_passage_feature_prep$fish_passage_feature_id))
+any(is.na(fish_passage_feature_prep$survey_id))
+any(is.na(fish_passage_feature_prep$passage_feature_type_id))
+any(is.na(fish_passage_feature_prep$feature_location_id))
+any(is.na(fish_passage_feature_prep$feature_height_type_id))
+any(is.na(fish_passage_feature_prep$plunge_pool_depth_type_id))
+any(is.na(fish_passage_feature_prep$created_datetime))
+any(is.na(fish_passage_feature_prep$created_by))
 
 # Check other_observations
 any(duplicated(other_observation_prep$other_observation_id))
@@ -4199,7 +4227,7 @@ dbDisconnect(db_con)
 # dbExecute(db_con, glue('delete from fish_length_measurement where individual_fish_id in ({ifs_ids})'))
 # dbDisconnect(db_con)
 #
-# # individual_fish: 2536 rows
+# # individual_fish: 2537 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from individual_fish where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
@@ -4214,7 +4242,7 @@ dbDisconnect(db_con)
 # dbExecute(db_con, glue('delete from fish_mark where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_encounter: 11150 rows
+# # fish_encounter: 2090 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from fish_encounter where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
@@ -4265,17 +4293,17 @@ dbDisconnect(db_con)
 #
 # #======== location ===============
 #
-# # media_location
+# # media_location: 178
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue("delete from media_location where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
 #
-# # Location coordinates
+# # Location coordinates: 3100
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue("delete from location_coordinates where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
 #
-# # Location
+# # Location: 3160
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue("delete from location where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
