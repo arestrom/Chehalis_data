@@ -38,12 +38,6 @@ library(remisc)
 library(stringi)
 library(openxlsx)
 library(lubridate)
-library(iformr)
-
-# Set data for query
-# Profile ID
-profile_id = 417821L
-since_id = 0L
 
 #============================================================================
 # Define functions
@@ -75,174 +69,6 @@ pg_con_local = function(dbname, port = '5432') {
     port = "5432")
   con
 }
-
-#===== Get page_ids of parent_form...for survey_type calculation  =======================
-
-# Form name
-parent_form_name = "r6_stream_surveys"
-
-# Get access token
-access_token = NULL
-while (is.null(access_token)) {
-  access_token = iformr::get_iform_access_token(
-    server_name = "wdfw",
-    client_key_name = "r6production_key",
-    client_secret_name = "r6production_secret")
-}
-
-# Get the parent form id
-parent_form_page_id = iformr::get_page_id(
-  server_name = "wdfw",
-  profile_id = profile_id,
-  page_name = parent_form_name,
-  access_token = access_token)
-
-# Check
-parent_form_page_id
-
-#======================================================================================
-# Get survey_type from parent form....not ideal
-#======================================================================================
-
-# Get new survey data
-get_all_surveys = function(profile_id, parent_form_page_id, access_token) {
-  # Define fields...just parent_id and survey_id this time
-  fields = paste0("id, headerid, survey_date, stream_name, ",
-                  "stream_name_text, new_stream_name, reach, ",
-                  "reach_text, new_reach, gps_loc_lower, ",
-                  "gps_loc_upper, survey_type ")
-  start_id = 0L
-  # Get list of all survey_ids and parent_form iform ids on server
-  field_string <- paste0("id:<(>\"", start_id, "\"),", fields)
-  # Loop through all survey records
-  header_data = iformr::get_all_records(
-    server_name = "wdfw",
-    profile_id = profile_id,
-    page_id = parent_form_page_id,
-    fields = "fields",
-    limit = 1000,
-    offset = 0,
-    access_token = access_token,
-    field_string = field_string,
-    since_id = start_id)
-  # Keep only records where headerid is not in survey_id
-  new_survey_data = header_data %>%
-    mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
-    mutate(reach_trim = remisc::get_text_item(reach, 2, "_")) %>%
-    mutate(lo_rm = remisc::get_text_item(reach_trim, 1, "-")) %>%
-    mutate(up_rm = remisc::get_text_item(reach_trim, 2, "-")) %>%
-    select(parent_form_survey_id = id, survey_id = headerid, survey_date,
-           stream_name, stream_name_text, new_stream_name, llid,
-           reach, reach_text, lo_rm, up_rm, new_reach, gps_loc_lower,
-           gps_loc_upper, survey_type) %>%
-    distinct() %>%
-    arrange(as.Date(survey_date))
-  return(new_survey_data)
-}
-
-# Get all stream data in DB
-get_mobile_streams = function() {
-  qry = glue("select distinct wb.waterbody_id, wb.waterbody_display_name, ",
-             "wb.latitude_longitude_id as llid, st.stream_id as stream_geometry_id ",
-             "from waterbody_lut as wb ",
-             "left join stream as st on wb.waterbody_id = st.waterbody_id ",
-             "order by waterbody_display_name")
-  con = pg_con_local("spawning_ground")
-  #con = poolCheckout(pool)
-  streams = dbGetQuery(con, qry)
-  DBI::dbDisconnect(con)
-  #poolReturn(con)
-  return(streams)
-}
-
-# Get existing rm_data
-get_mobile_river_miles = function() {
-  qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
-             "wb.waterbody_id, wb.waterbody_display_name, wr.wria_id, ",
-             "wr.wria_code, loc.river_mile_measure as river_mile ",
-             "from location as loc ",
-             "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
-             "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
-             "where wria_code in ('22', '23')")
-  # Checkout connection
-  con = pg_con_local("spawning_ground")
-  #con = poolCheckout(pool)
-  river_mile_data = DBI::dbGetQuery(con, qry) %>%
-    filter(!is.na(llid) & !is.na(river_mile))
-  DBI::dbDisconnect(con)
-  #poolReturn(con)
-  return(river_mile_data)
-}
-
-# Update DB and reload DT
-get_all_survey_data = function(profile_id, parent_form_page_id, access_token) {
-  new_surveys = get_all_surveys(profile_id = profile_id,
-                                parent_form_page_id = parent_form_page_id,
-                                access_token = access_token)
-  stream_data = get_mobile_streams()
-  new_surveys = new_surveys %>%
-    left_join(stream_data, by = "llid") %>%
-    mutate(stream_name_text = if_else(!is.na(waterbody_id), waterbody_display_name, stream_name_text)) %>%
-    select(-c(waterbody_display_name))
-  return(new_surveys)
-}
-
-# Get access token
-access_token = NULL
-while (is.null(access_token)) {
-  access_token = iformr::get_iform_access_token(
-    server_name = "wdfw",
-    client_key_name = "r6production_key",
-    client_secret_name = "r6production_secret")
-}
-
-# Get new survey_data: currently 1973 records
-all_survey_data = get_all_survey_data(profile_id, parent_form_page_id, access_token)
-
-# Reactive to process gps data
-get_core_survey_data = function(all_survey_data) {
-  survey_data = all_survey_data %>%
-    mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
-    mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
-    mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
-    mutate(lower_coords = gsub("[\t]", ":", lower_coords)) %>%
-    mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
-    mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
-    mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
-    mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
-    mutate(upper_coords = gsub("[\t]", ":", upper_coords)) %>%
-    mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
-    select(parent_form_survey_id, survey_id, survey_date, stream_name,
-           stream_name_text, new_stream_name, llid, reach, reach_text,
-           lo_rm, up_rm, new_reach, lower_coords, upper_coords,
-           waterbody_id, stream_geometry_id, survey_type)
-}
-
-# Run
-core_survey_data = get_core_survey_data(all_survey_data)
-
-# Reactive for missing reaches
-get_survey_type_vals = function(core_survey_data) {
-  streams = get_mobile_streams()
-  surv_type = core_survey_data %>%
-    mutate(lo_rm = trimws(lo_rm)) %>%
-    mutate(up_rm = trimws(up_rm)) %>%
-    # filter(is.na(lo_rm) | is.na(up_rm) | lo_rm == "listed" | up_rm == "listed" |
-    #          lo_rm == "" | up_rm == "") %>%
-    select(-c(waterbody_id, stream_geometry_id)) %>%
-    rename(waterbody_id = stream_name, iform_llid = llid) %>%
-    left_join(streams, by = "waterbody_id") %>%
-    mutate(stream_name_text = if_else(!is.na(waterbody_id), waterbody_display_name, stream_name_text)) %>%
-    mutate(reach_text = if_else(reach_text == "Not Listed", new_reach, reach_text)) %>%
-    mutate(up_rm = if_else(up_rm %in% c("", "listed"), NA_character_, up_rm)) %>%
-    mutate(lo_rm = if_else(up_rm %in% c("", "listed"), NA_character_, lo_rm)) %>%
-    select(survey_date, stream_name = waterbody_display_name, up_rm, lo_rm, survey_type) %>%
-    distinct()
-  return(surv_type)
-}
-
-# Run
-missing_survey_type = get_survey_type_vals(core_survey_data)
 
 #============================================================================
 # Get all surveys within data-range for WRIAs 22 and 23
@@ -314,9 +140,13 @@ get_intent = function(header_data) {
     filter(!is.na(survey_id)) %>%
     pull(survey_id)
   s_ids = paste0(paste0("'", s_id, "'"), collapse = ", ")
-  # Query to pull out all counts by species and sex-maturity-mark groups
-  qry = glue("select si.survey_id, sp.common_name as species, ct.count_type_code as count_type ",
+  # Query to pull intent and survey_type
+  qry = glue("select si.survey_id, sp.common_name as species, ct.count_type_code as count_type, ",
+             "sd.survey_design_type_code as survey_type ",
              "from survey_intent as si ",
+             "inner join survey as s on si.survey_id = s.survey_id ",
+             "inner join survey_event as se on s.survey_id = se.survey_id ",
+             "inner join survey_design_type_lut as sd on se.survey_design_type_id = sd.survey_design_type_id ",
              "left join species_lut as sp on si.species_id = sp.species_id ",
              "left join count_type_lut as ct on si.count_type_id = ct.count_type_id ",
              "where si.survey_id in ({s_ids})")
@@ -324,7 +154,7 @@ get_intent = function(header_data) {
   count_intent = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   count_intent = count_intent %>%
-    select(survey_id, species, count_type) %>%
+    select(survey_id, species, count_type, survey_type) %>%
     distinct()
   return(count_intent)
 }
@@ -429,31 +259,34 @@ get_head_labels = function(header_data) {
 head_labels = get_head_labels(header_data)
 
 #============================================================================
-# Add survey type to surveys where currently missing
-# Due to no survey_type if no fish encountered...now using survey_intent
+# Verify header_data survey_type
 #============================================================================
 
-# Check values
-unique(missing_survey_type$survey_type)
-
-# Pull out just survey_type where survey_id is present
-stype = missing_survey_type %>%
-  mutate(surv_type = case_when(
-    survey_type == "d455abb6-e9db-49f2-abc8-2e70890f301b" ~ "Explor",
-    survey_type == "beb561df-9fd0-4e7d-842f-0c64a515d23b" ~ "Index",
-    survey_type == "88b954cb-b7a4-4946-845a-3abd86022fbb" ~ "Supp",
-    is.na(survey_type) ~ "b87d5435-f69c-49df-ba1f-658df318bd19")) %>%
-  mutate(rml = as.numeric(lo_rm)) %>%
-  mutate(rmu = as.numeric(up_rm)) %>%
-  select(join_date = survey_date, stream_name, rml, rmu, surv_type) %>%
+# Pull out just survey type to add to header data
+stype = count_intent %>%
+  select(survey_id, survey_type) %>%
   distinct()
 
-# Join to header data
+# Check
+any(duplicated(stype$survey_id))
+
+# Join survey_type to header data
 header_data = header_data %>%
-  mutate(join_date = format(as.Date(survey_date, format = "%m/%d/%Y"))) %>%
-  left_join(stype, by = c("join_date", "stream_name", "rml", "rmu")) %>%
-  mutate(type = if_else(is.na(type) & !is.na(surv_type), surv_type, type)) %>%
-  mutate(type = if_else(is.na(type), "Unknown", type))
+  mutate(drop_row = if_else(!is.na(obs) & obs == "Fake", "drop", "keep")) %>%
+  filter(drop_row == "keep") %>%
+  left_join(stype, by = "survey_id") %>%
+  select(survey_id, survey_event_id, wria, stream_name, llid, type,
+         survey_type, survey_date, statweek, species, rml, rmu, method,
+         flow, rifflevis, survey_status, obs)
+
+# Check: Result...survey type is now identical...can drop survey_type
+table(header_data$type, useNA = "ifany")
+table(header_data$survey_type, useNA = "ifany")
+
+# Set type to unknown for the one missing and drop survey_type
+header_data = header_data %>%
+  mutate(type = if_else(is.na(type), "Unknown", type)) %>%
+  select(-survey_type)
 
 #============================================================================
 # Calculate fish counts by status, sex, and maturity
@@ -497,7 +330,7 @@ fish_sums = fish_dat %>%
                                 fish_count, 0L)) %>%
   mutate(dd_jack_count = if_else(fish_status == "Dead" & sex == "Male" & maturity == "Subadult",
                                  fish_count, 0L)) %>%
-  group_by(survey_id, species) %>%
+  group_by(survey_event_id) %>%
   mutate(lv_male_sum = sum(lv_male_count, na.rm = TRUE)) %>%
   mutate(lv_female_sum = sum(lv_female_count, na.rm = TRUE)) %>%
   mutate(lv_snd_sum = sum(lv_snd_count, na.rm = TRUE)) %>%
@@ -546,7 +379,7 @@ fish_clip_sums = fish_dat %>%
                                  fish_count, 0L)) %>%
   mutate(unclip_nohead = if_else(clip_status == "UN" & cwt_detect == "Coded-wire tag undetermined, e.g., no head",
                                  fish_count, 0L)) %>%
-  group_by(survey_id, species) %>%
+  group_by(survey_event_id) %>%
   mutate(clip_beep_sum = sum(clip_beep, na.rm = TRUE)) %>%
   mutate(clip_nobeep_sum = sum(clip_nobeep, na.rm = TRUE)) %>%
   mutate(clip_nohead_sum = sum(clip_nohead, na.rm = TRUE)) %>%
@@ -568,6 +401,8 @@ fish_clip_sums = fish_dat %>%
 # Calculate redd sums
 #============================================================================
 
+# NEED TO FIX HERE....CUMSUM NOT CORRECT !!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 # Add to fish_counts
 redd_dat = redd_counts %>%
   left_join(head_dat, by = "survey_event_id") %>%
@@ -586,19 +421,20 @@ redd_sums = redd_dat %>%
   mutate(rcomb = comb_redds) %>%
   mutate(rvis = if_else(!is.na(comb_redds), rnew + old_redds + comb_redds, rnew + old_redds)) %>%
   mutate(rnew_comb = if_else(!is.na(comb_redds), rnew + comb_redds, rnew)) %>%
-  group_by(survey_id, species) %>%
+  group_by(survey_event_id) %>%
   mutate(rnew_sum = sum(rnew, na.rm = TRUE)) %>%
   mutate(rvis_sum = sum(rvis, na.rm = TRUE)) %>%
   mutate(rcomb_sum = if_else(!is.na(rcomb), sum(rcomb, na.rm = TRUE), NA_integer_)) %>%
   mutate(rnew_comb_sum = sum(rnew_comb, na.rm = TRUE)) %>%
   ungroup() %>%
-  select(survey_id, stream_name, species, survey_date, type, reach,
-         rml, rmu, rnew_sum, rvis_sum, rcomb_sum, rnew_comb_sum) %>%
+  select(survey_id, survey_event_id, stream_name, species, survey_date,
+         type, reach, rml, rmu, rnew_sum, rvis_sum, rcomb_sum,
+         rnew_comb_sum) %>%
   distinct()
 
 # Compute RCUM....Check later if Exploratory surveys should be cumsum same way as index
 redd_sums = redd_sums %>%
-  group_by(reach) %>%
+  group_by(reach, survey_event_id) %>%
   mutate(rcum = if_else(type %in% c("Supp", "Explor"), cumsum(rnew_comb_sum), cumsum(rnew_sum))) %>%
   ungroup() %>%
   select(survey_id, stream_name, species, survey_date, type, reach,
