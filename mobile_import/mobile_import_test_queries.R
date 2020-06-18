@@ -21,10 +21,10 @@
 #     when exporting to Curts format.
 #
 #
-#  Successfully reloaded first batch on 2020-06-09 2:31 PM
+#  Successfully reloaded final batch on 2020-06-17 5:00 PM
 #  The only ones now being pulled are those with no survey_uuid.
 #
-# AS 2020-05-20
+# AS 2020-06-17
 #===============================================================================
 
 # Load libraries
@@ -3976,7 +3976,6 @@ test_location_ids = location_prep %>%
 # Output redd_encounter to rds: 724591 records
 saveRDS(object = test_upload_ids, file = "data/test_upload_ids.rds")
 saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
-# saveRDS(object = clarity_type_corrections, file = "data/clarity_type_corrections.rds")
 
 #==========================================================================================
 # Load data table
@@ -4000,7 +3999,7 @@ db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
 
-# location: 3160 rows
+# location: 3170 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'location', location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
@@ -4032,7 +4031,7 @@ qry = glue::glue("INSERT INTO location_coordinates ",
                  "CAST(modified_datetime AS timestamptz), modified_by ",
                  "FROM location_coordinates_temp")
 
-# Insert select to spawning_ground
+# Insert select to spawning_ground: 3109 rows
 db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
@@ -4061,34 +4060,34 @@ DBI::dbDisconnect(db_con)
 
 #======== Survey level tables ===============
 
-# survey: 1997 rows
+# survey: 2040 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey', survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_comment: 1997 rows
+# survey_comment: 2040 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_comment', comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_intent: 22252 rows
+# survey_intent: 22703 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_intent', intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# waterbody_measurement: 1997 rows
+# waterbody_measurement: 2040 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'waterbody_measurement', waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# mobile_survey_form: 1997 rows
+# mobile_survey_form: 2040 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'mobile_survey_form', mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_barrier: 76 rows
+# fish_passage_feature: 76 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_barrier', fish_barrier_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'fish_passage_feature', fish_passage_feature_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 # other_observation: 238 rows
@@ -4098,7 +4097,7 @@ dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event: 1811 rows
+# survey_event: 8168 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_event', survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
@@ -4132,12 +4131,12 @@ dbDisconnect(db_con)
 
 #======== redd data ===============
 
-# redd_encounter: 11149 rows
+# redd_encounter: 11507 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'redd_encounter', redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_redd: 7498 rows
+# individual_redd: 7730 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'individual_redd', individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
