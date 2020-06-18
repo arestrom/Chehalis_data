@@ -148,6 +148,7 @@
 # 50. Need to add an other_observations and barrier accordians at the survey level...along
 #     with interface to add or edit location.
 # 51. Need script to sync central DB location data with local.
+# 52. Need interface for media. Copy code from mykos.
 #
 # AS 2020-05-12
 #==============================================================
