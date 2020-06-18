@@ -16,7 +16,8 @@ get_wrias = function() {
   qry = glue("select distinct wr.wria_code || ' ' || wr.wria_description as wria_name ",
              "from wria_lut as wr ",
              "order by wria_name")
-  con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  #con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
   wria_list = DBI::dbGetQuery(con, qry) %>%
     pull(wria_name)
   dbDisconnect(con)
@@ -41,7 +42,8 @@ get_streams = function(chosen_wria) {
              "inner join wria_lut as wr on loc.wria_id = wr.wria_id ",
              "where wria_name = '{chosen_wria}' ",
              "order by stream_name")
-  con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  #con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
   streams_st = sf::st_read(con, query = qry)
   dbDisconnect(con)
   return(streams_st)
@@ -62,7 +64,8 @@ get_data_years = function(waterbody_id) {
              "where up_loc.waterbody_id = '{waterbody_id}' ",
              "or lo_loc.waterbody_id = '{waterbody_id}' ",
              "order by data_year desc")
-  con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  #con = dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
+  con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
   year_list = DBI::dbGetQuery(con, qry) %>%
     pull(data_year)
   dbDisconnect(con)

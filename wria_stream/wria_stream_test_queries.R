@@ -103,10 +103,51 @@ get_streams = function(chosen_wria) {
   return(streams_st)
 }
 
+# Since no spatial join ability in sqlite need two queries, then join using sf
+get_streams = function(chosen_wria) {
+  # First query
+  qry_one = glue("select distinct wb.waterbody_id, wb.waterbody_name as stream_name, ",
+                 "wb.waterbody_name, wb.latitude_longitude_id as llid, ",
+                 "wb.stream_catalog_code as cat_code, st.stream_id, st.geom as geometry ",
+                 "from waterbody_lut as wb ",
+                 "inner join stream as st on wb.waterbody_id = st.waterbody_id ",
+                 "order by stream_name")
+  # Second query
+  qry_two = glue("select distinct wria_id, wria_code || ' ' || wria_description as wria_name, ",
+                 "wria_code, geom as geometry ",
+                 "from wria_lut")
+  con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+  streams_st = sf::st_read(con, query = qry_one, crs = 2927)
+  wria_st = sf::st_read(con, query = qry_two, crs = 2927)
+  dbDisconnect(con)
+  # Add wria_code, then filter using sf
+  streams_st = streams_st %>%
+    st_join(wria_st) %>%
+    filter(wria_name == chosen_wria) %>%
+    select(waterbody_id, stream_name, waterbody_name, llid,
+           cat_code, wria_id, stream_id, wria_name)
+  return(streams_st)
+}
+
 # Test
 strt = Sys.time()
 streams = get_streams(chosen_wria)
 nd = Sys.time(); nd - strt
+
+get_data_years = function(waterbody_id) {
+  qry = glue("select distinct strftime('%Y', datetime(s.survey_datetime, 'localtime')) as data_year ",
+             "from survey as s ",
+             "inner join location as up_loc on s.upper_end_point_id = up_loc.location_id ",
+             "inner join location as lo_loc on s.lower_end_point_id = lo_loc.location_id ",
+             "where up_loc.waterbody_id = '{waterbody_id}' ",
+             "or lo_loc.waterbody_id = '{waterbody_id}' ",
+             "order by data_year desc")
+  con = poolCheckout(pool)
+  year_list = DBI::dbGetQuery(con, qry) %>%
+    pull(data_year)
+  poolReturn(con)
+  return(year_list)
+}
 
 # Get years
 waterbody_id = streams$waterbody_id[[1]]
