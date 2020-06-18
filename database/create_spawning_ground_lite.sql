@@ -14,6 +14,9 @@
 -- ToDo:
 -- 1. Write script to update just the new location bits from postgres spawning_ground.
 
+-- Changes:
+-- 1. Changed to fish_passage_feature  2020-06-17
+
 
 -- Location ------------------------------------------------------
 
@@ -418,30 +421,30 @@ CREATE TABLE survey_mobile_device (
     CONSTRAINT fk_mobile_device__survey_mobile_device FOREIGN KEY (mobile_device_id) REFERENCES mobile_device(mobile_device_id)
 ) WITHOUT ROWID;
 
--- Fish barrier ------------------------------------------------------
+-- Fish passage feature ------------------------------------------------------
 
-CREATE TABLE barrier_type_lut (
-    barrier_type_id text PRIMARY KEY,
-    barrier_type_description text NOT NULL,
+CREATE TABLE passage_feature_type_lut (
+    passage_feature_type_id text PRIMARY KEY,
+    feature_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
-CREATE TABLE barrier_measurement_type_lut (
-    barrier_measurement_type_id text PRIMARY KEY,
+CREATE TABLE passage_measurement_type_lut (
+    passage_measurement_type_id text PRIMARY KEY,
     measurement_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
-CREATE TABLE fish_barrier (
-    fish_barrier_id text PRIMARY KEY,
+CREATE TABLE fish_passage_feature (
+    fish_passage_feature_id text PRIMARY KEY,
     survey_id text NOT NULL,
-    barrier_location_id text NOT NULL,
-    barrier_type_id text NOT NULL,
-    barrier_observed_datetime text,
-    barrier_height_meter decimal(4,2),
-    barrier_height_type_id text NOT NULL,
+    feature_location_id text NOT NULL,
+    passage_feature_type_id text NOT NULL,
+    feature_observed_datetime text,
+    feature_height_meter decimal(4,2),
+    feature_height_type_id text NOT NULL,
     plunge_pool_depth_meter decimal(4,2),
     plunge_pool_depth_type_id text NOT NULL,
     comment_text text,
@@ -449,11 +452,11 @@ CREATE TABLE fish_barrier (
     created_by text NOT NULL,
     modified_datetime text,
     modified_by text,
-    CONSTRAINT fk_survey__fish_barrier FOREIGN KEY (survey_id) REFERENCES survey(survey_id),
-    CONSTRAINT fk_location__fish_barrier FOREIGN KEY (barrier_location_id) REFERENCES location(location_id),
-    CONSTRAINT fk_barrier_measurement_type_lut__fish_barrier__height_type_id FOREIGN KEY (barrier_height_type_id) REFERENCES barrier_measurement_type_lut(barrier_measurement_type_id),
-    CONSTRAINT fk_barrier_measurement_type_lut__fish_barrier__depth_type_id FOREIGN KEY (plunge_pool_depth_type_id) REFERENCES barrier_measurement_type_lut(barrier_measurement_type_id),
-    CONSTRAINT fk_barrier_type_lut__fish_barrier FOREIGN KEY (barrier_type_id) REFERENCES barrier_type_lut(barrier_type_id)
+    CONSTRAINT fk_survey__fish_passage_feature FOREIGN KEY (survey_id) REFERENCES survey(survey_id),
+    CONSTRAINT fk_location__fish_passage_feature FOREIGN KEY (feature_location_id) REFERENCES location(location_id),
+    CONSTRAINT fk_passage_measurement_type_lut__height_type_id FOREIGN KEY (feature_height_type_id) REFERENCES passage_measurement_type_lut(passage_measurement_type_id),
+    CONSTRAINT fk_passage_measurement_type_lut__depth_type_id FOREIGN KEY (plunge_pool_depth_type_id) REFERENCES passage_measurement_type_lut(passage_measurement_type_id),
+    CONSTRAINT fk_passage_feature_type_lut__fish_passage_feature FOREIGN KEY (passage_feature_type_id) REFERENCES passage_feature_type_lut(passage_feature_type_id)
 ) WITHOUT ROWID;
 
 -- Waterbody measurement ------------------------------------------------------

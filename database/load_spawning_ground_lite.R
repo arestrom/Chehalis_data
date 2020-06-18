@@ -19,11 +19,12 @@
 # Notes on R procedure:
 #  1. Updated to convert all times to UTC for loading to sqlite
 #  2. Update lastest batch of streams and points for Lea than ran script: 2020-05-20 at 7:51 pm.
+#  3. Uploaded full set of Lea's data from IFB on 2020-06-17 at 5:54 PM
 #
 # ToDo:
 #  1.
 #
-# AS 2020-05-20
+# AS 2020-06-17
 #===============================================================================
 
 # Clear workspace
@@ -131,46 +132,6 @@ dat = dat %>%
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
 dbWriteTable(db_con, 'area_surveyed_lut', dat, row.names = FALSE, append = TRUE)
-dbDisconnect(db_con)
-
-# Clean up
-rm(list = c("dat"))
-
-#=================================================================================================
-#=================================================================================================
-
-# Read
-pg_con = pg_con_local(dbname = "spawning_ground")
-dat = dbReadTable(pg_con, "barrier_measurement_type_lut")
-dbDisconnect(pg_con)
-
-# Convert datetime to character
-dat = dat %>%
-  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
-
-# Write to sink
-db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
-dbWriteTable(db_con, 'barrier_measurement_type_lut', dat, row.names = FALSE, append = TRUE)
-dbDisconnect(db_con)
-
-# Clean up
-rm(list = c("dat"))
-
-#=================================================================================================
-#=================================================================================================
-
-# Read
-pg_con = pg_con_local(dbname = "spawning_ground")
-dat = dbReadTable(pg_con, "barrier_type_lut")
-dbDisconnect(pg_con)
-
-# Convert datetime to character
-dat = dat %>%
-  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
-
-# Write to sink
-db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
-dbWriteTable(db_con, 'barrier_type_lut', dat, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
 
 # Clean up
@@ -897,6 +858,46 @@ dat = dat %>%
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
 dbWriteTable(db_con, 'origin_lut', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
+
+#=================================================================================================
+#=================================================================================================
+
+# Read
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbReadTable(pg_con, "passage_feature_type_lut")
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+dbWriteTable(db_con, 'passage_feature_type_lut', dat, row.names = FALSE, append = TRUE)
+dbDisconnect(db_con)
+
+# Clean up
+rm(list = c("dat"))
+
+#=================================================================================================
+#=================================================================================================
+
+# Read
+pg_con = pg_con_local(dbname = "spawning_ground")
+dat = dbReadTable(pg_con, "passage_measurement_type_lut")
+dbDisconnect(pg_con)
+
+# Convert datetime to character
+dat = dat %>%
+  mutate(obsolete_datetime = format(with_tz(obsolete_datetime, tzone = "UTC")))
+
+# Write to sink
+db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+dbWriteTable(db_con, 'passage_measurement_type_lut', dat, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
 
 # Clean up
@@ -1875,15 +1876,15 @@ dbDisconnect(db_con)
 rm(list = c("dat"))
 
 #=================================================================================================
-# Fish barrier
+# Fish passage feature
 #=================================================================================================
 
 # Get location and location coordinates data relevant to WRIAs 22 and 23
-qry = glue("select distinct fb.fish_barrier_id, fb.survey_id, fb.barrier_location_id, ",
-           "fb.barrier_type_id, fb.barrier_observed_datetime, fb.barrier_height_meter, ",
-           "fb.barrier_height_type_id, fb.plunge_pool_depth_meter, fb.plunge_pool_depth_type_id, ",
+qry = glue("select distinct fb.fish_passage_feature_id, fb.survey_id, fb.feature_location_id, ",
+           "fb.passage_feature_type_id, fb.feature_observed_datetime, fb.feature_height_meter, ",
+           "fb.feature_height_type_id, fb.plunge_pool_depth_meter, fb.plunge_pool_depth_type_id, ",
            "fb.comment_text, fb.created_datetime, fb.created_by, fb.modified_datetime, fb.modified_by ",
-           "from fish_barrier as fb ",
+           "from fish_passage_feature as fb ",
            "inner join survey as s on fb.survey_id = s.survey_id ",
            "left join location as uploc on s.upper_end_point_id = uploc.location_id ",
            "left join location as loloc on s.lower_end_point_id = loloc.location_id ",
@@ -1898,14 +1899,14 @@ dbDisconnect(pg_con)
 
 # Convert datetime to character
 dat = dat %>%
-  mutate(barrier_observed_datetime = format(with_tz(barrier_observed_datetime, tzone = "UTC"))) %>%
+  mutate(feature_observed_datetime = format(with_tz(feature_observed_datetime, tzone = "UTC"))) %>%
   mutate(created_datetime = format(with_tz(created_datetime, tzone = "UTC"))) %>%
   mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
 # Write to sink
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
-dbWriteTable(db_con, 'fish_barrier', dat, row.names = FALSE, append = TRUE)
+dbWriteTable(db_con, 'fish_passage_feature', dat, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
 
 # Clean up
@@ -2442,8 +2443,6 @@ dbDisconnect(db_con)
 
 # Clean up
 rm(list = c("dat"))
-
-
 
 
 
