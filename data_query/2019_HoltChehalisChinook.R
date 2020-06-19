@@ -89,8 +89,8 @@ close(con)
 # Get CWT label
 con = sgs_con()
 ic = sqlQuery(con, as.is = TRUE,
-               paste(sep='',
-                     "SELECT * FROM ChehalisCWT_View"))
+              paste(sep='',
+                    "SELECT * FROM ChehalisCWT_View"))
 close(con)
 
 #============================================================================
@@ -217,7 +217,7 @@ dat = dat %>%
 # write.xlsx(dat, file = out_name, colNames = TRUE, sheetName = "Chinook")
 
 # Or fancier with styling
-out_name = paste0(run_year, "_", run, "_", "Chinook.xlsx")
+out_name = paste0("data_query/", run_year, "_", run, "_", "Chinook.xlsx")
 wb <- createWorkbook(out_name)
 addWorksheet(wb, "Chinook", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)

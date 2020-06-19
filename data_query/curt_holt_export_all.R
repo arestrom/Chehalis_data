@@ -129,6 +129,13 @@ get_header_data = function(start_date, end_date) {
 # Run the function: 1777 rows
 header_data = get_header_data(start_date, end_date)
 
+# Identify fake surveys
+fake_id = header_data %>%
+  filter(obs == "Fake") %>%
+  select(survey_id) %>%
+  distinct() %>%
+  pull(survey_id)
+
 #============================================================================
 # Get intents for surveys above
 #============================================================================
@@ -162,6 +169,10 @@ get_intent = function(header_data) {
 # Run the function: 2504 rows
 count_intent = get_intent(header_data)
 
+# Filter to real surveys
+count_intent = count_intent %>%
+  filter(!survey_id %in% fake_id)
+
 #============================================================================
 # Get all live and dead counts for surveys above
 #============================================================================
@@ -174,7 +185,7 @@ get_fish_counts = function(header_data) {
     pull(survey_event_id)
   se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
   # Query to pull out all counts by species and sex-maturity-mark groups
-  qry = glue("select se.survey_event_id, fe.fish_encounter_id, sp.common_name as species, ",
+  qry = glue("select se.survey_id, se.survey_event_id, fe.fish_encounter_id, sp.common_name as species, ",
              "fs.fish_status_description as fish_status, se.comment_text as fish_comments, ",
              "sx.sex_description as sex, mat.maturity_short_description as maturity, ",
              "ad.adipose_clip_status_code as clip_status, cwt.detection_status_description as cwt_detect, ",
@@ -192,14 +203,18 @@ get_fish_counts = function(header_data) {
   fish_counts = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   fish_counts = fish_counts %>%
-    select(survey_event_id, fish_encounter_id, species, fish_status, sex,
-           maturity, clip_status, cwt_detect, fish_count, prev_count,
-           fish_comments)
+    select(survey_id, survey_event_id, fish_encounter_id, species,
+           fish_status, sex, maturity, clip_status, cwt_detect,
+           fish_count, prev_count, fish_comments)
   return(fish_counts)
 }
 
 # Run the function: 2504 rows
 fish_counts = get_fish_counts(header_data)
+
+# Filter to real surveys
+fish_counts = fish_counts %>%
+  filter(!survey_id %in% fake_id)
 
 #============================================================================
 # Get all redd counts for surveys above
@@ -211,7 +226,7 @@ get_redd_counts = function(header_data) {
     filter(!is.na(survey_event_id)) %>%
     pull(survey_event_id)
   se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
-  qry = glue("select se.survey_event_id, rd.redd_encounter_id, sp.common_name as species, ",
+  qry = glue("select se.survey_id, se.survey_event_id, rd.redd_encounter_id, sp.common_name as species, ",
              "rs.redd_status_short_description as redd_status, rd.redd_count ",
              "from survey_event as se ",
              "left join species_lut as sp on se.species_id = sp.species_id ",
@@ -222,12 +237,17 @@ get_redd_counts = function(header_data) {
   redd_counts = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   redd_counts = redd_counts %>%
-    select(survey_event_id, redd_encounter_id, species, redd_status, redd_count)
+    select(survey_id, survey_event_id, redd_encounter_id, species,
+           redd_status, redd_count)
   return(redd_counts)
 }
 
 # Run the function: 7059 rows
 redd_counts = get_redd_counts(header_data)
+
+# Filter to real surveys
+redd_counts = redd_counts %>%
+  filter(!survey_id %in% fake_id)
 
 #============================================================================
 # Get the cwt labels for surveys above
@@ -257,6 +277,10 @@ get_head_labels = function(header_data) {
 
 # Run the function: 3 rows .... all from fake data
 head_labels = get_head_labels(header_data)
+
+# Filter to real surveys
+head_labels = head_labels %>%
+  filter(!survey_id %in% fake_id)
 
 #============================================================================
 # Verify header_data survey_type
@@ -304,10 +328,11 @@ head_dat = header_data %>%
 
 # Add to fish_counts
 fish_dat = fish_counts %>%
-  left_join(head_dat, by = "survey_event_id") %>%
-  select(survey_id, survey_event_id, fish_encounter_id, stream_name, survey_date, type,
-         rml, rmu, method, obs, species, fish_status, sex, maturity, clip_status,
-         cwt_detect, fish_count, prev_count, fish_comments) %>%
+  left_join(head_dat, by = c("survey_id", "survey_event_id")) %>%
+  select(survey_id, survey_event_id, fish_encounter_id, stream_name,
+         survey_date, type, rml, rmu, method, obs, species, fish_status,
+         sex, maturity, clip_status, cwt_detect, fish_count, prev_count,
+         fish_comments) %>%
   arrange(stream_name, as.Date(survey_date, format = "%m/%d/%Y"), rml, rmu)
 
 # Compute sums for live and dead categories
