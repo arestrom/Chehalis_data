@@ -564,6 +564,11 @@ header_data = header_data %>%
   mutate(modified_datetime = with_tz(modified_datetime, tzone = "UTC")) %>%
   mutate(survey_start_datetime = with_tz(survey_start_datetime, tzone = "UTC")) %>%
   mutate(survey_end_datetime = with_tz(survey_end_datetime, tzone = "UTC")) %>%
+
+  # START BACK HERE....I NEVER FORMATTED SURVEY_DATE FOR LOCAL AND UTC !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+  mutate(survey_date = )
   # Temporary fix for target species...mostly key values...but a couple with names !!!!!!!
   mutate(target_species = case_when(
     target_species == "Chinook" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",

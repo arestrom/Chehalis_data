@@ -153,7 +153,7 @@
 #     Datetime matches IFB, and is stored correctly in DB. But front-end displays 2019-09-08
 #     for survey date. Front-end displays the start time correctly.
 #
-# AS 2020-05-12
+# AS 2020-06-22
 #==============================================================
 
 # Load libraries
