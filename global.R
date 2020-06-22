@@ -149,6 +149,9 @@
 #     with interface to add or edit location.
 # 51. Need script to sync central DB location data with local.
 # 52. Need interface for media. Copy code from mykos.
+# 53. Survey Date is one day early in data entry screen. See EF Humptulips 2019-10-09 19:37
+#     Datetime matches IFB, and is stored correctly in DB. But front-end displays 2019-09-08
+#     for survey date. Front-end displays the start time correctly.
 #
 # AS 2020-05-12
 #==============================================================

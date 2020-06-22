@@ -366,7 +366,8 @@ base_sums = fish_dat %>%
   select(survey_id, species, run, run_year, origin,
          stream_name, survey_date, type, rml,
          rmu, method, obs) %>%
-  left_join(fish_sums, by = c("survey_id", "type", "species", "run", "run_year", "origin")) %>%
+  left_join(fish_sums, by = c("survey_id", "type", "species", "run",
+                              "run_year", "origin")) %>%
   distinct()
 
 #============================================================================
@@ -418,8 +419,6 @@ fish_clip_sums = fish_dat %>%
 #============================================================================
 # Calculate redd sums
 #============================================================================
-
-# NEED TO FIX HERE....CUMSUM NOT CORRECT !!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # Add to fish_counts
 redd_dat = redd_counts %>%
@@ -485,7 +484,8 @@ redd_sums = redd_sums %>%
   mutate(sort_order = seq(1, nrow(redd_sums))) %>%
   mutate(type = if_else(type == "xplor", "Explor", type)) %>%
   select(survey_id, stream_name, species, survey_date, type, reach,
-         rml, rmu, rnew, rvis, rcum, rcomb, sort_order) %>%
+         rml, rmu, method, obs, species, run_year, run, origin,
+         rnew, rvis, rcum, rcomb, sort_order) %>%
   arrange(sort_order)
 
 #============================================================================
@@ -500,33 +500,34 @@ label_pivot = head_labels %>%
   ungroup()
 
 # Concatenate cwt_labels to one variable
-label_concat = label_pivot %>%
+if ( nrow(label_pivot) > 0) {
+  label_concat = label_pivot %>%
   mutate(cwts = apply(label_pivot[,4:ncol(label_pivot)], 1, paste0, collapse = ", ")) %>%
   select(survey_id, species, cwts) %>%
   mutate(CWTHeadLabels = stri_replace_all_fixed(cwts, pattern = ", NA", replacement = "")) %>%
   select(survey_id, species, CWTHeadLabels)
+} else {
+  label_concat  = NULL
+}
 
 #============================================================================
 # Combine and format to final table
 #============================================================================
 
-
-# NEED TO VERIFY REDD_SUMS ABOVE HERE !!!!!!!!!!!
-
-# THEN FIX CODE BELOW !!!!!!!!!!!!!!!!!!
-
-
 # Combine fish sums and redd sums
-fr_sums = fish_sums %>%
-  left_join(redd_sums, by = c("survey_id", "species")) %>%
-  select(survey_id, species, LM = lv_male_sum, LF = lv_female_sum,
-         LSND = lv_snd_sum, LJ = lv_jack_sum, DM = dd_male_sum,
-         DF = dd_female_sum, DSND = dd_snd_sum, DJ = dd_jack_sum,
-         RNEW = rnew, RVIS = rvis, RCUM = rcum, RCOMB = rcomb)
+fr_sums = redd_sums %>%
+  full_join(fish_sums, by = c("survey_id", "type", "species",
+                              "run_year", "run", "origin")) %>%
+  select(survey_id, type, species, run_year, run, origin,
+         LM = lv_male_sum, LF = lv_female_sum, LSND = lv_snd_sum,
+         LJ = lv_jack_sum, DM = dd_male_sum, DF = dd_female_sum,
+         DSND = dd_snd_sum, DJ = dd_jack_sum, RNEW = rnew,
+         RVIS = rvis, RCUM = rcum, RCOMB = rcomb)
 
 # Add clip sums to fr_sums
 frc_sums = fr_sums %>%
-  left_join(fish_clip_sums, by = c("survey_id", "species"))
+  full_join(fish_clip_sums, by = c("survey_id", "type", "species",
+                                   "run_year", "run", "origin"))
 
 # Pull out comments, pivot and concatenate
 fish_comments = fish_dat %>%
@@ -534,26 +535,38 @@ fish_comments = fish_dat %>%
   select(survey_id, species, Comments = fish_comments)
 
 # Pivot
-comment_pivot = fish_comments %>%
-  group_by(survey_id, species) %>%
-  mutate(key = row_number(Comments)) %>%
-  spread(key = key, value = Comments) %>%
-  ungroup()
+if ( nrow(fish_comments) > 0L ) {
+  comment_pivot = fish_comments %>%
+    group_by(survey_id, species) %>%
+    mutate(key = row_number(Comments)) %>%
+    spread(key = key, value = Comments) %>%
+    ungroup()
 
-# Concatenate to one variable
-comment_concat = comment_pivot %>%
-  mutate(comments = apply(comment_pivot[,3:ncol(comment_pivot)], 1, paste0, collapse = ", ")) %>%
-  select(survey_id, species, comments) %>%
-  mutate(comments = stri_replace_all_fixed(comments, pattern = ", NA", replacement = "")) %>%
-  select(survey_id, species, comments)
+  # Concatenate to one variable
+  comment_concat = comment_pivot %>%
+    mutate(comments = apply(comment_pivot[,3:ncol(comment_pivot)], 1, paste0, collapse = ", ")) %>%
+    select(survey_id, species, comments) %>%
+    mutate(comments = stri_replace_all_fixed(comments, pattern = ", NA", replacement = "")) %>%
+    select(survey_id, species, comments)
+} else {
+  comment_concat = NULL
+}
 
 # Add comments to sums
-frc_sums = frc_sums %>%
-  left_join(comment_concat, by = c("survey_id", "species"))
+if ( !is.null(comment_concat) ) {
+  frc_sums = frc_sums %>%
+    left_join(comment_concat, by = c("survey_id", "species"))
+} else {
+  frc_sums$comments = NA_character_
+}
 
 # Add cwt labels to sums
-frc_sums = frc_sums %>%
-  left_join(label_concat, by = c("survey_id", "species"))
+if ( !is.null(label_concat) ) {
+  frc_sums = frc_sums %>%
+    left_join(label_concat, by = c("survey_id", "species"))
+} else {
+  frc_sums$CWTHeadLabels = NA_character_
+}
 
 # Add remaining missing columns
 head_fields = header_data %>%
@@ -586,6 +599,25 @@ all_surveys = intent_concat %>%
   mutate(drop_row = if_else(!is.na(Observer) & Observer == "Fake",
                             "drop", "keep")) %>%
   filter(drop_row == "keep") %>%
+  filter(species == selected_species) %>%
+  filter(run_year == selected_run_year)
+
+# Set empty cells to zero
+# names(all_surveys)
+all_surveys[,21:41] = lapply(all_surveys[,21:41], set_na_zero)
+
+# Recompute RCUM....Check later if Exploratory surveys should be cumsum same way as index
+all_surveys = all_surveys %>%
+  arrange(Type, StreamName, RML, RMU, as.Date(Date, format = "%m/%d/%Y")) %>%
+  mutate(reach = paste0(Type, "_", StreamName, "_", RML, "_", RMU)) %>%
+  group_by(reach, Type, species, run_year, run, origin) %>%
+  # HACK ALERT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! VERIFY HERE !!!!!!!!!!!!!!!!!
+  mutate(RCUM = if_else(Type %in% c("Supp", "Explor"), cumsum(RNEW), cumsum(RNEW))) %>%
+  ungroup() %>%
+  arrange(Type, StreamName, RML, RMU, as.Date(Date, format = "%m/%d/%Y"))
+
+# Format names
+all_surveys = all_surveys %>%
   select(WRIA, StreamName, LLID, Type, Date, StatWeek,
          Observer, RML, RMU, Method, Flow, RiffleVis,
          Species = species, SurveyIntent, SurveyStatus, LM, LF,
@@ -629,7 +661,7 @@ dat = rbind(all_surveys, dat_empty) %>%
 # write.xlsx(dat, file = out_name, colNames = TRUE, sheetName = "Chinook")
 
 # Or fancier with styling
-out_name = paste0("data_query/WRIAs_22-23_Surveys.xlsx")
+out_name = paste0("data_query/WRIAs_22-23_ChinookSurveys.xlsx")
 wb <- createWorkbook(out_name)
 addWorksheet(wb, "Sept-Feb_Surveys", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)

@@ -180,7 +180,7 @@ get_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   con = pg_con_local("spawning_ground")
   #con = poolCheckout(pool)
   existing_surveys = DBI::dbGetQuery(con, qry)
-  DBI::dbDisconnect(con)
+  #DBI::dbDisconnect(con)
   #poolReturn(con)
   # Define fields...just parent_id and survey_id this time
   fields = paste0("id, headerid, survey_date, stream_name, ",
