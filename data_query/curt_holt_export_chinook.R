@@ -130,7 +130,7 @@ get_header_data = function(start_date, end_date) {
 # Run the function: 1777 rows
 header_data = get_header_data(start_date, end_date)
 
-# Identify fake surveys
+# Identify fake surveys................Do not filter out other surveys here....Need surveys where chinook were looked for !!!!!!!!!!!!!
 fake_id = header_data %>%
   filter(obs == "Fake") %>%
   select(survey_id) %>%
@@ -598,7 +598,14 @@ all_surveys = intent_concat %>%
   left_join(frc_sums, by = c("survey_id", "species")) %>%
   mutate(drop_row = if_else(!is.na(Observer) & Observer == "Fake",
                             "drop", "keep")) %>%
-  filter(drop_row == "keep") %>%
+  filter(drop_row == "keep")
+
+# Identify surveys where selected species were surveyed,
+# Then filter to only those species.
+
+#
+
+%>%
   filter(species == selected_species) %>%
   filter(run_year == selected_run_year)
 
