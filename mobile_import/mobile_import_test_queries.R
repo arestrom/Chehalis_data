@@ -13,18 +13,22 @@
 #  5. Reset the time zone in IFB company to UTC or local...but not New York !!!!!
 #
 # ToDo:
-#  1. Adjust timezone for the New York snafu
+#  1. Adjust timezone for the New York snafu....Done
 #  2. Add survey_type, origin, and run to each entry in survey that has a
 #     survey_intent and species entered. Use "Unknown" for both origin
 #     and survey type...Based on directions from Lea. I will separate
 #     origin into categories based on species and date for Kim and Curt
 #     when exporting to Curts format.
+#  3. Harmonize cwt_detection_method for any cases where there are more
+#     than one combination of species and cwt_detection_method for a
+#     given species. In that case assign to method = electronic if
+#     present?
 #
 #
-#  Successfully reloaded final batch on 2020-06-17 5:00 PM
+#  Successfully reloaded final batch on 2020-06-23 1:14 PM
 #  The only ones now being pulled are those with no survey_uuid.
 #
-# AS 2020-06-17
+# AS 2020-06-23
 #===============================================================================
 
 # Load libraries
@@ -180,7 +184,7 @@ get_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   con = pg_con_local("spawning_ground")
   #con = poolCheckout(pool)
   existing_surveys = DBI::dbGetQuery(con, qry)
-  #DBI::dbDisconnect(con)
+  DBI::dbDisconnect(con)
   #poolReturn(con)
   # Define fields...just parent_id and survey_id this time
   fields = paste0("id, headerid, survey_date, stream_name, ",
@@ -564,11 +568,8 @@ header_data = header_data %>%
   mutate(modified_datetime = with_tz(modified_datetime, tzone = "UTC")) %>%
   mutate(survey_start_datetime = with_tz(survey_start_datetime, tzone = "UTC")) %>%
   mutate(survey_end_datetime = with_tz(survey_end_datetime, tzone = "UTC")) %>%
-
-  # START BACK HERE....I NEVER FORMATTED SURVEY_DATE FOR LOCAL AND UTC !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-  mutate(survey_date = )
+  mutate(survey_date = as.POSIXct(survey_date, tz = "America/Los_Angeles")) %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "UTC")) %>%
   # Temporary fix for target species...mostly key values...but a couple with names !!!!!!!
   mutate(target_species = case_when(
     target_species == "Chinook" ~ "e42aa0fc-c591-4fab-8481-55b0df38dcb1",
@@ -2594,32 +2595,49 @@ unique(survey_event$run_id[!nchar(survey_event$run_id) == 36L])
 
 # Add detection method info
 dead_detect = dead_fe %>%
-  select(dead_id, cwt_detected, fish_count) %>%
+  select(survey_id, cwt_detected, fish_count) %>%
   mutate(cwt_detected = if_else(is.na(cwt_detected) | cwt_detected == "",
                                 "bd7c5765-2ca3-4ab4-80bc-ce1a61ad8115", cwt_detected)) %>%   # Not applicable
   mutate(cwt_detected = if_else(cwt_detected == "unknown",
                                 "efe698a8-98dd-45df-ba5b-0d448c88121d", cwt_detected)) %>%   # Undetermined
   distinct()
 
+# Select only one type of detection method per survey...method only comes from dead subform
+# and should only apply when fish_count > 0. All data in dead_detect > 0.
+dead_detect = dead_detect %>%
+  mutate(cwt_detection_method_id =
+           if_else(cwt_detected %in% c("6242055f-b2bc-44c1-b0d4-3ce24be44bbe",          # Beep or no beep
+                                       "ba4209af-3839-46a7-bd5d-57bc8516f7af"),
+                   "d2de4873-e9ab-4eda-b1a0-fb9dcc2face7",                              # Electronic
+                   "89a9b6b4-6ea4-44c4-b2e4-e537060e73d3")) %>%                         # Not applicable
+  arrange(survey_id, desc(cwt_detection_method_id)) %>%
+  group_by(survey_id) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  arrange(survey_id, n_seq) %>%
+  filter(n_seq == 1L) %>%
+  select(survey_id, cwt_detection_method_id)
+
 # Check
-unique(dead_detect$cwt_detected[!nchar(dead_detect$cwt_detected) == 36L])
+unique(dead_detect$cwt_detection_method_id)
+any(duplicated(dead_detect$survey_id))
+unique(dead_detect$cwt_detection_method_id[!nchar(dead_detect$cwt_detection_method_id) == 36L])
+unique(survey_event$species_id)
 
 # Add to survey_event
 survey_event = survey_event %>%
-  left_join(dead_detect, by = "dead_id") %>%
+  left_join(dead_detect, by = "survey_id") %>%
   mutate(cwt_detection_method_id =
-           if_else(cwt_detected %in% c("6242055f-b2bc-44c1-b0d4-3ce24be44bbe",          # Beep or no beep
-                                       "ba4209af-3839-46a7-bd5d-57bc8516f7af") &
-                     !is.na(fish_count) & fish_count > 0L,
-                   "d2de4873-e9ab-4eda-b1a0-fb9dcc2face7",                              # Electronic
-                   "89a9b6b4-6ea4-44c4-b2e4-e537060e73d3")) %>%                         # Not applicable
-  mutate(cwt_detection_method_id =
-           if_else(species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1",                # Chum
-                   "89a9b6b4-6ea4-44c4-b2e4-e537060e73d3",                              # Not applicable
+           if_else(!species_id %in% c("e42aa0fc-c591-4fab-8481-55b0df38dcb1",
+                                      "a0f5b3af-fa07-449c-9f02-14c5368ab304",
+                                      "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1") |     # Detection species (chin, coho, sthd)
+                     is.na(cwt_detection_method_id),                                # No sampled carcasses
+                   "89a9b6b4-6ea4-44c4-b2e4-e537060e73d3",                          # Not applicable
                    cwt_detection_method_id))
 
 # Check
-unique(dead_detect$cwt_detected[!nchar(dead_detect$cwt_detected) == 36L])
+unique(survey_event$cwt_detection_method_id[!nchar(survey_event$cwt_detection_method_id) == 36L])
+table(survey_event$cwt_detection_method_id, useNA = "ifany")
 
 # Add run_year
 run_year_info = header_se %>%
@@ -2648,7 +2666,7 @@ survey_event = survey_event %>%
                           "94e1757f-b9c7-4b06-a461-17a2d804cd2f")) %>%            # Unknown run
   select(count_type, dead_id, live_id, recap_id, redd_id, survey_id,
          species_id, survey_design_type_id, run_id,
-         cwt_detection_method_id, run_year, fish_count)
+         cwt_detection_method_id, run_year)
 
 # Check for missing species
 any(is.na(survey_event$survey_id))
@@ -2666,7 +2684,7 @@ survey_event = survey_event %>%
   ungroup() %>%
   select(count_type, dead_id, live_id, recap_id, redd_id, survey_event_id,
          survey_id, species_id, survey_design_type_id, run_id,
-         cwt_detection_method_id, run_year, fish_count) %>%
+         cwt_detection_method_id, run_year) %>%
   arrange(survey_event_id)
 
 # Pull out just the table data
@@ -2864,12 +2882,20 @@ live_rd = live_rd %>%
 # chk_chum_clip = live_rd %>%
 #   filter(species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1")
 # table(chk_chum_clip$adipose_clip_status_id, useNA = "ifany")
+unique(live_rd$adipose_clip_status_id)
+table(live_rd$adipose_clip_status_id, useNA = "ifany")
+unique(live_rd$species_id)
 
-# Change any "Unable to check" cases to not checked for chum
+# Change any "Unable to check" cases to not checked for non-sampled species
 live_rd = live_rd %>%
-  mutate(adipose_clip_status_id = if_else(species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1",
+  mutate(adipose_clip_status_id = if_else(!species_id %in% c("e42aa0fc-c591-4fab-8481-55b0df38dcb1",
+                                                             "a0f5b3af-fa07-449c-9f02-14c5368ab304",
+                                                             "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1"),  # Detection species (chin, coho, sthd)
                                           "33b78489-7ad3-4482-9455-3988e05bfb28",
                                           adipose_clip_status_id))
+
+# Check
+table(live_rd$adipose_clip_status_id, useNA = "ifany")
 
 # Add some columns
 live_rd = live_rd %>%
@@ -4102,7 +4128,7 @@ dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event: 8168 rows
+# survey_event: 8066 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_event', survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
@@ -4214,12 +4240,12 @@ dbDisconnect(db_con)
 #
 # #======== redd data ===============
 #
-# # individual_redd: 7498 rows
+# # individual_redd: 7730 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from individual_redd where individual_redd_id in ({ird_ids})'))
 # dbDisconnect(db_con)
 #
-# # redd_encounter: 11149 rows
+# # redd_encounter: 11507 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from redd_encounter where redd_encounter_id in ({rd_ids})'))
 # dbDisconnect(db_con)
@@ -4253,7 +4279,7 @@ dbDisconnect(db_con)
 #
 # #======== Survey event ===============
 #
-# # survey_event: 1811 rows
+# # survey_event: 8168 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from survey_event where survey_event_id in ({se_ids})'))
 # dbDisconnect(db_con)
@@ -4265,32 +4291,32 @@ dbDisconnect(db_con)
 # dbExecute(db_con, glue('delete from other_observation where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_barrier: 76 rows
+# # fish_passage_feature: 76 rows
 # db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from fish_barrier where survey_id in ({s_ids})'))
+# dbExecute(db_con, glue('delete from fish_passage_feature where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # mobile_survey_form: 1997 rows
+# # mobile_survey_form: 2040 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from mobile_survey_form where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey_comment: 1997 rows
+# # survey_comment: 2040 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from survey_comment where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey_intent: 22252 rows
+# # survey_intent: 22703 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from survey_intent where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # waterbody_measurement: 1997 rows
+# # waterbody_measurement: 2040 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from waterbody_measurement where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey: 1997 rows
+# # survey: 2040 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from survey where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
@@ -4302,12 +4328,12 @@ dbDisconnect(db_con)
 # dbExecute(db_con, glue("delete from media_location where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
 #
-# # Location coordinates: 3100
+# # Location coordinates: 3109
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue("delete from location_coordinates where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
 #
-# # Location: 3160
+# # Location: 3170
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue("delete from location where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
