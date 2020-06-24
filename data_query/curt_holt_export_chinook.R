@@ -212,6 +212,11 @@ full_header = header_data %>%
 
 # Check: None, correct
 any(duplicated(full_header$survey_id))
+unique(header_data$species)
+# chk_lamp = header_data %>%
+#   select(survey_date, species, run_year) %>%
+#   filter(species %in% c("Western brook lamprey","Pacific lamprey")) %>%
+#   distinct()
 
 #============================================================================
 # Get all live and dead counts for surveys above

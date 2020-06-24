@@ -25,10 +25,10 @@
 #     present?
 #
 #
-#  Successfully reloaded final batch on 2020-06-23 1:14 PM
+#  Successfully reloaded final batch on 2020-06-24 08:53 AM
 #  The only ones now being pulled are those with no survey_uuid.
 #
-# AS 2020-06-23
+# AS 2020-06-24
 #===============================================================================
 
 # Load libraries
@@ -555,6 +555,33 @@ any(is.na(header_data$survey_date))
 # # Test how to handle timezone issue. Profile is set to New York
 # chk_time = header_data %>%
 #   mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles"))
+
+# Update run_year using a rule. Lea's form is incorrect: HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!
+header_data = header_data %>%
+  mutate(run_month = as.integer(substr(survey_date, 6, 7))) %>%
+  mutate(run_year = as.integer(substr(survey_date, 1, 4))) %>%
+  mutate(steelhead_run_year = "2020") %>%
+  mutate(coho_run_year = case_when(
+    run_year == 2019 ~ "2019",
+    run_year == 2020 & run_month < 4 ~ "2019",
+    run_year == 2020 & run_month <= 4 ~ "2020",
+    TRUE ~ "2019")) %>%
+  mutate(chum_run_year = case_when(
+    run_year == 2019 ~ "2019",
+    run_year == 2020 & run_month < 4 ~ "2019",
+    run_year == 2020 & run_month <= 4 ~ "2020",
+    TRUE ~ "2019")) %>%
+  mutate(chinook_run_year = case_when(
+    run_year == 2019 ~ "2019",
+    run_year == 2020 & run_month < 4 ~ "2019",
+    run_year == 2020 & run_month <= 4 ~ "2020",
+    TRUE ~ "2019"))
+
+# Check
+table(header_data$steelhead_run_year, useNA = "ifany")
+table(header_data$coho_run_year, useNA = "ifany")
+table(header_data$chum_run_year, useNA = "ifany")
+table(header_data$chinook_run_year, useNA = "ifany")
 
 # Process dates etc
 # Rename id to parent_record_id for more explicit joins to subform data...convert dates, etc.
@@ -4101,7 +4128,7 @@ db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_comment', comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_intent: 22703 rows
+# survey_intent: 22714 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_intent', intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
@@ -4128,7 +4155,7 @@ dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event: 8066 rows
+# survey_event: 8070 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_event', survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
