@@ -118,30 +118,30 @@ get_header_data = function(start_date, end_date) {
     # as.Date uses local timezone so conversion should come out correctly
     # But may need to adjust after dates are corrected in DB !!!!!!!!!!!!!!!
     mutate(survey_date = as.Date(survey_date)) %>%
+    mutate(survey_dt = survey_date) %>%
     mutate(statweek = remisc::fish_stat_week(survey_date, start_day = "Sun")) %>%
     mutate(survey_date = format(survey_date, "%m/%d/%Y")) %>%
     select(survey_id, survey_event_id, wria = cat_code, stream_name,
            llid, type, survey_date, statweek, species, run_year, run,
-           rml, rmu, method, flow, rifflevis, obs, survey_status) %>%
-    arrange(stream_name, as.Date(survey_date, format = "%m/%d/%Y"))
+           rml, rmu, method, flow, rifflevis, obs, survey_status,
+           survey_dt) %>%
+    arrange(stream_name, survey_dt)
   return(surveys)
 }
 
 # Run the function: 1777 rows
 header_data = get_header_data(start_date, end_date)
 
-# Identify fake surveys................Do not filter out other surveys here....Need surveys where chinook were looked for !!!!!!!!!!!!!
+# Identify fake surveys
 fake_id = header_data %>%
   filter(obs == "Fake") %>%
   select(survey_id) %>%
   distinct() %>%
   pull(survey_id)
 
-# Filter to real surveys
+# Filter to real surveys...Investigate source of WF Hoquiam 10/28/2019 10.7  -11.2...no survey_event_id
 header_data = header_data %>%
-  filter(!survey_id %in% fake_id) %>%
-  filter(run_year == selected_run_year) %>%
-  filter(species == selected_species)
+  filter(!survey_id %in% fake_id)
 
 # Check
 any(is.na(header_data$run_year))
@@ -186,8 +186,41 @@ get_intent = function(header_data) {
 count_intent = get_intent(header_data)
 
 #============================================================================
+# Filter surveys to those where counts for chinook were intended
+#============================================================================
+
+# Get chinook intent
+chinook_intent = count_intent %>%
+  filter(species == selected_species)
+
+# Pull out survey_ids
+chinook_survey_id = chinook_intent %>%
+  select(survey_id) %>%
+  distinct() %>%
+  pull(survey_id)
+
+# Use species intent to filter header_data
+header_data = header_data %>%
+  filter(survey_id %in% chinook_survey_id) %>%
+  arrange(stream_name, type, survey_dt, run_year)
+
+# Pull out full set of basic header data so surveys with no selected species are preserved for zero entries
+full_header = header_data %>%
+  select(survey_id, wria, stream_name, llid, type, survey_date, statweek,
+         rml, rmu, method, flow, rifflevis, obs, survey_status, survey_dt) %>%
+  distinct()
+
+# Check: None, correct
+any(duplicated(full_header$survey_id))
+
+#============================================================================
 # Get all live and dead counts for surveys above
 #============================================================================
+
+
+# FOR SURVEYS BELOW, FILTER TO species !!!!!!!!!!!!!!!!!!!!!!
+
+
 
 # Function to get fish_counts
 get_fish_counts = function(header_data) {
