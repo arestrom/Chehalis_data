@@ -7,7 +7,7 @@
 #     It looks like observer is always just one person....better than using VAR...
 #  2. Ask if first and last names should be used for observers. I prefer just
 #     last name.
-#  3. Why is run year defined at header level?
+#  3. Why is run year defined at header level? Need to fix run_year assignments.
 #  4. Can data_source always be assigned to WDFW? Is a data_source_unit needed?
 #  5. If required data are missing...may want to just assign a default value,
 #     upload, then output a file with problematic data?
@@ -98,60 +98,41 @@
 # 20. Get rid of extra channel and orientation lut function
 #     for fish in fish_location_global.R. Can reuse
 #     function from redd_location.
-# 21. Update all DT column names to more readable versions?
-# 22. For editing reach points...only allow editing coordinates
-#     for one year previous. Otherwise send request to data manager.
-#     Done....Can also suggest adding new point with one decimal
-#     difference in river_mile. Then leave historical data alone.
-# 23. Find css to narrow sidebar in header boxplus.
-# 24. Add spinners or progress bar when loading locations.
-# 26. Zoom to stream extent when setting locations via map.
-#     Right now marker is sometimes off the screen.
-# 28. See example code "current_redd_locations" in redd_encounter_srv.R
+# 21. Find css to narrow sidebar in header boxplus.
+# 22. Add spinners or progress bar when loading locations.
+# 23. See example code "current_redd_locations" in redd_encounter_srv.R
 #     as example of how to possibly simplify a bunch of repeat
 #     invocations of get_xxx global functions.
-# 29. Try to use two year location queries for all carcass locations,
+# 24. Try to use two year location queries for all carcass locations,
 #     WRIA and stream. Then filter in memory using reactives? To
 #     pre-run location queries for fish and redds, print stats
 #     on n-surveys, n-redds, n-carcasses on front-page
-# 31. Consider adding theme selector to set background
+# 25. Consider adding theme selector to set background
 #     colors, themes, etc. Look at bootstraplib package.
-# 32. Consider using shinyjs to add class "required_field" directly
+# 26. Consider using shinyjs to add class "required_field" directly
 #     to each required element. Then just use one css entry for all.
-# 33. FUNCTIONS get_wrias() and get_streams() in wria_stream....CAN AND SHOULD BE OPTIMIZED !!!!!!
-# 34. Add raster tile coverage for full offline capability... !!!
-# 35. Eventually test with lidar and raytracer mapping.
-# 36. Using get_uuid() for all insert code....spatialite CreateUUID() did not always fire.
-#     Got rid of spatialite dll's and cleaned up create script to not include default uuid.
-#     Got rid of load extension code in global.R. Added get_uuid() to globals only.
-# 37. All datetime values be stored in sqlite as UTC. Dates stored as text after review
+# 27. FUNCTIONS get_wrias() and get_streams() in wria_stream....CAN AND SHOULD BE OPTIMIZED !!!!!!
+# 28. Add raster tile coverage for full offline capability... !!!
+# 29. Eventually test with lidar and raytracer mapping.
+# 30. All datetime values be stored in sqlite as UTC. Dates stored as text after review
 #     of options. Updated globals to convert to local in sql rather than lubridate.
 #     Sqlite datetime('localtime') function was tested and is dst enabled.
-# 38. Update all names in inputs and DT columns to more readable format.
-# 39. Add code to unselect row in parent table whenever a row is deleted in child table.
+# 31. Update all names in inputs and DT columns to more readable format.
+# 32. Add code to unselect row in parent table whenever a row is deleted in child table.
 #     Use example from survey_comment_srv code.
-# 40. Consider using fish_location_insert code from here in salmon_data (parameterized...not postgis sql)
-# 41. Check all st_read arguments to make sure they include crs = 2927!!!!!!!!!!!!!
-# 42. For update of sqlite data to main pg DB, need to include any new locations
+# 33. Consider using fish_location_insert code from here in salmon_data (parameterized...not postgis sql)
+# 34. Check all st_read arguments to make sure they include crs = 2927!!!!!!!!!!!!!
+# 35. For update of sqlite data to main pg DB, need to include any new locations
 #     or streams entered to local.
-# 43. Look into using busy spinner with loading datatable in mobile operations
-# 44. Disable button to write new surveys in mobile_import if streams or reaches missing.
-# 45. Need to update newly added stream geometry and waterbodies to sqlite DB. Currently
-#     data are only in local version of spawning_ground. Later, update to prod.
-#     Wait till I get response from Nick and Lea to run updates.
-# 46. Change stream drop-down code to use display_name not full waterbody_name
-# 47. Create reactive that zooms to stream in wria_map when stream is selected
-# 48. Change required fields in reach_point to omit river_mile. We should start
+# 36. Change stream drop-down code to use display_name not full waterbody_name
+# 37. Change required fields in reach_point to omit river_mile. We should start
 #     weaning off RMs and go with codes, descriptors and coords instead.
-# 49. Parse out "add_end_points" reactive code in mobile_import_srv.R to global.
-#     Need to have DB code wrapped in try-catch...with toastr.
-# 50. Need to add an other_observations and barrier accordians at the survey level...along
+# 38. Wrap "add_end_points" reactive code in mobile_import_srv.R in try-catch...with toastr?.
+# 39. Need to add an other_observations and passage_feature accordians at the survey level...along
 #     with interface to add or edit location.
-# 51. Need script to sync central DB location data with local.
-# 52. Need interface for media. Copy code from mykos.
-# 53. Survey Date is one day early in data entry screen. See EF Humptulips 2019-10-09 19:37
-#     Datetime matches IFB, and is stored correctly in DB. But front-end displays 2019-09-08
-#     for survey date. Front-end displays the start time correctly.
+# 40. Need script to sync central DB location data with local.
+# 41. Need interface for media. Copy code from mykos.
+# 42.
 #
 # AS 2020-06-22
 #==============================================================

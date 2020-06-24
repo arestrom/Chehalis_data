@@ -36,23 +36,6 @@ get_streams = function(chosen_wria) {
   return(streams_st)
 }
 
-# get_streams = function(chosen_wria) {
-#   qry = glue("select distinct wb.waterbody_id, wb.waterbody_name as stream_name, ",
-#              "wb.waterbody_name, wb.latitude_longitude_id as llid, ",
-#              "wb.stream_catalog_code as cat_code, wr.wria_id, st.stream_id, ",
-#              "wr.wria_code || ' ' || wr.wria_description as wria_name, st.geom as geometry ",
-#              "from waterbody_lut as wb ",
-#              "inner join stream as st on wb.waterbody_id = st.waterbody_id ",
-#              "inner join location as loc on wb.waterbody_id = loc.waterbody_id ",
-#              "inner join wria_lut as wr on loc.wria_id = wr.wria_id ",
-#              "where wr.wria_code = '{chosen_wria}' ",
-#              "order by stream_name")
-#   con = poolCheckout(pool)
-#   streams_st = sf::st_read(con, query = qry, crs = 2927)
-#   poolReturn(con)
-#   return(streams_st)
-# }
-
 get_data_years = function(waterbody_id) {
   qry = glue("select distinct strftime('%Y', datetime(s.survey_datetime, 'localtime')) as data_year ",
              "from survey as s ",

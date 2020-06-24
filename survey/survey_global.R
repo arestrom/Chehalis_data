@@ -180,7 +180,6 @@ survey_insert = function(new_values) {
   data_submitter_last_name = new_values$data_submitter_last_name
   if (is.na(data_submitter_last_name) | data_submitter_last_name == "") { data_submitter_last_name = NA }
   created_by = new_values$created_by
-
   # Checkout a connection
   con = poolCheckout(pool)
   insert_result = dbSendStatement(
@@ -275,7 +274,7 @@ survey_update = function(edit_values) {
 
 # Identify survey dependencies prior to delete....do the same for survey_event
 get_survey_dependencies = function(survey_id) {
-  qry = glue("select count(fb.fish_barrier_id) as fish_barrier, ",
+  qry = glue("select count(fp.fish_passage_feature_id) as fish_passage_feature, ",
              "count(fc.fish_capture_id) as fish_capture, ",
              "count(fs.fish_species_presence_id) as fish_species_presence, ",
              "count(ms.mobile_survey_form_id) as mobile_survey_form, ",
@@ -285,7 +284,7 @@ get_survey_dependencies = function(survey_id) {
              "count(si.survey_intent_id) as survey_intent, ",
              "count(wm.waterbody_measurement_id) as waterbody_measurement ",
              "from survey as s ",
-             "left join fish_barrier as fb on s.survey_id = fb.survey_id ",
+             "left join fish_passage_feature as fp on s.survey_id = fp.survey_id ",
              "left join fish_capture as fc on s.survey_id = fc.survey_id ",
              "left join fish_species_presence as fs on s.survey_id = fs.survey_id ",
              "left join mobile_survey_form as ms on s.survey_id = ms.survey_id ",
