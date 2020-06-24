@@ -4,7 +4,7 @@
 -- 1. Use DBeaver -> Database -> New database connection -> SQlite -> Browse to set path
 --    then explicitly set name and extension (sqlite). No need for any other settings.
 -- 2. Highlight new DB in Database navigator -> Right-click new DB -> SQL editor -> paste in create script and run using Execute SQL script.
--- 3. New DB will now be visible in Windows Explorer...it was empty at first creation.
+-- 3. New DB will now be visible in Windows Explorer...it was empty at first creation. Should be about 428 KB.
 -- 4. Run load_spawning_ground_lite.R
 
 -- Notes:
