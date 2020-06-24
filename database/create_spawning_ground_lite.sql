@@ -1,38 +1,22 @@
--- Created on 2020-02-12
+-- Created on 2020-05-20 approx 5:00 pm
 
--- Questions:
---
 -- Setup:
 -- 1. Use DBeaver -> Database -> New database connection -> SQlite -> Browse to set path
 --    then explicitly set name and extension (sqlite). No need for any other settings.
--- 2. Highlight new DB in Database navigator -> Right-click new DB -> SQL editor -> paste in create script and run.
--- 3. New DB will now be visible in Windows Explorer...it was empty at first creation.
+-- 2. Highlight new DB in Database navigator -> Right-click new DB -> SQL editor -> paste in create script and run using Execute SQL script.
+-- 3. New DB will now be visible in Windows Explorer...it was empty at first creation. Should be about 428 KB.
 -- 4. Run load_spawning_ground_lite.R
 
 -- Notes:
 -- 1. Only five datatypes supported: Null, Integer, Real, Text, Blob
 ---   Convert booleans to integer, uuids and datetime to text
--- 2. Spatialite requires an integer primary key and ROWID for geometry
---    columns to work properly... will try first with BLOBs instead.
---    See example in db_setup.R for examples of converting to and from
---    hex and binary.
--- 3. Design notes: https://www.gaia-gis.it/gaia-sins/spatialite-cookbook-5/cookbook_topics.03.html#topic_Creating_a_well_designed_DB
--- 4. Sometimes get error on first run when using spatialite gui...just delete and recreate db once again...then run and success.
 
 -- ToDo:
--- 1.
+-- 1. Write script to update just the new location bits from postgres spawning_ground.
 
--- Spatial examples:
---SELECT AddGeometryColumn('fish_biologist_district', 'geom', 2927, 'POLYGON', 'XY');
---SELECT CreateSpatialIndex("geonames", "Geometry");
+-- Changes:
+-- 1. Changed to fish_passage_feature  2020-06-17
 
--- Current date 2020-02-12
-
--- Enable spatialite extension so invokation of CreateUUID() function does not throw error
--- Not needed if using spatialite gui
--- SELECT load_extension('mod_spatialite')
-
--- Create tables: Location Level -----------------------------------------------------------------------------------------------------
 
 -- Location ------------------------------------------------------
 
@@ -137,6 +121,7 @@ CREATE TABLE media_location (
     location_id text NOT NULL,
     media_type_id text NOT NULL,
     media_url text NOT NULL,
+    comment_text text,
     created_datetime text DEFAULT (datetime('now')) NOT NULL,
     created_by text NOT NULL,
     modified_datetime text,
@@ -436,30 +421,30 @@ CREATE TABLE survey_mobile_device (
     CONSTRAINT fk_mobile_device__survey_mobile_device FOREIGN KEY (mobile_device_id) REFERENCES mobile_device(mobile_device_id)
 ) WITHOUT ROWID;
 
--- Fish barrier ------------------------------------------------------
+-- Fish passage feature ------------------------------------------------------
 
-CREATE TABLE barrier_type_lut (
-    barrier_type_id text PRIMARY KEY,
-    barrier_type_description text NOT NULL,
+CREATE TABLE passage_feature_type_lut (
+    passage_feature_type_id text PRIMARY KEY,
+    feature_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
-CREATE TABLE barrier_measurement_type_lut (
-    barrier_measurement_type_id text PRIMARY KEY,
+CREATE TABLE passage_measurement_type_lut (
+    passage_measurement_type_id text PRIMARY KEY,
     measurement_type_description text NOT NULL,
     obsolete_flag integer NOT NULL,
     obsolete_datetime text
 ) WITHOUT ROWID;
 
-CREATE TABLE fish_barrier (
-    fish_barrier_id text PRIMARY KEY,
+CREATE TABLE fish_passage_feature (
+    fish_passage_feature_id text PRIMARY KEY,
     survey_id text NOT NULL,
-    barrier_location_id text NOT NULL,
-    barrier_type_id text NOT NULL,
-    barrier_observed_datetime text,
-    barrier_height_meter decimal(4,2),
-    barrier_height_type_id text NOT NULL,
+    feature_location_id text NOT NULL,
+    passage_feature_type_id text NOT NULL,
+    feature_observed_datetime text,
+    feature_height_meter decimal(4,2),
+    feature_height_type_id text NOT NULL,
     plunge_pool_depth_meter decimal(4,2),
     plunge_pool_depth_type_id text NOT NULL,
     comment_text text,
@@ -467,11 +452,11 @@ CREATE TABLE fish_barrier (
     created_by text NOT NULL,
     modified_datetime text,
     modified_by text,
-    CONSTRAINT fk_survey__fish_barrier FOREIGN KEY (survey_id) REFERENCES survey(survey_id),
-    CONSTRAINT fk_location__fish_barrier FOREIGN KEY (barrier_location_id) REFERENCES location(location_id),
-    CONSTRAINT fk_barrier_measurement_type_lut__fish_barrier__height_type_id FOREIGN KEY (barrier_height_type_id) REFERENCES barrier_measurement_type_lut(barrier_measurement_type_id),
-    CONSTRAINT fk_barrier_measurement_type_lut__fish_barrier__depth_type_id FOREIGN KEY (plunge_pool_depth_type_id) REFERENCES barrier_measurement_type_lut(barrier_measurement_type_id),
-    CONSTRAINT fk_barrier_type_lut__fish_barrier FOREIGN KEY (barrier_type_id) REFERENCES barrier_type_lut(barrier_type_id)
+    CONSTRAINT fk_survey__fish_passage_feature FOREIGN KEY (survey_id) REFERENCES survey(survey_id),
+    CONSTRAINT fk_location__fish_passage_feature FOREIGN KEY (feature_location_id) REFERENCES location(location_id),
+    CONSTRAINT fk_passage_measurement_type_lut__height_type_id FOREIGN KEY (feature_height_type_id) REFERENCES passage_measurement_type_lut(passage_measurement_type_id),
+    CONSTRAINT fk_passage_measurement_type_lut__depth_type_id FOREIGN KEY (plunge_pool_depth_type_id) REFERENCES passage_measurement_type_lut(passage_measurement_type_id),
+    CONSTRAINT fk_passage_feature_type_lut__fish_passage_feature FOREIGN KEY (passage_feature_type_id) REFERENCES passage_feature_type_lut(passage_feature_type_id)
 ) WITHOUT ROWID;
 
 -- Waterbody measurement ------------------------------------------------------
@@ -656,13 +641,13 @@ CREATE TABLE cwt_detection_status_lut (
     obsolete_datetime text
 ) WITHOUT ROWID;
 
---CREATE TABLE adipose_clip_status_lut (
---	adipose_clip_status_id text PRIMARY KEY,
---    adipose_clip_status_code text NOT NULL,
---    adipose_clip_status_description text NOT NULL,
---    obsolete_flag text NOT NULL,
---    obsolete_datetime text
---) WITHOUT ROWID;
+CREATE TABLE adipose_clip_status_lut (
+	adipose_clip_status_id text PRIMARY KEY,
+    adipose_clip_status_code text NOT NULL,
+    adipose_clip_status_description text NOT NULL,
+    obsolete_flag text NOT NULL,
+    obsolete_datetime text
+) WITHOUT ROWID;
 
 CREATE TABLE fish_behavior_type_lut (
     fish_behavior_type_id text DEFAULT (Createtext()) PRIMARY KEY,

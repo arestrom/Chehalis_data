@@ -33,6 +33,20 @@ new_access_token = eventReactive(input$check_for_new_surveys, {
   return(access_token)
 })
 
+# Create reactive for current streams in DB
+stream_data = reactive({
+  streams = get_mobile_streams()
+  #print(head(streams, 5))
+  return(streams)
+})
+
+# Create reactive for current streams in DB
+river_mile_data = reactive({
+  rm_data = get_mobile_river_miles()
+  #print(head(streams, 5))
+  return(rm_data)
+})
+
 # Update DB and reload DT
 new_survey_data = eventReactive(input$check_for_new_surveys, {
   req(input$project_select)
@@ -41,9 +55,13 @@ new_survey_data = eventReactive(input$check_for_new_surveys, {
   prof_id = as.integer(remisc::get_text_item(input$project_select, item = 1, sep = ":"))
   pf_page_id = as.integer(remisc::get_text_item(input$mobile_form_select, item = 1, sep = ":"))
   tryCatch({
-    new_surveys = count_new_surveys(profile_id = prof_id,
-                                    parent_form_page_id = pf_page_id,
-                                    access_token = new_access_token())
+    new_surveys = get_new_surveys(profile_id = prof_id,
+                                  parent_form_page_id = pf_page_id,
+                                  access_token = new_access_token())
+    new_surveys = new_surveys %>%
+      left_join(stream_data(), by = "llid") %>%
+      mutate(stream_name_text = if_else(!is.na(waterbody_id), waterbody_display_name, stream_name_text)) %>%
+      select(-c(waterbody_display_name))
     shinytoastr::toastr_success("Search complete")
   }, error = function(e) {
     shinytoastr::toastr_error(title = "Connection error", conditionMessage(e))
@@ -51,123 +69,103 @@ new_survey_data = eventReactive(input$check_for_new_surveys, {
   return(new_surveys)
 })
 
-# Reactive for missing streams
-missing_stream_vals = reactive({
-  # Pull out only needed data
-  missing_streams = new_survey_data() %>%
-    filter(nchar(stream_name) < 36L) %>%
-    mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
-    mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
-    mutate(stream_name = case_when(
-      stream_name == "unnamed_tributary" & no_llid == "no" ~ llid,
-      stream_name == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
-      stream_name == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
-      !stream_name %in% c("unnamed_tributary", "not_listed") ~ stream_name)) %>%
+# Reactive to process gps data
+core_survey_data = reactive({
+  survey_data = new_survey_data() %>%
     mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
     mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
     mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
+    mutate(lower_coords = gsub("[\t]", ":", lower_coords)) %>%
     mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
     mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
     mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
     mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
+    mutate(upper_coords = gsub("[\t]", ":", upper_coords)) %>%
     mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
-    select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
-           reach, lower_coords, upper_coords) %>%
+    select(parent_form_survey_id, survey_id, survey_date, stream_name,
+           stream_name_text, new_stream_name, llid, reach, reach_text,
+           lo_rm, up_rm, new_reach, lower_coords, upper_coords,
+           waterbody_id, stream_geometry_id)
+})
+
+
+# Reactive for missing streams
+missing_stream_vals = reactive({
+  streams = stream_data()
+  missing_streams = core_survey_data() %>%
+    filter(is.na(waterbody_id)) %>%
+    select(-c(waterbody_id, stream_geometry_id)) %>%
+    rename(waterbody_id = stream_name, iform_llid = llid) %>%
+    left_join(streams, by = "waterbody_id") %>%
+    mutate(stream_name_text = if_else(!is.na(waterbody_id), waterbody_display_name, stream_name_text)) %>%
+    mutate(no_llid = if_else(is.na(iform_llid) | !nchar(iform_llid) == 13L, "yes", "no")) %>%
+    mutate(stream_name = case_when(
+      waterbody_id == "unnamed_tributary" & no_llid == "no" ~ iform_llid,
+      waterbody_id == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
+      waterbody_id == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
+      !waterbody_id %in% c("unnamed_tributary", "not_listed") ~ waterbody_id)) %>%
+    mutate(iform_llid = if_else(iform_llid %in% c("", "not"), NA_character_, iform_llid)) %>%
+    mutate(reach = if_else(reach %in% c("", "not_listed"), NA_character_, reach)) %>%
+    select(parent_form_survey_id, survey_date, waterbody_id, stream_name, stream_name_text,
+           waterbody_display_name, iform_llid, llid, reach, lower_coords, upper_coords) %>%
     distinct()
   return(missing_streams)
 })
 
 # Reactive for missing reaches
 missing_reach_vals =reactive({
-  missing_reaches = new_survey_data() %>%
-    filter(nchar(reach) < 27L) %>%
-    mutate(llid = remisc::get_text_item(reach, item = 1L, sep = "_")) %>%
-    mutate(no_llid = if_else(!nchar(llid) == 13L, "yes", "no")) %>%
-    mutate(stream_name = case_when(
-      stream_name == "unnamed_tributary" & no_llid == "no" ~ llid,
-      stream_name == "unnamed_tributary" & no_llid == "yes" ~ remisc::get_text_item(reach_text, 1, "_"),
-      stream_name == "not_listed" & !is.na(new_stream_name) ~ new_stream_name,
-      !stream_name %in% c("unnamed_tributary", "not_listed") ~ stream_name)) %>%
-    mutate(lower_coords = gsub("[Latitudeong,:]", "", gps_loc_lower)) %>%
-    mutate(lower_coords = gsub("[\n]", ":", lower_coords)) %>%
-    mutate(lower_coords = gsub("[\r]", "", lower_coords)) %>%
-    mutate(lower_coords = trimws(remisc::get_text_item(lower_coords, 1, ":A"))) %>%
-    mutate(upper_coords = gsub("[Latitudeong,:]", "", gps_loc_upper)) %>%
-    mutate(upper_coords = gsub("[\n]", ":", upper_coords)) %>%
-    mutate(upper_coords = gsub("[\r]", "", upper_coords)) %>%
-    mutate(upper_coords = trimws(remisc::get_text_item(upper_coords, 1, ":A"))) %>%
+  streams = stream_data()
+  missing_reaches = core_survey_data() %>%
+    mutate(lo_rm = trimws(lo_rm)) %>%
+    mutate(up_rm = trimws(up_rm)) %>%
+    filter(is.na(lo_rm) | is.na(up_rm) | lo_rm == "listed" | up_rm == "listed" |
+             lo_rm == "" | up_rm == "") %>%
+    select(-c(waterbody_id, stream_geometry_id)) %>%
+    rename(waterbody_id = stream_name, iform_llid = llid) %>%
+    left_join(streams, by = "waterbody_id") %>%
+    mutate(stream_name_text = if_else(!is.na(waterbody_id), waterbody_display_name, stream_name_text)) %>%
     mutate(reach_text = if_else(reach_text == "Not Listed", new_reach, reach_text)) %>%
-    select(parent_form_survey_id, survey_date, stream_name, stream_name_text,
-           reach, reach_text, lower_coords, upper_coords) %>%
+    mutate(up_rm = if_else(up_rm %in% c("", "listed"), NA_character_, up_rm)) %>%
+    mutate(lo_rm = if_else(lo_rm %in% c("", "listed"), NA_character_, lo_rm)) %>%
+    select(parent_form_survey_id, survey_date, waterbody_id, stream_name_text,
+           waterbody_display_name, reach, reach_text, up_rm, lo_rm, lower_coords, upper_coords) %>%
     distinct()
   return(missing_reaches)
 })
 
 # Reactive for new end-points needed
 add_end_points = reactive({
-  add_reach_vals = new_survey_data() %>%
-    filter(nchar(reach) >= 27L) %>%
-    mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
-    mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
-    mutate(low_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
-    mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-")))
-  # Get existing rm_data
-  qry = glue("select distinct loc.location_id, wb.latitude_longitude_id as llid, ",
-             "loc.river_mile_measure as rm ",
-             "from location as loc ",
-             "left join waterbody_lut as wb on loc.waterbody_id = wb.waterbody_id ",
-             "left join wria_lut as wr on loc.wria_id = wr.wria_id ",
-             "where wria_code in ('22', '23')")
-  # Checkout connection
-  con = DBI::dbConnect(RSQLite::SQLite(), dbname = 'data/sg_lite.sqlite')
-  #con = poolCheckout(pool)
-  rm_data = DBI::dbGetQuery(con, qry)
-  DBI::dbDisconnect(con)
-  #poolReturn(con)
-  # Dump any data without RMs or llid
-  rm_data = rm_data %>%
-    filter(!is.na(llid) & !is.na(rm))
+  rm_data = river_mile_data()
   # Pull out lower_rms
-  low_rm_data = rm_data %>%
-    select(lower_end_point_id = location_id, llid, low_rm = rm) %>%
+  lo_rm_data = rm_data %>%
+    select(lower_end_point_id = location_id, llid, lo_rm = river_mile,
+           lo_wbid = waterbody_id, lo_name = waterbody_display_name) %>%
     distinct()
   # Pull out upper_rms
   up_rm_data = rm_data %>%
-    select(upper_end_point_id = location_id, llid, up_rm = rm) %>%
+    select(upper_end_point_id = location_id, llid, up_rm = river_mile,
+           up_wbid = waterbody_id, up_name = waterbody_display_name) %>%
     distinct()
-  # Join to survey_prep
-  add_reach_vals = add_reach_vals %>%
-    left_join(low_rm_data, by = c("llid", "low_rm")) %>%
+  add_reach_vals = core_survey_data() %>%
+    filter(nchar(reach) >= 27L) %>%
+    mutate(llid = remisc::get_text_item(reach, 1, "_")) %>%
+    mutate(reach = remisc::get_text_item(reach, 2, "_")) %>%
+    mutate(lo_rm = as.numeric(remisc::get_text_item(reach, 1, "-"))) %>%
+    mutate(up_rm = as.numeric(remisc::get_text_item(reach, 2, "-"))) %>%
+    left_join(lo_rm_data, by = c("llid", "lo_rm")) %>%
     left_join(up_rm_data, by = c("llid", "up_rm"))
-  if ( any(nchar(add_reach_vals$reach) > 27) ) {
-    cat("\nWarning: Some reach entries > 27 characters. Investigate!\n\n")
-  } else {
-    cat("\nAll reach entries exactly 27 characters. Ok to proceed.\n\n")
-  }
   # Pull out cases where no match exists
   no_reach_point = add_reach_vals %>%
     filter(is.na(lower_end_point_id) | is.na(upper_end_point_id)) %>%
     mutate(lower_comment = if_else(!is.na(lower_end_point_id), "have_point", "need_point")) %>%
     mutate(upper_comment = if_else(!is.na(upper_end_point_id), "have_point", "need_point")) %>%
-    select(waterbody_id = stream_name, stream_name_text, reach_text,
-           llid, low_rm, up_rm, lower_comment, upper_comment) %>%
+    select(parent_form_survey_id, iform_waterbody_id = stream_name, iform_llid = llid,
+           db_lo_wbid = lo_wbid, db_up_wbid = up_wbid, iform_stream_name_text = stream_name_text,
+           db_lo_name = lo_name, db_up_name = up_name, reach_text, lo_rm, up_rm, lower_coords,
+           upper_coords, lower_comment, upper_comment) %>%
     distinct() %>%
-    arrange(stream_name_text, low_rm, up_rm)
-  # Split and combine
-  no_up = no_reach_point %>%
-    filter(upper_comment == "need_point") %>%
-    select(waterbody_id, stream_name_text, reach_text, llid, river_mile = up_rm)  %>%
-    distinct()
-  # Split and combine
-  no_low = no_reach_point %>%
-    filter(lower_comment == "need_point") %>%
-    select(waterbody_id, stream_name_text, reach_text, llid, river_mile = low_rm)  %>%
-    distinct()
-  # Combine
-  no_end_point = rbind(no_up, no_low) %>%
-    filter(!is.na(river_mile)) %>%
-    arrange(stream_name_text, river_mile)
-  return(no_end_point)
+    arrange(iform_stream_name_text, lo_rm, up_rm)
+  return(no_reach_point)
 })
 
 #========================================================
@@ -218,19 +216,23 @@ observe({
 # Primary DT datatable for survey_intent
 output$missing_streams = renderDT({
   #req(input$tabs == "mobile_import")
-  missing_streams_title = glue("Missing streams are shown below. Please edit: '{input$mobile_form_select}'")
+  missing_streams_title = glue("Missing streams are shown below. Carefully inspect the LLID values. Please edit: '{input$mobile_form_select}'")
   # Generate table
   missing_stream_data = tibble(parent_form_survey_id = "Click the check button",
                                survey_date = "",
+                               waterbody_id = "",
                                stream_name = "",
                                stream_name_text = "",
+                               waterbody_display_name = "",
+                               iform_llid = "",
+                               llid = "",
                                reach = "",
                                lower_coords = "",
                                upper_coords = "")
   datatable(missing_stream_data,
-            colnames = c('Parent form ID', 'Survey date', 'Stream id',
-                         'Stream name', 'Reach info', 'Lower coords',
-                         'Upper coords'),
+            # colnames = c('Parent form ID', 'Survey date', 'Stream id',
+            #              'Stream name', 'Reach info', 'Lower coords',
+            #              'Upper coords'),
             extensions = 'Buttons',
             options = list(dom = 'Blftp',
                            pageLength = 5,
@@ -260,15 +262,18 @@ output$missing_reaches = renderDT({
   # Generate table
   missing_reach_data = tibble(parent_form_survey_id = "Click the check button",
                               survey_date = "",
-                              stream_name = "",
+                              waterbody_id = "",
                               stream_name_text = "",
+                              waterbody_display_name = "",
                               reach = "",
                               reach_text = "",
+                              up_rm = "",
+                              lo_rm = "",
                               lower_coords = "",
                               upper_coords = "")
   datatable(missing_reach_data,
-            colnames = c('Parent form ID', 'Survey date', 'Stream id', 'Stream name',
-                         'Reach key value', 'Reach description', 'Lower coords', 'Upper coords'),
+            # colnames = c('Parent form ID', 'Survey date', 'Stream id', 'Stream name',
+            #              'Reach key value', 'Reach description', 'Lower coords', 'Upper coords'),
             extensions = 'Buttons',
             options = list(dom = 'Blftp',
                            pageLength = 5,
@@ -296,14 +301,24 @@ output$add_endpoints = renderDT({
   #req(input$tabs == "mobile_import")
   add_endpoints_title = glue("New reach points below need to be entered. Please use the 'Add reach point' interface to add new points")
   # Generate table
-  add_endpoints_data = tibble(waterbody_id = "Click the check button",
-                              stream_name_text = "",
+  add_endpoints_data = tibble(parent_form_survey_id = "Click the check button",
+                              iform_waterbody_id = "",
+                              iform_llid = "",
+                              db_lo_wbid = "",
+                              db_up_wbid = "",
+                              iform_stream_name_text = "",
+                              db_lo_name = "",
+                              db_up_name = "",
                               reach_text = "",
-                              llid = "",
-                              river_mile = "")
+                              lo_rm = "",
+                              up_rm = "",
+                              lower_coords = "",
+                              upper_coords = "",
+                              lower_comment = "",
+                              upper_comment = "")
   datatable(add_endpoints_data,
-            colnames = c('Waterbody ID', 'Stream name', 'Reach description', 'Latitude Longitude ID',
-                         'River mile'),
+            # colnames = c('Waterbody ID', 'Stream name', 'Reach description', 'Latitude Longitude ID',
+            #              'River mile'),
             extensions = 'Buttons',
             options = list(dom = 'Blftp',
                            pageLength = 5,
@@ -321,7 +336,6 @@ output$add_endpoints = renderDT({
 
 # Create surveys DT proxy object
 add_endpoints_dt_proxy = dataTableProxy(outputId = "add_endpoints")
-
 
 # Generate counts for new_surveys datatable
 observeEvent(input$check_for_new_surveys, {

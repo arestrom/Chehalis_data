@@ -303,7 +303,7 @@ reach_point_update = function(reach_point_edit_values, selected_reach_point_data
 # Identify fish_encounter dependencies prior to delete
 get_reach_point_dependencies = function(location_id) {
   qry = glue("select ",
-             "count(fb.fish_barrier_id) as fish_barrier, ",
+             "count(fp.fish_passage_feature_id) as fish_passage_feature, ",
              "count(fce.fish_capture_event_id) as fish_capture_event, ",
              "count(fe.fish_encounter_id) as fish_encounter, ",
              "count(ml.media_location_id) as media_location, ",
@@ -311,7 +311,7 @@ get_reach_point_dependencies = function(location_id) {
              "count(rd.redd_encounter_id) as redd_encounter, ",
              "count(s.survey_id) as survey ",
              "from location as loc ",
-             "left join fish_barrier as fb on loc.location_id = fb.barrier_location_id ",
+             "left join fish_passage_feature as fp on loc.location_id = fp.feature_location_id ",
              "left join fish_capture_event as fce on loc.location_id = fce.disposition_location_id ",
              "left join fish_encounter as fe on loc.location_id = fe.fish_location_id ",
              "left join media_location as ml on loc.location_id = ml.location_id ",

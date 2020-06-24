@@ -82,7 +82,7 @@ dbDisconnect(db_con)
 # write_sf(sg_streams, "data/sg_streams_2020-04-02.gpkg")
 
 # # Output sg_streams as a shape file
-# write_sf(sg_streams, dsn = "data/sg_streams_2020-04-02.shp", delete_layer = TRUE)
+# write_sf(sg_streams, dsn = "data/shapefiles/sg_streams_2020-06-11.shp", delete_layer = TRUE)
 
 # Trim to needed columns
 streams = streams_st %>%
