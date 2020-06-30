@@ -25,10 +25,10 @@
 #     present?
 #
 #
-#  Successfully reloaded final batch on 2020-06-24 08:53 AM
+#  Successfully reloaded final batch on 2020-06-30 12:41 PM
 #  The only ones now being pulled are those with no survey_uuid.
 #
-# AS 2020-06-24
+# AS 2020-06-30
 #===============================================================================
 
 # Load libraries
@@ -2676,8 +2676,11 @@ run_year_info = header_se %>%
 chk_na_run = survey_event %>%
   filter(is.na(run_id))
 unique(chk_na_run$species_id)
+table(chk_na_run$species_id, useNA = "ifany")
+unique(survey_event$run_id)
+table(survey_event$run_id, useNA = "ifany")
 
-# Add
+# Add run definitions where needed
 survey_event = survey_event %>%
   left_join(run_year_info, by = "survey_id") %>%
   mutate(run_year = case_when(
@@ -2686,11 +2689,24 @@ survey_event = survey_event %>%
     species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1" ~ chum_run_year,
     species_id == "e42aa0fc-c591-4fab-8481-55b0df38dcb1" ~ chinook_run_year,
     TRUE ~ chinook_run_year)) %>%
+  # Compute run definitions where missing
+  # Chum == Fall
+  mutate(run_id = if_else(is.na(run_id) &
+                            species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1",
+                          "94e1757f-b9c7-4b06-a461-17a2d804cd2f", run_id)) %>%
+  # Coho == Fall
+  mutate(run_id = if_else(is.na(run_id) &
+                            species_id == "a0f5b3af-fa07-449c-9f02-14c5368ab304",
+                          "94e1757f-b9c7-4b06-a461-17a2d804cd2f", run_id)) %>%
+  # Sthd == Winter
+  mutate(run_id = if_else(is.na(run_id) &
+                            species_id == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1",
+                          "1b413852-b4e8-42d1-81d9-a7bc373be906", run_id)) %>%
+  # Compute run definitions for lamprey...even where not missing
   mutate(run_id = if_else(species_id %in%
-                            c("2afac5a6-e3b9-4b37-911e-59b93240789d",             # Lamprey
-                              "d29ca246-acfa-48d5-ba55-e61323d59fa7"),            # Lamprey
-                          "59e1e01f-3aef-498c-8755-5862c025eafa",                 # Not applicable
-                          "94e1757f-b9c7-4b06-a461-17a2d804cd2f")) %>%            # Unknown run
+                            c("2afac5a6-e3b9-4b37-911e-59b93240789d",             # P Lamprey
+                              "d29ca246-acfa-48d5-ba55-e61323d59fa7"),            # WB Lamprey
+                          "59e1e01f-3aef-498c-8755-5862c025eafa", run_id)) %>%    # Not applicable
   select(count_type, dead_id, live_id, recap_id, redd_id, survey_id,
          species_id, survey_design_type_id, run_id,
          cwt_detection_method_id, run_year)
@@ -4057,6 +4073,8 @@ db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
 
+#=======  Insert location =================
+
 # location: 3170 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'location', location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -4103,6 +4121,10 @@ DBI::dbDisconnect(db_con)
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'media_location', media_location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+#============================================================
+# Reset gid_sequence
+#============================================================
 
 # Get the current max_gid from the location_coordinates table
 qry = "select max(gid) from location_coordinates"
@@ -4155,14 +4177,14 @@ dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event: 8070 rows
+# survey_event: 9434 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'survey_event', survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== fish data ===============
 
-# fish_encounter: 2090 rows
+# fish_encounter: 2118 rows
 db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'fish_encounter', fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
@@ -4299,14 +4321,14 @@ dbDisconnect(db_con)
 # dbExecute(db_con, glue('delete from fish_mark where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_encounter: 2090 rows
+# # fish_encounter: 2118 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from fish_encounter where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
 # #======== Survey event ===============
 #
-# # survey_event: 8168 rows
+# # survey_event: 9434 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from survey_event where survey_event_id in ({se_ids})'))
 # dbDisconnect(db_con)
@@ -4333,7 +4355,7 @@ dbDisconnect(db_con)
 # dbExecute(db_con, glue('delete from survey_comment where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey_intent: 22703 rows
+# # survey_intent: 22714 rows
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from survey_intent where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
