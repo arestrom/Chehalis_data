@@ -76,7 +76,7 @@ pg_con_local = function(dbname, port = '5432') {
 
 # Set selectable values
 selected_run_year = 2019                     # Only for computing Steelhead origin. Line 376
-selected_species = "Chinook salmon"
+selected_species = "Chum salmon"
 # run = "Fall"      # Fall or Spring
 start_date = "2019-09-01"
 end_date = "2020-02-29"
@@ -191,18 +191,18 @@ count_intent = get_intent(header_data)
 #============================================================================
 
 # Get chinook intent
-chinook_intent = count_intent %>%
+chum_intent = count_intent %>%
   filter(species == selected_species)
 
 # Pull out survey_ids
-chinook_survey_id = chinook_intent %>%
+chum_survey_id = chum_intent %>%
   select(survey_id) %>%
   distinct() %>%
   pull(survey_id)
 
 # Use species intent to filter header_data: 10014 rows left
 header_data = header_data %>%
-  filter(survey_id %in% chinook_survey_id) %>%
+  filter(survey_id %in% chum_survey_id) %>%
   arrange(stream_name, type, survey_dt, run_year)
 
 # Pull out full set of basic header data so surveys with no selected species are preserved for zero entries: 1254 rows
@@ -689,7 +689,7 @@ all_surveys = all_surveys %>%
   # HACK ALERT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! VERIFY HERE !!!!!!!!!!!!!!!!!
   mutate(RCUM = if_else(Type %in% c("Supp", "Explor"), cumsum(RNEW), cumsum(RNEW))) %>%
   ungroup() %>%
-  filter(survey_id %in% chinook_survey_id) %>%
+  filter(survey_id %in% chum_survey_id) %>%
   arrange(Type, StreamName, RML, RMU, survey_dt)
 
 # Format names
@@ -698,11 +698,7 @@ all_surveys = all_surveys %>%
          Observer, RML, RMU, Method, Flow, RiffleVis,
          Species = species, Origin = origin, RunYear = run_year,
          SurveyIntent, SurveyStatus, LM, LF, LSND, LJ, DM,
-         DF, DSND, DJ, RNEW, RVIS, RCUM, RCOMB,
-         Comments = comments, ADClippedBeep, ADClippedNoBeep,
-         ADClippedNoHead, UnMarkBeep, UnMarkNoBeep,
-         UnMarkNoHead, UnknownMarkBeep, UnknownMarkNoBeep,
-         UnknownMarkNoHead, CWTHeadLabels, survey_dt)
+         DF, DSND, DJ, Comments = comments, survey_dt)
 
 # Create a new reach field to enable pulling out empty row
 #unique(all_surveys$StreamName)
@@ -725,7 +721,7 @@ chk_runyr = all_surveys %>%
 dat_empty = all_surveys %>%
   mutate(sort_order = NA_integer_)
 # names(dat_empty)
-dat_empty[,1:39] = ""
+dat_empty[,1:26] = ""
 dat_empty = dat_empty %>%
   distinct() %>%
   arrange(reach)
@@ -744,7 +740,7 @@ dat = rbind(all_surveys, dat_empty) %>%
 # write.xlsx(dat, file = out_name, colNames = TRUE, sheetName = "Chinook")
 
 # Or fancier with styling
-out_name = paste0("data_query/ChinookSurveys_WRIAs_22-23.xlsx")
+out_name = paste0("data_query/ChumSurveys_WRIAs_22-23.xlsx")
 wb <- createWorkbook(out_name)
 addWorksheet(wb, "Sept-Feb_Surveys", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)

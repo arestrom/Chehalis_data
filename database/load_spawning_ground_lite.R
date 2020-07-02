@@ -18,13 +18,13 @@
 #
 # Notes on R procedure:
 #  1. Updated to convert all times to UTC for loading to sqlite
-#  2. Update lastest batch of streams and points for Lea than ran script: 2020-05-20 at 7:51 pm.
-#  3. Uploaded full set of Lea's data from IFB on 2020-06-24 at 09:10 AM
+#  2. Update lastest batch of streams and points for Lea than ran script: 2020-05-20 at 1:13 pm.
+#  3. Uploaded full set of Lea's data from IFB on 2020-06-30 at 09:10 AM
 #
 # ToDo:
 #  1.
 #
-# AS 2020-06-24
+# AS 2020-06-30
 #===============================================================================
 
 # Clear workspace
@@ -1767,7 +1767,7 @@ dat = dat %>%
   mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
-# Write to sink: 22705
+# Write to sink: 22716
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
 dbWriteTable(db_con, 'survey_intent', dat, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
@@ -2088,7 +2088,7 @@ dat = dat %>%
   mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
-# Write to sink: 102160
+# Write to sink: 103528
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
 dbWriteTable(db_con, 'survey_event', dat, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)
@@ -2127,7 +2127,7 @@ dat = dat %>%
   mutate(modified_datetime = format(with_tz(modified_datetime, tzone = "UTC"))) %>%
   distinct()
 
-# Write to sink: 256463
+# Write to sink: 256491
 db_con <- dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
 dbWriteTable(db_con, 'fish_encounter', dat, row.names = FALSE, append = TRUE)
 dbDisconnect(db_con)

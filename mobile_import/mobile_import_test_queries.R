@@ -23,6 +23,10 @@
 #     than one combination of species and cwt_detection_method for a
 #     given species. In that case assign to method = electronic if
 #     present?
+#  4. Make sure redd_name is transferred to all entries of old redds
+#  5. Change old redd run designations to Unknown to be consistent
+#     with new redds, live, dead, etc, and only end up with one
+#     survey_event table entry.
 #
 #
 #  Successfully reloaded final batch on 2020-06-30 12:41 PM
