@@ -18,6 +18,13 @@
 #     Answer: Used by Region 5 to designate new upper and lower end-points.
 #             Ask Reg 5 if this is needed in database...where to store?
 #
+# Notes on install R 4.0.2
+#  1. Only needed to do remotes::install_github("arestrom/iformr")
+#     and               remotes::install_github("arestrom/remisc")
+#     otherwise all packages installed and updated correcly from
+#     RStudio prompt when opening project global.R. Everything
+#     appears to work correctly...including leaflet.extras.
+#
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
 #     get_beaches(). I had to wrap output with as.data.frame().
