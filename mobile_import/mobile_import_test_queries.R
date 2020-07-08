@@ -1549,6 +1549,86 @@ dead_se = dead %>%
          species_fish, run_type, encounter_comments, created_date,
          created_by, modified_date, modified_by)
 
+# Check species
+table(dead_se$species_fish, useNA = "ifany")
+
+# Inspect chinook run_type.....Lea will update run_type as needed in iforms
+chin_run = dead_se %>%
+  filter(species_fish == "e42aa0fc-c591-4fab-8481-55b0df38dcb1")
+table(chin_run$run_type, useNA = "ifany")
+
+# Inspect coho run_type.......Lea's instructions...Convert all cases to fall
+coho_run = dead_se %>%
+  filter(species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304")
+table(coho_run$run_type, useNA = "ifany")
+
+# Inspect sthd run_type.....Lea's instructions...Convert all cases to winter
+sthd_run = dead_se %>%
+  filter(species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1")
+table(sthd_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+chum_run = dead_se %>%
+  filter(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1" | species_fish == "Chum")
+table(chum_run$run_type, useNA = "ifany")
+
+# Output Chinook run data to Lea
+chin_head = header_data %>%
+  select(parent_record_id, survey_date,
+         stream_name_text, reach) %>%
+  distinct()
+
+# Add header info for Lea
+chin_run = chin_run %>%
+  filter(run_type %in% c("2a9f3c67-aa7a-4214-87a6-af09879fc914", "94e1757f-b9c7-4b06-a461-17a2d804cd2f")) %>%
+  left_join(chin_head, by = "parent_record_id")
+
+# # Output
+# out_name = paste0("data_query/RunTypeCheck_DeadSubform.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "RunTypeCheck", gridLines = TRUE)
+# writeData(wb, sheet = 1, chin_run, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(chin_run), gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+# Correct species and run_type....HACK WARNING. Will not need to do in future. Will be fixed in IFB
+dead_se = dead_se %>%
+  mutate(species_fish = if_else(species_fish == "Chum",
+                                "69d1348b-7e8e-4232-981a-702eda20c9b1", species_fish)) %>%
+  # Convert all coho to fall
+  mutate(run_type = if_else(species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304",
+                            "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_type)) %>%
+  # Convert all sthd to winter
+  mutate(run_type = if_else(species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1",
+                            "1b413852-b4e8-42d1-81d9-a7bc373be906", run_type)) %>%
+  # Convert all chum to fall
+  mutate(run_type = if_else(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1",
+                            "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_type))
+
+# Inspect again
+# Inspect chinook run_type.....Lea will update run_type as needed in iforms
+chin_run = dead_se %>%
+  filter(species_fish == "e42aa0fc-c591-4fab-8481-55b0df38dcb1")
+table(chin_run$run_type, useNA = "ifany")
+
+# Inspect coho run_type.......Lea's instructions...Convert all cases to fall
+coho_run = dead_se %>%
+  filter(species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304")
+table(coho_run$run_type, useNA = "ifany")
+
+# Inspect sthd run_type.....Lea's instructions...Convert all cases to winter
+sthd_run = dead_se %>%
+  filter(species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1")
+table(sthd_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+chum_run = dead_se %>%
+  filter(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1")
+table(chum_run$run_type, useNA = "ifany")
+
 #============ fish_encounter ========================
 
 # Inspect the sex_id...includes maturity info
@@ -1950,6 +2030,20 @@ recaps_se_two = recaps_se %>%
 recaps_se = rbind(recaps_se_one, recaps_se_two) %>%
   arrange(recap_id, parent_record_id)
 
+# Verify run values for each species
+table(recaps_se$species_id, useNA = "ifany")
+table(recaps_se$run_id, useNA = "ifany")
+
+# All recaps are chum...so set all run_ids to fall
+# Convert all chum to fall
+recaps_se = recaps_se %>%
+  mutate(run_id = if_else(species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1",
+                          "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_id))
+
+# Verify again
+table(recaps_se$species_id, useNA = "ifany")
+table(recaps_se$run_id, useNA = "ifany")
+
 # Inspect tag_number
 tail(sort(unique(recaps_se$tag_number)), 15)
 
@@ -2052,6 +2146,104 @@ live_se = live %>%
   select(live_id = id, parent_record_id, survey_id, species_fish,
          run_type, live_type, created_date, created_by, modified_date,
          modified_by)
+
+# Check species
+table(live_se$species_fish, useNA = "ifany")
+
+# Inspect chinook run_type.....Lea will update run_type as needed in iforms
+chin_run = live_se %>%
+  filter(species_fish == "e42aa0fc-c591-4fab-8481-55b0df38dcb1")
+table(chin_run$run_type, useNA = "ifany")
+
+# Inspect coho run_type.......Lea's instructions...Convert all cases to fall
+coho_run = live_se %>%
+  filter(species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304")
+table(coho_run$run_type, useNA = "ifany")
+
+# Inspect sthd run_type.....Lea's instructions...Convert all cases to winter
+sthd_run = live_se %>%
+  filter(species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1")
+table(sthd_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+chum_run = live_se %>%
+  filter(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1")
+table(chum_run$run_type, useNA = "ifany")
+
+# Inspect plamp run_type.....Lea's instructions...Convert all cases to fall
+plamp_run = live_se %>%
+  filter(species_fish == "2afac5a6-e3b9-4b37-911e-59b93240789d")
+table(plamp_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+wblamp_run = live_se %>%
+  filter(species_fish == "d29ca246-acfa-48d5-ba55-e61323d59fa7")
+table(wblamp_run$run_type, useNA = "ifany")
+
+# Add header info for Lea
+chin_run = chin_run %>%
+  filter(run_type %in% c("2a9f3c67-aa7a-4214-87a6-af09879fc914", "94e1757f-b9c7-4b06-a461-17a2d804cd2f")) %>%
+  left_join(chin_head, by = "parent_record_id")
+
+# # Output
+# out_name = paste0("data_query/RunTypeCheck_LiveSubform.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "RunTypeCheck", gridLines = TRUE)
+# writeData(wb, sheet = 1, chin_run, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(chin_run), gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+# Correct species and run_type....HACK WARNING. Will not need to do in future. Will be fixed in IFB
+live_se = live_se %>%
+  # Convert all coho to fall
+  mutate(run_type = if_else(species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304",
+                            "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_type)) %>%
+  # Convert all sthd to winter
+  mutate(run_type = if_else(species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1",
+                            "1b413852-b4e8-42d1-81d9-a7bc373be906", run_type)) %>%
+  # Convert all chum to fall
+  mutate(run_type = if_else(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1",
+                            "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_type)) %>%
+  # Convert all plamp to Not applicable
+  mutate(run_type = if_else(species_fish == "2afac5a6-e3b9-4b37-911e-59b93240789d",
+                            "59e1e01f-3aef-498c-8755-5862c025eafa", run_type)) %>%
+  # Convert all wblamp to Not applicable
+  mutate(run_type = if_else(species_fish == "d29ca246-acfa-48d5-ba55-e61323d59fa7",
+                            "59e1e01f-3aef-498c-8755-5862c025eafa", run_type))
+
+# Inspect again
+# Inspect chinook run_type.....Lea will update run_type as needed in iforms
+chin_run = live_se %>%
+  filter(species_fish == "e42aa0fc-c591-4fab-8481-55b0df38dcb1")
+table(chin_run$run_type, useNA = "ifany")
+
+# Inspect coho run_type.......Lea's instructions...Convert all cases to fall
+coho_run = live_se %>%
+  filter(species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304")
+table(coho_run$run_type, useNA = "ifany")
+
+# Inspect sthd run_type.....Lea's instructions...Convert all cases to winter
+sthd_run = live_se %>%
+  filter(species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1")
+table(sthd_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+chum_run = live_se %>%
+  filter(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1")
+table(chum_run$run_type, useNA = "ifany")
+
+# Inspect plamp run_type.....Lea's instructions...Convert all cases to fall
+plamp_run = live_se %>%
+  filter(species_fish == "2afac5a6-e3b9-4b37-911e-59b93240789d")
+table(plamp_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+wblamp_run = live_se %>%
+  filter(species_fish == "d29ca246-acfa-48d5-ba55-e61323d59fa7")
+table(wblamp_run$run_type, useNA = "ifany")
 
 #============ fish_encounter ========================
 
@@ -2288,6 +2480,9 @@ redds = redds %>%
   mutate(created_date = with_tz(created_date, tzone = "UTC")) %>%
   mutate(modified_date = with_tz(modified_date, tzone = "UTC"))
 
+# Check for missing or blank species
+table(redds$sgs_species, useNA = "ifany")
+
 #================================================================================================
 # Pull out redd location data
 #================================================================================================
@@ -2324,23 +2519,33 @@ redds = redds %>%
   rename(redd_id = id) %>%
   left_join(redd_loc_info, by = "parent_record_id")
 
-# Get redd location data: 2829 records
+# Get redd location data: 2878 records
 new_redd_loc = redds %>%
   filter(redd_type == "first_time_redd_encountered") %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by,
          created_location, modified_date, modified_by, survey_id, survey_date,
-         observers, stream_name, waterbody_id, wria_id,redd_type, river_location_text,
+         observers, stream_name, waterbody_id, wria_id, redd_type, river_location_text,
          sgs_redd_name, redd_latitude, redd_longitude, redd_loc_accuracy,
-         redd_orientation, redd_channel_type)
+         redd_orientation, redd_channel_type, sgs_run, species_redd, sgs_species) %>%
+  distinct()
 
-# Get redd location data: 8196 records
+# Check run values: 8 Not applicable, 2255 Unknown, 72 Spring, 543 Fall.
+table(new_redd_loc$sgs_run, useNA = "ifany")
+any(duplicated(new_redd_loc$redd_id))
+
+# Get redd location data: 8629 records
 old_redd_loc = redds %>%
   filter(redd_type == "previously_flagged") %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by,
          created_location, modified_date, modified_by, survey_id, survey_date,
-         observers, stream_name, waterbody_id, wria_id,redd_type, river_location_text,
+         observers, stream_name, waterbody_id, wria_id, redd_type, river_location_text,
          sgs_redd_name, redd_latitude, redd_longitude, redd_loc_accuracy,
-         redd_orientation, redd_channel_type)
+         redd_orientation, redd_channel_type, sgs_run, species_redd, sgs_species)
+
+# Check run values: 7805 Not applicable, 814 Unknown, 2 Spring, 8 Fall.
+table(old_redd_loc$sgs_run, useNA = "ifany")
+table(old_redd_loc$species_redd, useNA = "ifany")
+table(old_redd_loc$sgs_species, useNA = "ifany")
 
 # Format
 new_redd_loc = new_redd_loc %>%
@@ -2364,17 +2569,17 @@ old_redd_loc = old_redd_loc %>%
 
 # Checks ================================================================
 
-# Pull out cases with missing coordinates for inspection: 69 cases
+# Pull out cases with missing coordinates for inspection: 71 cases
 no_redd_coords_new = new_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
 
-# Pull out cases with missing coordinates for inspection: 8096 cases....All but 10 cases with no coordinates
+# Pull out cases with missing coordinates for inspection: 8619 cases....All but 10 cases with no coordinates
 no_redd_coords_old = old_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
 
-# Pull out cases with missing redd_names for inspection: 532 cases
+# Pull out cases with missing redd_names for inspection: 578 cases
 no_redd_name_new = new_redd_loc %>%
   mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
   filter(is.na(sgs_redd_name) | sgs_redd_name == "")
@@ -2386,7 +2591,7 @@ no_redd_coords_or_name_new = new_redd_loc %>%
            redd_latitude < 45 | redd_longitude > -121) %>%
   filter(is.na(sgs_redd_name) | sgs_redd_name == "")
 
-# Pull out cases where redd_name is missing: 498 cases...all new redds
+# Pull out cases where redd_name is missing: 543 cases...all new redds
 no_redd_name = redds %>%
   filter(is.na(sgs_redd_name)) %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by, created_location,
@@ -2410,8 +2615,51 @@ old_redd_names = redds %>%
          species_redd, redd_count, new_redd_name, other_redd_name, previous_redd_name,
          sgs_redd_name, redd_location, redd_latitude, redd_longitude, stat_week,
          species_code, new_redd_count, redd_number_generator, redd_status,
+         prev_species_code, sgs_run, species_redd, sgs_species) %>%
+  arrange(stream_name, created_date)
+
+# Inspect any with nchar less than 7
+short_redd_name = old_redd_names %>%
+  filter(nchar(sgs_redd_name) < 7L)
+unique(short_redd_name$sgs_redd_name)
+
+# See if any match in new_redd_names
+short_new_redd_name = redds %>%
+  filter(redd_type == "first_time_redd_encountered") %>%
+  filter(sgs_redd_name %in% c("6RD", "*"))  %>%
+  select(redd_id, parent_record_id, survey_id, created_date, created_by, created_location,
+         survey_id, survey_date, observers, stream_name, waterbody_id, wria_id, redd_type,
+         species_redd, redd_count, new_redd_name, other_redd_name, previous_redd_name,
+         sgs_redd_name, redd_location, redd_latitude, redd_longitude, stat_week,
+         species_code, new_redd_count, redd_number_generator, redd_status,
          prev_species_code) %>%
   arrange(stream_name, created_date)
+
+# # Output with styling
+# num_cols = ncol(short_redd_name)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "ShortOldReddNames.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "ShortReddNames", gridLines = TRUE)
+# writeData(wb, sheet = 1, short_redd_name, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+#
+# # Output with styling
+# num_cols = ncol(short_new_redd_name)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "ShortNewReddNames.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "ShortReddNames", gridLines = TRUE)
+# writeData(wb, sheet = 1, short_new_redd_name, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
 # Old_redd_ids
 old_sgs_redd_names = old_redd_names %>%
@@ -2441,6 +2689,19 @@ no_match_to_old_redd_names = old_redd_names %>%
 # wb <- createWorkbook(out_name)
 # addWorksheet(wb, "NoMatchReddNames", gridLines = TRUE)
 # writeData(wb, sheet = 1, no_match_to_old_redd_names, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+# # Output with styling
+# num_cols = ncol(no_redd_name)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "NoReddName.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "NoReddName", gridLines = TRUE)
+# writeData(wb, sheet = 1, no_redd_name, rowNames = FALSE)
 # ## create and add a style to the column headers
 # headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
 #                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
@@ -2479,6 +2740,40 @@ redd_dump_ids = no_redd_coords_or_name_new %>%
 redd_location_prep = new_redd_loc %>%
   filter(!redd_id %in% redd_dump_ids)
 
+# Check for dups
+any(duplicated(redd_location_prep$redd_id))
+any(duplicated(redd_location_prep$sgs_redd_name))
+
+# Pull out the duplicated redd names from the new redds....THERE CANT BE DUPS IN NEW REDD NAMES
+new_redd_name_dups = redd_location_prep %>%
+  filter(!is.na(sgs_redd_name)) %>%
+  filter(!sgs_redd_name == "") %>%
+  filter(duplicated(sgs_redd_name)) %>%
+  select(sgs_redd_name) %>%
+  left_join(redd_location_prep, by = "sgs_redd_name")
+
+# # Output with styling
+# num_cols = ncol(new_redd_name_dups)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "DuplicateNewReddNames.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "NoReddName", gridLines = TRUE)
+# writeData(wb, sheet = 1, new_redd_name_dups, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+
+
+# STOPPED HERE...THERE CANT BE ANY DUP REDD_NAMES FOR NEW REDDS
+
+
+
+
+
+
 # Create and organize needed fields: 2819 records
 redd_location_prep = redd_location_prep %>%
   mutate(location_id = remisc::get_uuid(nrow(redd_location_prep))) %>%
@@ -2488,10 +2783,13 @@ redd_location_prep = redd_location_prep %>%
          stream_channel_type_id = redd_channel_type,
          location_orientation_type_id = redd_orientation,
          location_name = sgs_redd_name, latitude = redd_latitude,
-         longitude = redd_longitude,
-         horizontal_accuracy = redd_loc_accuracy,
+         longitude = redd_longitude, sgs_run, species_redd,
+         sgs_species, horizontal_accuracy = redd_loc_accuracy,
          created_datetime = created_date, created_by,
          modified_datetime = modified_date, modified_by)
+
+# Check for dups
+any(duplicated(redd_location_prep$redd_id))
 
 # Pull out redd_coordinates
 redd_location_coords_prep = redd_location_prep %>%
@@ -2500,21 +2798,238 @@ redd_location_coords_prep = redd_location_prep %>%
          created_datetime, created_by, modified_datetime,
          modified_by)
 
-# Link redd_location back to redds data
-redd_loc_id = redd_location_prep %>%
-  select(redd_id, redd_location_id = location_id) %>%
+# Link redd_location back to redds data....this is all from new_redd_loc
+new_redd_loc_id = redd_location_prep %>%
+  select(new_redd_id = redd_id, redd_location_id = location_id,
+         run_id = sgs_run, sgs_redd_name = location_name,
+         sgs_species) %>%
+  filter(!sgs_redd_name %in% c("6RD", "*", ""))  %>%
+  filter(!is.na(sgs_redd_name)) %>%
   distinct()
 
-# Join back to redds
-redds = redds %>%
-  left_join(redd_loc_id, by = "redd_id")
+# Check
+any(duplicated(new_redd_loc_id$new_redd_id))
+
+# Check for missing species and run
+table(new_redd_loc_id$run_id, useNA = "ifany")
+table(new_redd_loc_id$sgs_species, useNA = "ifany")
+
+# Inspect missing species...Chinook
+chk_species = new_redd_loc_id %>%
+  filter(is.na(sgs_species))
+
+# Fill in missing species...HACK ALERT !!!! I manually inspected
+new_redd_loc_id = new_redd_loc_id %>%
+  mutate(sgs_species = if_else(is.na(sgs_species),
+                               "e42aa0fc-c591-4fab-8481-55b0df38dcb1", sgs_species))
+
+# Check again for missing species and run
+table(new_redd_loc_id$run_id, useNA = "ifany")
+table(new_redd_loc_id$sgs_species, useNA = "ifany")
+
+# Check
+any(duplicated(new_redd_loc_id$new_redd_id))
+
+# Check old redd names....Need to get species and run from new_redd data
+# There were many cases of missing run and species in old_redd_names. Run
+# was often labeled Not applicable.
+table(old_redd_names$sgs_run, useNA = "ifany")
+table(old_redd_names$sgs_species, useNA = "ifany")
+
+# Trim to only cases with sgs_redd_name and join by sgs_redd_name
+old_redd_loc_id = old_redd_names %>%
+  filter(!sgs_redd_name %in% c("6RD", "*", ""))  %>%
+  filter(!is.na(sgs_redd_name)) %>%
+  select(redd_id, sgs_redd_name, redd_status) %>%
+  distinct()
+
+# Check
+any(duplicated(old_redd_loc_id$redd_id))
+any(duplicated(new_redd_loc_id$sgs_redd_name))
+
+# Join location_id
+old_redd_loc_id = old_redd_loc_id %>%
+  left_join(new_redd_loc_id, by = "sgs_redd_name") %>%
+  distinct()
+
+# Arrange for inspection
+old_redd_loc_id = old_redd_loc_id %>%
+  select(redd_id, new_redd_id, sgs_redd_name, redd_status,
+         redd_location_id, run_id, sgs_species) %>%
+  arrange(sgs_redd_name, new_redd_id, redd_id)
+
+# Pull out fields needed for join
+new_redd_loc_id = new_redd_loc_id %>%
+  select(redd_id = new_redd_id, redd_location_id, run_id,
+         species_id = sgs_species) %>%
+  distinct()
+
+# Pull out fields needed for join
+old_redd_loc_id = old_redd_loc_id %>%
+  select(redd_id, redd_location_id, run_id,
+         species_id = sgs_species) %>%
+  distinct()
+
+# Check new redd id
+any(is.na(new_redd_loc_id$redd_id))
+any(is.na(new_redd_loc_id$redd_location_id))
+any(is.na(new_redd_loc_id$run_id))
+any(is.na(new_redd_loc_id$species_id))
+any(duplicated(new_redd_loc$redd_id))
+
+# Check old redd id
+any(is.na(old_redd_loc_id$redd_id))
+any(is.na(old_redd_loc_id$redd_location_id))
+any(is.na(old_redd_loc_id$run_id))
+any(is.na(old_redd_loc_id$species_id))
+any(duplicated(old_redd_loc_id$redd_id))
+
+# Identify the duplicated old redd_id
+dup_old_redd_id = old_redd_loc_id %>%
+  filter(duplicated(redd_id)) %>%
+  select(redd_id) %>%
+  left_join(old_redd_loc_id, by = "redd_id") %>%
+  arrange(redd_id)
+
+# Pull out the redd_ids and get the corresponding redds data
+dup_redd_ids = unique(dup_old_redd_id$redd_id)
+dup_redd_locs = redds %>%
+  filter(redd_id %in% dup_redd_ids)
+
+# Join to redds by redd id...both old_redd_loc_id and new_redd_loc_id
+# Should give complete set of location_ids, species_ids, and run_ids for both
+# old and new redds...Started with 11507 rows...should stay the same
+redds1 = redds %>%
+  left_join(new_redd_loc_id, by = "redd_id") %>%
+  left_join(old_redd_loc_id, by = "redd_id")
 
 # Pull out redd survey_event data
 redds_se = redds %>%
   select(redd_id, parent_record_id, survey_id, sgs_species,
-         sgs_run, created_date, created_by, modified_date,
+         sgs_run, sgs_redd_name, created_date, created_by, modified_date,
          modified_by) %>%
   left_join(header_se, by = c("survey_id", "parent_record_id"))
+
+# Check species
+table(redds_se$sgs_species, useNA = "ifany")
+
+# HACK ALERT !!! Pull out cases where species is blank
+chk_redd_species = redds_se %>%
+  filter(sgs_species == "")
+
+# # Output with styling
+# num_cols = ncol(chk_redd_species)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "NoReddSpecies.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "NoReddName", gridLines = TRUE)
+# writeData(wb, sheet = 1, chk_redd_species, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+# Inspect chinook run_type....Will keep as is in database but transform in export to Curt
+chin_run = redds_se %>%
+  filter(sgs_species == "e42aa0fc-c591-4fab-8481-55b0df38dcb1")
+table(chin_run$sgs_run, useNA = "ifany")
+
+# Inspect coho run_type.......Lea's instructions...Convert all cases to fall
+coho_run = redds_se %>%
+  filter(sgs_species == "a0f5b3af-fa07-449c-9f02-14c5368ab304")
+table(coho_run$sgs_run, useNA = "ifany")
+
+# Inspect sthd run_type.....Lea's instructions...Convert all cases to winter
+sthd_run = live_se %>%
+  filter(species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1")
+table(sthd_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+chum_run = live_se %>%
+  filter(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1")
+table(chum_run$run_type, useNA = "ifany")
+
+# Inspect plamp run_type.....Lea's instructions...Convert all cases to fall
+plamp_run = live_se %>%
+  filter(species_fish == "2afac5a6-e3b9-4b37-911e-59b93240789d")
+table(plamp_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+wblamp_run = live_se %>%
+  filter(species_fish == "d29ca246-acfa-48d5-ba55-e61323d59fa7")
+table(wblamp_run$run_type, useNA = "ifany")
+
+# Add header info for Lea
+chin_run = chin_run %>%
+  filter(sgs_run %in% c("2a9f3c67-aa7a-4214-87a6-af09879fc914",
+                        "94e1757f-b9c7-4b06-a461-17a2d804cd2f",
+                        "59e1e01f-3aef-498c-8755-5862c025eafa")) %>%
+  left_join(chin_head, by = "parent_record_id") %>%
+  mutate(run_type = case_when(
+    sgs_run == "2a9f3c67-aa7a-4214-87a6-af09879fc914" ~ "Spring",
+    sgs_run == "94e1757f-b9c7-4b06-a461-17a2d804cd2f" ~ "Unknown",
+    sgs_run == "59e1e01f-3aef-498c-8755-5862c025eafa" ~ "Not applicable"))
+
+# # Output
+# out_name = paste0("data_query/RunTypeCheck_ReddsSubform.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "RunTypeCheck", gridLines = TRUE)
+# writeData(wb, sheet = 1, chin_run, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(chin_run), gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+# Correct species and run_type....HACK WARNING. Will not need to do in future. Will be fixed in IFB
+live_se = live_se %>%
+  # Convert all coho to fall
+  mutate(run_type = if_else(species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304",
+                            "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_type)) %>%
+  # Convert all sthd to winter
+  mutate(run_type = if_else(species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1",
+                            "1b413852-b4e8-42d1-81d9-a7bc373be906", run_type)) %>%
+  # Convert all chum to fall
+  mutate(run_type = if_else(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1",
+                            "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_type)) %>%
+  # Convert all plamp to Not applicable
+  mutate(run_type = if_else(species_fish == "2afac5a6-e3b9-4b37-911e-59b93240789d",
+                            "59e1e01f-3aef-498c-8755-5862c025eafa", run_type)) %>%
+  # Convert all wblamp to Not applicable
+  mutate(run_type = if_else(species_fish == "d29ca246-acfa-48d5-ba55-e61323d59fa7",
+                            "59e1e01f-3aef-498c-8755-5862c025eafa", run_type))
+
+# Inspect again
+# Inspect chinook run_type.....Lea will update run_type as needed in iforms
+chin_run = live_se %>%
+  filter(species_fish == "e42aa0fc-c591-4fab-8481-55b0df38dcb1")
+table(chin_run$run_type, useNA = "ifany")
+
+# Inspect coho run_type.......Lea's instructions...Convert all cases to fall
+coho_run = live_se %>%
+  filter(species_fish == "a0f5b3af-fa07-449c-9f02-14c5368ab304")
+table(coho_run$run_type, useNA = "ifany")
+
+# Inspect sthd run_type.....Lea's instructions...Convert all cases to winter
+sthd_run = live_se %>%
+  filter(species_fish == "aa9f07cf-91f8-4244-ad17-7530b8cd1ce1")
+table(sthd_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+chum_run = live_se %>%
+  filter(species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1")
+table(chum_run$run_type, useNA = "ifany")
+
+# Inspect plamp run_type.....Lea's instructions...Convert all cases to fall
+plamp_run = live_se %>%
+  filter(species_fish == "2afac5a6-e3b9-4b37-911e-59b93240789d")
+table(plamp_run$run_type, useNA = "ifany")
+
+# Inspect chum run_type.....Lea's instructions...Convert all cases to fall
+wblamp_run = live_se %>%
+  filter(species_fish == "d29ca246-acfa-48d5-ba55-e61323d59fa7")
+table(wblamp_run$run_type, useNA = "ifany")
 
 #================================================================================================
 # Combine all se tables to calculate survey_event_id...can tie back using subform id
@@ -2552,6 +3067,8 @@ redds_sev = redds_se %>%
 
 # Verify the columns
 unique(redds_sev$species_id[!nchar(redds_sev$species_id) == 36L])
+
+
 
 # Pull out species code from redd_name
 redds_sev = redds_sev %>%

@@ -1,5 +1,5 @@
 #================================================================
-# Export all WRIA 22 and 23 data to excel in Curt Holt format
+# Export all WRIA 22 data to excel in Curt Holt format
 #
 # Notes:
 #  1. Need to add an entry in survey_event for each species
@@ -21,8 +21,9 @@
 #     (of the four) that was not entered in the survey_intent
 #     table. This will make the intent explicit in the export
 #     that no survey was conducted for that species.
+#  9. Kim said that WRIA 23 not needed for Chum
 #
-# AS 2020-07-01
+# AS 2020-07-06
 #================================================================
 
 # Clear workspace
@@ -109,7 +110,7 @@ get_header_data = function(start_date, end_date) {
              "left join stream_flow_type_lut as sf on sc.stream_flow_type_id = sf.stream_flow_type_id ",
              "left join visibility_type_lut as vt on sc.visibility_type_id = vt.visibility_type_id ",
              "where survey_datetime between '{start_date}' and '{end_date}' ",
-             "and wr.wria_code in ('22', '23')")
+             "and wr.wria_code in ('22')")
   con = pg_con_local("spawning_ground")
   surveys = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
@@ -740,7 +741,7 @@ dat = rbind(all_surveys, dat_empty) %>%
 # write.xlsx(dat, file = out_name, colNames = TRUE, sheetName = "Chinook")
 
 # Or fancier with styling
-out_name = paste0("data_query/ChumSurveys_WRIAs_22-23.xlsx")
+out_name = paste0("data_query/ChumSurveys_WRIA_22.xlsx")
 wb <- createWorkbook(out_name)
 addWorksheet(wb, "Sept-Feb_Surveys", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)
