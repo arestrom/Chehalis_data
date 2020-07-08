@@ -24,6 +24,8 @@
 #     otherwise all packages installed and updated correcly from
 #     RStudio prompt when opening project global.R. Everything
 #     appears to work correctly...including leaflet.extras.
+#     Should also install Rtools4 and add path:
+#     PATH="${RTOOLS40_HOME}\usr\bin;${PATH}"
 #
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
