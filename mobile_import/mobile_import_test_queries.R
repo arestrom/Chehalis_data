@@ -544,7 +544,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 2040 records....approx 4.0 seconds
+# Test...currently 2044 records....approx 4.0 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -2040,7 +2040,7 @@ recaps_se = recaps_se %>%
   mutate(run_id = if_else(species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1",
                           "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_id))
 
-# Verify again
+# Verify again....All fall chum
 table(recaps_se$species_id, useNA = "ifany")
 table(recaps_se$run_id, useNA = "ifany")
 
@@ -2214,7 +2214,7 @@ live_se = live_se %>%
   mutate(run_type = if_else(species_fish == "d29ca246-acfa-48d5-ba55-e61323d59fa7",
                             "59e1e01f-3aef-498c-8755-5862c025eafa", run_type))
 
-# Inspect again
+# Inspect again....now all spring or fall
 # Inspect chinook run_type.....Lea will update run_type as needed in iforms
 chin_run = live_se %>%
   filter(species_fish == "e42aa0fc-c591-4fab-8481-55b0df38dcb1")
@@ -2462,7 +2462,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 11507 records: Checked that I got first and last parent_record_id
+# Test...currently 11498 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -2519,7 +2519,7 @@ redds = redds %>%
   rename(redd_id = id) %>%
   left_join(redd_loc_info, by = "parent_record_id")
 
-# Get redd location data: 2878 records
+# Get redd location data: 2872 records
 new_redd_loc = redds %>%
   filter(redd_type == "first_time_redd_encountered") %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by,
@@ -2529,11 +2529,11 @@ new_redd_loc = redds %>%
          redd_orientation, redd_channel_type, sgs_run, species_redd, sgs_species) %>%
   distinct()
 
-# Check run values: 8 Not applicable, 2255 Unknown, 72 Spring, 543 Fall.
+# Check run values: 8 Not applicable, 2251 Unknown, 71 Spring, 542 Fall.
 table(new_redd_loc$sgs_run, useNA = "ifany")
 any(duplicated(new_redd_loc$redd_id))
 
-# Get redd location data: 8629 records
+# Get redd location data: 8626 records
 old_redd_loc = redds %>%
   filter(redd_type == "previously_flagged") %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by,
@@ -2542,7 +2542,7 @@ old_redd_loc = redds %>%
          sgs_redd_name, redd_latitude, redd_longitude, redd_loc_accuracy,
          redd_orientation, redd_channel_type, sgs_run, species_redd, sgs_species)
 
-# Check run values: 7805 Not applicable, 814 Unknown, 2 Spring, 8 Fall.
+# Check run values: 7803 Not applicable, 813 Unknown, 2 Spring, 8 Fall.
 table(old_redd_loc$sgs_run, useNA = "ifany")
 table(old_redd_loc$species_redd, useNA = "ifany")
 table(old_redd_loc$sgs_species, useNA = "ifany")
@@ -2736,7 +2736,7 @@ redd_dump_ids = no_redd_coords_or_name_new %>%
 #   select(survey_id, create_by = head_create_by,
 #          mod_by = head_mod_by)
 
-# Prep redd_location data
+# Prep redd_location data: 2862 remaining
 redd_location_prep = new_redd_loc %>%
   filter(!redd_id %in% redd_dump_ids)
 
@@ -2767,7 +2767,7 @@ new_redd_name_dups = redd_location_prep %>%
 
 
 
-# STOPPED HERE...THERE CANT BE ANY DUP REDD_NAMES FOR NEW REDDS
+# STOPPED HERE...NOW LOOKS GOOD. RESUME HERE ON MONDAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
