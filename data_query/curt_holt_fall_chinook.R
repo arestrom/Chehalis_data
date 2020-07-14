@@ -708,10 +708,12 @@ all_surveys = all_surveys %>%
          Species = species, Origin = origin, RunYear = run_year,
          Run = run, SurveyIntent, SurveyStatus, LM, LF, LSND,
          LJ, DM, DF, DSND, DJ, RNEW, RVIS, RCUM, RCOMB,
-         Comments = comments, ADClippedBeep, ADClippedNoBeep,
-         ADClippedNoHead, UnMarkBeep, UnMarkNoBeep,
-         UnMarkNoHead, UnknownMarkBeep, UnknownMarkNoBeep,
-         UnknownMarkNoHead, CWTHeadLabels, survey_dt)
+         Comments = comments, ADB = ADClippedBeep,
+         ADNB = ADClippedNoBeep, ADNH = ADClippedNoHead,
+         UMB = UnMarkBeep, UMNB = UnMarkNoBeep,
+         UMNH = UnMarkNoHead, UKB = UnknownMarkBeep,
+         UKNB = UnknownMarkNoBeep, UKNH = UnknownMarkNoHead,
+         CWTHeadLabels, survey_dt)
 
 # Create a new reach field to enable pulling out empty row
 #unique(all_surveys$StreamName)
