@@ -248,7 +248,7 @@ get_stream_centroid = function(waterbody_id) {
   return(stream_centroid)
 }
 
-# Stream centroid query
+# Stream bounds query
 get_stream_bounds = function(waterbody_id) {
   qry = glue("select DISTINCT st.waterbody_id, ",
              "st.geom as geometry ",
