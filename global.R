@@ -218,11 +218,11 @@ source("mobile_import/mobile_import_global.R")
 # Define globals ================================================================
 
 # # Switch to RPostgres....works, but need to change placeholders in separate branch...then do PR.
-# pool = pool::dbPool(RSQLite::SQLite(), dbname = "database/spawning_ground_lite.sqlite", host = "localhost")
+pool = pool::dbPool(RSQLite::SQLite(), dbname = "database/spawning_ground_lite.sqlite", host = "localhost")
 
-# Test using onedrive
-chehalis_lite_path = "C:/Users/stromas/OneDrive - Washington State Executive Branch Agencies/chehalis_lite/spawning_ground_lite.sqlite"
-pool = pool::dbPool(RSQLite::SQLite(), dbname = chehalis_lite_path, host = "localhost")
+# # Test using onedrive
+# chehalis_lite_path = "C:/Users/stromas/OneDrive - Washington State Executive Branch Agencies/chehalis_lite/spawning_ground_lite.sqlite"
+# pool = pool::dbPool(RSQLite::SQLite(), dbname = chehalis_lite_path, host = "localhost")
 
 # Define functions =============================================================
 

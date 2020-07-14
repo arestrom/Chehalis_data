@@ -26,7 +26,7 @@
 #================================================================
 
 # Clear workspace
-rm(list=ls(all=TRUE))
+rm(list=ls(all.names = TRUE))
 
 # Load any required libraries
 library(RPostgres)
@@ -344,6 +344,8 @@ head_dat = header_data %>%
 
 # Check
 table(head_dat$run_year, useNA = "ifany")
+table(head_dat$species, useNA = "ifany")
+table(head_dat$type, useNA = "ifany")
 
 # # HACK ALERT: Adjust run to most meaningful where more than one per se
 # head_dat = head_dat %>%
