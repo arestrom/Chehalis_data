@@ -27,6 +27,10 @@
 #  5. Change old redd run designations to Unknown to be consistent
 #     with new redds, live, dead, etc, and only end up with one
 #     survey_event table entry.
+#  6. Am getting entries for species with run Unknown where no counts exist !!!!
+#     Need to dump those cases before loading to DB !!!!!!!!!!!!!!!!!!!
+#     See Newaukum River 10/02/2019 5.8-6.9 Chinook. Got spring, fall, unknown
+#     but no counts or other data associated with Unknown run Chinook entry.
 #
 #
 #  Successfully reloaded most recent batch on 2020-07-13 13:05 PM
