@@ -26,6 +26,8 @@
 #     appears to work correctly...including leaflet.extras.
 #     Should also install Rtools4 and add path:
 #     PATH="${RTOOLS40_HOME}\usr\bin;${PATH}"
+#  2. Will need a .Renviron file for iformr
+#  3. Will need a shared place for sqlite DB
 #
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
@@ -143,7 +145,7 @@
 # 41. Need interface for media. Copy code from mykos.
 # 42.
 #
-# AS 2020-06-24
+# AS 2020-07-15
 #==============================================================
 
 # Load libraries
