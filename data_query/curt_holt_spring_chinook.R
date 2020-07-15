@@ -22,11 +22,11 @@
 #     table. This will make the intent explicit in the export
 #     that no survey was conducted for that species.
 #
-# AS 2020-06-12
+# AS 2020-07-01
 #================================================================
 
 # Clear workspace
-rm(list=ls(all=TRUE))
+rm(list=ls(all.names = TRUE))
 
 # Load any required libraries
 library(RPostgres)
@@ -75,9 +75,9 @@ pg_con_local = function(dbname, port = '5432') {
 #============================================================================
 
 # Set selectable values
-selected_run_year = 2019
+selected_run_year = 2019                     # Only for computing Steelhead origin. Line 376
 selected_species = "Chinook salmon"
-# run = "Fall"      # Fall or Spring
+selected_run = "Spring"      # Fall or Spring
 start_date = "2019-09-01"
 end_date = "2020-02-29"
 
@@ -130,7 +130,8 @@ get_header_data = function(start_date, end_date) {
 }
 
 # Run the function: 10130 rows
-header_data = get_header_data(start_date, end_date)
+header_data = get_header_data(start_date, end_date) %>%
+  arrange(stream_name, rml, rmu, survey_dt)
 
 # Identify fake surveys
 fake_id = header_data %>%
@@ -208,20 +209,44 @@ header_data = header_data %>%
 full_header = header_data %>%
   select(survey_id, wria, stream_name, llid, type, survey_date, statweek,
          rml, rmu, method, flow, rifflevis, obs, survey_status, survey_dt) %>%
-  distinct()
+  distinct() %>%
+  arrange(stream_name, rml, rmu, survey_dt)
 
 # Check: None, correct
 any(duplicated(full_header$survey_id))
 unique(header_data$species)
 
 #============================================================================
+# Filter surveys to those where counts for "fall" chinook were intended
+#============================================================================
+
+# Change any unknown run values recorded for surveys prior to October 16 to "Spring".
+# Any unknown values for surveys after that date will be "Fall".
+# Then filter to only desired species and run
+table(header_data$run, useNA = "ifany")
+table(header_data$species, useNA = "ifany")
+cut_off_date = as.Date(paste0(selected_run_year, "-10-16"))
+header_data_adj = header_data %>%
+  filter(species == "Chinook salmon") %>%
+  mutate(run = if_else(run == "Unknown" & survey_dt < cut_off_date,
+                       "Spring", run)) %>%
+  mutate(run = if_else(run == "Unknown" & survey_dt >= cut_off_date,
+                       "Fall", run)) %>%
+  filter(run == selected_run) %>%
+  distinct()
+
+# Check
+table(header_data_adj$run, useNA = "ifany")
+table(header_data_adj$species, useNA = "ifany")
+
+#============================================================================
 # Get all live and dead counts for surveys above
 #============================================================================
 
 # Function to get fish_counts
-get_fish_counts = function(header_data) {
+get_fish_counts = function(header_data_adj) {
   # Pull out the survey_event_ids
-  se_id = header_data %>%
+  se_id = header_data_adj %>%
     filter(!is.na(survey_event_id)) %>%
     pull(survey_event_id)
   se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
@@ -250,18 +275,20 @@ get_fish_counts = function(header_data) {
   return(fish_counts)
 }
 
-# Run the function: 1759 rows
-fish_counts = get_fish_counts(header_data) %>%
-  filter(species == selected_species) %>%
-  filter(run_year == selected_run_year)
+# Run the function: 1844 rows
+fish_counts = get_fish_counts(header_data_adj) %>%
+  mutate(run = selected_run) %>%
+  select(survey_id, survey_event_id, fish_encounter_id, species,
+         run_year, run, fish_status, sex, maturity, clip_status,
+         cwt_detect, fish_count, prev_count, fish_comments)
 
 #============================================================================
 # Get all redd counts for surveys above
 #============================================================================
 
 # Function to get redd counts
-get_redd_counts = function(header_data) {
-  se_id = header_data %>%
+get_redd_counts = function(header_data_adj) {
+  se_id = header_data_adj %>%
     filter(!is.na(survey_event_id)) %>%
     pull(survey_event_id)
   se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
@@ -282,17 +309,18 @@ get_redd_counts = function(header_data) {
 }
 
 # Run the function: 4040 rows
-redd_counts = get_redd_counts(header_data) %>%
-  filter(species == selected_species) %>%
-  filter(run_year == selected_run_year)
+redd_counts = get_redd_counts(header_data_adj) %>%
+  mutate(run = selected_run) %>%
+  select(survey_id, survey_event_id, redd_encounter_id, species,
+         run_year, run, redd_status, redd_count)
 
 #============================================================================
 # Get the cwt labels for surveys above
 #============================================================================
 
 # Function to get cwt labels
-get_head_labels = function(header_data) {
-  se_id = header_data %>%
+get_head_labels = function(header_data_adj) {
+  se_id = header_data_adj %>%
     filter(!is.na(survey_event_id)) %>%
     pull(survey_event_id)
   se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
@@ -314,9 +342,10 @@ get_head_labels = function(header_data) {
 }
 
 # Run the function: 3 rows .... all from fake data
-head_labels = get_head_labels(header_data) %>%
-  filter(species == selected_species) %>%
-  filter(run_year == selected_run_year)
+head_labels = get_head_labels(header_data_adj) %>%
+  mutate(run = selected_run) %>%
+  select(survey_id, survey_event_id, species, run_year,
+         run, cwt_head_label)
 
 #============================================================================
 # Calculate fish counts by status, sex, and maturity
@@ -325,17 +354,32 @@ head_labels = get_head_labels(header_data) %>%
 # Cases occur with live detection method NA and dead detection method electronic
 # So need to combine again by survey_id and species to avoid duplicate rows
 
+# # Add some helper fields from header_data
+# head_dat = header_data %>%
+#   filter(!is.na(survey_event_id)) %>%
+#   select(survey_id, survey_event_id, stream_name, survey_date,
+#          species, run, run_year, type, rml, rmu, method, obs,
+#          survey_dt) %>%
+#   filter(species == selected_species) %>%
+#   distinct()
+
 # Add some helper fields from header_data
-head_dat = header_data %>%
+head_dat = header_data_adj %>%
   filter(!is.na(survey_event_id)) %>%
-  select(survey_id, survey_event_id, stream_name,
-         survey_date, species, run, type,
-         rml, rmu, method, obs, survey_dt) %>%
+  select(survey_id, stream_name, survey_date, species,
+         run_year, run, type, rml, rmu, method, obs,
+         survey_dt) %>%
   distinct()
+
+# Check
+table(head_dat$run, useNA = "ifany")
+table(head_dat$run_year, useNA = "ifany")
+table(head_dat$species, useNA = "ifany")
+table(head_dat$type, useNA = "ifany")
 
 # Add to fish_counts
 fish_dat = fish_counts %>%
-  left_join(head_dat, by = c("survey_id", "survey_event_id", "species")) %>%
+  left_join(head_dat, by = c("survey_id", "species", "run_year", "run")) %>%
   select(survey_id, survey_event_id, fish_encounter_id, stream_name,
          survey_date, type, rml, rmu, method, obs, species, run_year,
          run, fish_status, sex, maturity, clip_status, cwt_detect,
@@ -380,7 +424,7 @@ fish_sums = fish_dat %>%
                                 fish_count, 0L)) %>%
   mutate(dd_jack_count = if_else(fish_status == "Dead" & sex == "Male" & maturity == "Subadult",
                                  fish_count, 0L)) %>%
-  group_by(survey_id, type, species, run_year, run, origin) %>%
+  group_by(survey_id, type, species, run_year, origin) %>%
   mutate(lv_male_sum = sum(lv_male_count, na.rm = TRUE)) %>%
   mutate(lv_female_sum = sum(lv_female_count, na.rm = TRUE)) %>%
   mutate(lv_snd_sum = sum(lv_snd_count, na.rm = TRUE)) %>%
@@ -397,11 +441,11 @@ fish_sums = fish_dat %>%
 
 # Add back to fish_dat...for inspection
 base_sums = fish_dat %>%
-  select(survey_id, species, run, run_year, origin,
-         stream_name, survey_date, type, rml,
-         rmu, method, obs) %>%
-  left_join(fish_sums, by = c("survey_id", "type", "species", "run",
-                              "run_year", "origin")) %>%
+  select(survey_id, species, run_year, run, origin,
+         stream_name, survey_date, type, rml, rmu,
+         method, obs) %>%
+  left_join(fish_sums, by = c("survey_id", "type", "species",
+                              "run_year", "run", "origin")) %>%
   distinct()
 
 #============================================================================
@@ -432,7 +476,7 @@ fish_clip_sums = fish_dat %>%
                                  fish_count, 0L)) %>%
   mutate(unclip_nohead = if_else(clip_status == "UN" & cwt_detect == "Coded-wire tag undetermined, e.g., no head",
                                  fish_count, 0L)) %>%
-  group_by(survey_id, type, species, run_year, run, origin) %>%
+  group_by(survey_id, type, species, run_year, origin) %>%
   mutate(clip_beep_sum = sum(clip_beep, na.rm = TRUE)) %>%
   mutate(clip_nobeep_sum = sum(clip_nobeep, na.rm = TRUE)) %>%
   mutate(clip_nohead_sum = sum(clip_nohead, na.rm = TRUE)) %>%
@@ -457,12 +501,13 @@ fish_clip_sums = fish_dat %>%
 
 # Add to fish_counts
 redd_dat = redd_counts %>%
-  left_join(head_dat, by = c("survey_id", "survey_event_id", "species")) %>%
+  left_join(head_dat, by = c("survey_id", "species", "run_year", "run")) %>%
   select(survey_id, survey_event_id, redd_encounter_id, stream_name, survey_date, type,
          rml, rmu, method, obs, species, run_year, run, redd_status, redd_count,
          survey_dt) %>%
   filter(!is.na(redd_encounter_id)) %>%
-  arrange(stream_name, survey_dt, rml, rmu)
+  arrange(stream_name, survey_dt, rml, rmu) %>%
+  distinct()
 
 # Calculate origin based on Kim's rules.....NEED TO VERIFY RUN YEAR FOR STEELHEAD...ALWAYS RUN_YEAR + 1 ????
 # SHOULD DO THIS IN header_data !!!!!!!!!!!!
@@ -485,7 +530,7 @@ unique(redd_dat$origin)
 
 # Compute sums for redd categories.....Need to add in species and run...and origin? before computing totals
 redd_sums = redd_dat %>%
-  arrange(type, stream_name, rml, rmu, as.Date(survey_date, format = "%m/%d/%Y")) %>%
+  arrange(type, stream_name, rml, rmu, survey_dt) %>%
   mutate(reach = paste0(type, "_", stream_name, "_", rml, "_", rmu)) %>%
   mutate(rnew = if_else(redd_status == "New redd", redd_count, 0L)) %>%
   mutate(old_redds = if_else(redd_status == "Previous redd, still visible", redd_count, 0L)) %>%
@@ -493,15 +538,15 @@ redd_sums = redd_dat %>%
   mutate(rcomb = comb_redds) %>%
   mutate(rvis = if_else(!is.na(comb_redds), rnew + old_redds + comb_redds, rnew + old_redds)) %>%
   mutate(rnew_comb = if_else(!is.na(comb_redds), rnew + comb_redds, rnew)) %>%
-  group_by(survey_id, type, species, run_year, run, origin) %>%
+  group_by(survey_id, type, species, run_year, origin) %>%
   mutate(rnew_sum = sum(rnew, na.rm = TRUE)) %>%
   mutate(rvis_sum = sum(rvis, na.rm = TRUE)) %>%
   mutate(rcomb_sum = if_else(!is.na(rcomb), sum(rcomb, na.rm = TRUE), NA_integer_)) %>%
   mutate(rnew_comb_sum = sum(rnew_comb, na.rm = TRUE)) %>%
   ungroup() %>%
-  select(survey_id, survey_event_id, stream_name, survey_date, type, reach,
-         rml, rmu, method, obs, species, run_year, run, origin, rnew_sum,
-         rvis_sum, rcomb_sum, rnew_comb_sum) %>%
+  select(survey_id, stream_name, survey_date, type, reach,
+         rml, rmu, method, obs, species, run_year, run,
+         origin, rnew_sum, rvis_sum, rcomb_sum, rnew_comb_sum) %>%
   distinct()
 
 # Compute RCUM....Check later if Exploratory surveys should be cumsum same way as index
@@ -509,8 +554,8 @@ redd_sums = redd_sums %>%
   group_by(reach, type, species, run_year, run, origin) %>%
   mutate(rcum = if_else(type %in% c("Supp", "Explor"), cumsum(rnew_comb_sum), cumsum(rnew_sum))) %>%
   ungroup() %>%
-  select(survey_id, survey_event_id, stream_name, species, survey_date, type,
-         reach, rml, rmu, method, obs, species, run_year, run, origin,
+  select(survey_id, stream_name, species, survey_date, type, reach,
+         rml, rmu, method, obs, species, run_year, run, origin,
          rnew = rnew_sum, rvis = rvis_sum, rcum, rcomb = rcomb_sum)
 
 # Add sort_order
@@ -609,10 +654,11 @@ if ( !is.null(label_concat) ) {
 head_fields = full_header %>%
   select(survey_id, WRIA = wria, StreamName = stream_name,
          LLID = llid, Type = type, Date = survey_date,
-         StatWeek = statweek, Observer = obs,
+         survey_dt, StatWeek = statweek, Observer = obs,
          RML = rml, RMU = rmu, Method = method, Flow = flow,
          RiffleVis = rifflevis, SurveyStatus = survey_status) %>%
-  distinct()
+  distinct() %>%
+  arrange(StreamName, RML, RMU, survey_dt)
 any(duplicated(head_fields$survey_id))
 
 # Pivot out count_types for intent
@@ -637,33 +683,37 @@ all_surveys = intent_concat %>%
   mutate(drop_row = if_else(!is.na(Observer) & Observer == "Fake",
                             "drop", "keep")) %>%
   filter(drop_row == "keep") %>%
-  distinct()
+  distinct() %>%
+  arrange(StreamName, RML, RMU, survey_dt)
 
 # Set empty cells to zero
 # names(all_surveys)
-all_surveys[,21:41] = lapply(all_surveys[,21:41], set_na_zero)
+all_surveys[,22:42] = lapply(all_surveys[,22:42], set_na_zero)
 
 # Recompute RCUM....Check later if Exploratory surveys should be cumsum same way as index
 all_surveys = all_surveys %>%
-  arrange(Type, StreamName, RML, RMU, as.Date(Date, format = "%m/%d/%Y")) %>%
+  arrange(Type, StreamName, RML, RMU, survey_dt) %>%
   mutate(reach = paste0(Type, "_", StreamName, "_", RML, "_", RMU)) %>%
-  group_by(reach, Type, species, run_year, run, origin) %>%
+  group_by(reach, Type, species, run_year, origin) %>%
   # HACK ALERT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! VERIFY HERE !!!!!!!!!!!!!!!!!
   mutate(RCUM = if_else(Type %in% c("Supp", "Explor"), cumsum(RNEW), cumsum(RNEW))) %>%
   ungroup() %>%
   filter(survey_id %in% chinook_survey_id) %>%
-  arrange(Type, StreamName, RML, RMU, as.Date(Date, format = "%m/%d/%Y"))
+  arrange(Type, StreamName, RML, RMU, survey_dt)
 
 # Format names
 all_surveys = all_surveys %>%
   select(WRIA, StreamName, LLID, Type, Date, StatWeek,
          Observer, RML, RMU, Method, Flow, RiffleVis,
-         Species = species, SurveyIntent, SurveyStatus, LM, LF,
-         LSND, LJ, DM, DF, DSND, DJ, RNEW, RVIS, RCUM, RCOMB,
-         Comments = comments, ADClippedBeep, ADClippedNoBeep,
-         ADClippedNoHead, UnMarkBeep, UnMarkNoBeep,
-         UnMarkNoHead, UnknownMarkBeep, UnknownMarkNoBeep,
-         UnknownMarkNoHead, CWTHeadLabels)
+         Species = species, Origin = origin, RunYear = run_year,
+         Run = run, SurveyIntent, SurveyStatus, LM, LF, LSND,
+         LJ, DM, DF, DSND, DJ, RNEW, RVIS, RCUM, RCOMB,
+         Comments = comments, ADB = ADClippedBeep,
+         ADNB = ADClippedNoBeep, ADNH = ADClippedNoHead,
+         UMB = UnMarkBeep, UMNB = UnMarkNoBeep,
+         UMNH = UnMarkNoHead, UKB = UnknownMarkBeep,
+         UKNB = UnknownMarkNoBeep, UKNH = UnknownMarkNoHead,
+         CWTHeadLabels, survey_dt)
 
 # Create a new reach field to enable pulling out empty row
 #unique(all_surveys$StreamName)
@@ -673,14 +723,20 @@ all_surveys = all_surveys %>%
   mutate(reach = paste0(Type, "_", WRIA, "_", StreamName, "_", RML, "_", RMU)) %>%
   mutate(nWRIA = as.numeric(substr(WRIA, 1, 7))) %>%
   mutate(aWRIA = if_else(nchar(WRIA) > 7, substr(WRIA, 8, 8), "A")) %>%
-  arrange(Type, nWRIA, aWRIA, StreamName, RML, RMU, as.Date(Date, format = "%m/%d/%Y")) %>%
+  arrange(Type, nWRIA, aWRIA, StreamName, RML, RMU, survey_dt) %>%
   mutate(sort_order = seq(1, nrow(all_surveys))) %>%
-  mutate(Type = if_else(Type == "xplor", "Explor", Type))
+  mutate(Type = if_else(Type == "xplor", "Explor", Type)) %>%
+  select(-survey_dt)
+
+# Check run_year NAs for zero counts
+chk_runyr = all_surveys %>%
+  filter(is.na(RunYear))
 
 # Pull out unique set of Reaches to add blank rows
 dat_empty = all_surveys %>%
   mutate(sort_order = NA_integer_)
-dat_empty[,1:37] = ""
+# names(dat_empty)
+dat_empty[,1:41] = ""
 dat_empty = dat_empty %>%
   distinct() %>%
   arrange(reach)
@@ -699,7 +755,7 @@ dat = rbind(all_surveys, dat_empty) %>%
 # write.xlsx(dat, file = out_name, colNames = TRUE, sheetName = "Chinook")
 
 # Or fancier with styling
-out_name = paste0("data_query/WRIAs_22-23_ChinookSurveys.xlsx")
+out_name = paste0("data_query/SpringChinook_WRIAs_22-23.xlsx")
 wb <- createWorkbook(out_name)
 addWorksheet(wb, "Sept-Feb_Surveys", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)

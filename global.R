@@ -18,6 +18,15 @@
 #     Answer: Used by Region 5 to designate new upper and lower end-points.
 #             Ask Reg 5 if this is needed in database...where to store?
 #
+# Notes on install R 4.0.2
+#  1. Only needed to do remotes::install_github("arestrom/iformr")
+#     and               remotes::install_github("arestrom/remisc")
+#     otherwise all packages installed and updated correcly from
+#     RStudio prompt when opening project global.R. Everything
+#     appears to work correctly...including leaflet.extras.
+#     Should also install Rtools4 and add path:
+#     PATH="${RTOOLS40_HOME}\usr\bin;${PATH}"
+#
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
 #     get_beaches(). I had to wrap output with as.data.frame().
@@ -134,7 +143,7 @@
 # 41. Need interface for media. Copy code from mykos.
 # 42.
 #
-# AS 2020-06-22
+# AS 2020-06-24
 #==============================================================
 
 # Load libraries
@@ -208,8 +217,12 @@ source("mobile_import/mobile_import_global.R")
 
 # Define globals ================================================================
 
-# Switch to RPostgres....works, but need to change placeholders in separate branch...then do PR.
+# # Switch to RPostgres....works, but need to change placeholders in separate branch...then do PR.
 pool = pool::dbPool(RSQLite::SQLite(), dbname = "database/spawning_ground_lite.sqlite", host = "localhost")
+
+# # Test using onedrive
+# chehalis_lite_path = "C:/Users/stromas/OneDrive - Washington State Executive Branch Agencies/chehalis_lite/spawning_ground_lite.sqlite"
+# pool = pool::dbPool(RSQLite::SQLite(), dbname = chehalis_lite_path, host = "localhost")
 
 # Define functions =============================================================
 
@@ -235,7 +248,7 @@ get_stream_centroid = function(waterbody_id) {
   return(stream_centroid)
 }
 
-# Stream centroid query
+# Stream bounds query
 get_stream_bounds = function(waterbody_id) {
   qry = glue("select DISTINCT st.waterbody_id, ",
              "st.geom as geometry ",
