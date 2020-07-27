@@ -143,7 +143,7 @@
 #     with interface to add or edit location.
 # 40. Need script to sync central DB location data with local.
 # 41. Need interface for media. Copy code from mykos.
-# 42.
+# 42. Need to speed up redd_locations query. Can probably use waterbody and year to filter.
 #
 # AS 2020-07-15
 #==============================================================
@@ -220,11 +220,15 @@ source("mobile_import/mobile_import_global.R")
 # Define globals ================================================================
 
 # # Switch to RPostgres....works, but need to change placeholders in separate branch...then do PR.
-pool = pool::dbPool(RSQLite::SQLite(), dbname = "database/spawning_ground_lite.sqlite", host = "localhost")
+# pool = pool::dbPool(RSQLite::SQLite(), dbname = "database/spawning_ground_lite.sqlite", host = "localhost")
 
 # # Test using onedrive
 # chehalis_lite_path = "C:/Users/stromas/OneDrive - Washington State Executive Branch Agencies/chehalis_lite/spawning_ground_lite.sqlite"
 # pool = pool::dbPool(RSQLite::SQLite(), dbname = chehalis_lite_path, host = "localhost")
+
+# Test using S-drive
+chehalis_lite_path = "S:/FP/Science/AreStrom/ChehalisData/spawning_ground_lite.sqlite"
+pool = pool::dbPool(RSQLite::SQLite(), dbname = chehalis_lite_path, host = "localhost")
 
 # Define functions =============================================================
 

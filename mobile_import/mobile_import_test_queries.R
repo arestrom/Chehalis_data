@@ -31,6 +31,9 @@
 #     Need to dump those cases before loading to DB !!!!!!!!!!!!!!!!!!!
 #     See Newaukum River 10/02/2019 5.8-6.9 Chinook. Got spring, fall, unknown
 #     but no counts or other data associated with Unknown run Chinook entry.
+#     I dumped 6963 cases of survey_events with no fish or redd_counts using
+#     program "correct_duplicated_iform_import_species.R" on 2020-07-27.
+#     NEED TO ADJUST CODE BELOW SO THIS DOES NOT HAPPEN AGAIN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
 #
 #  Successfully reloaded most recent batch on 2020-07-13 13:05 PM

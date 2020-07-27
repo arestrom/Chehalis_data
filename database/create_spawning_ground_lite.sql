@@ -1074,3 +1074,61 @@ CREATE TABLE redd_confidence (
     CONSTRAINT fk_redd_confidence_review_status_lut__redd_confidence FOREIGN KEY (redd_confidence_review_status_id) REFERENCES redd_confidence_review_status_lut(redd_confidence_review_status_id)
 ) WITHOUT ROWID;
 
+-- Add normal indexes
+
+-- location
+CREATE INDEX location_waterbody_idx ON location (waterbody_id);
+CREATE INDEX location_wria_idx ON location (wria_id);
+
+-- survey
+CREATE INDEX survey_upper_end_point_idx ON survey (upper_end_point_id);
+CREATE INDEX survey_lower_end_point_idx ON survey (lower_end_point_id);
+--CREATE INDEX survey_survey_datetime_idx ON survey ( date(timezone('UTC', survey_datetime)) );
+
+-- survey_comment
+CREATE INDEX survey_comment_survey_idx ON survey_comment (survey_id);
+
+-- survey_intent
+CREATE INDEX survey_intent_survey_idx ON survey_intent (survey_id);
+
+-- waterbody_measurement
+CREATE INDEX waterbody_measurement_survey_idx ON waterbody_measurement (survey_id);
+
+-- mobile_survey_form
+CREATE INDEX mobile_survey_form_survey_idx ON mobile_survey_form (survey_id);
+
+-- fish_passage_feature
+CREATE INDEX fish_passage_feature_survey_idx ON fish_passage_feature (survey_id);
+CREATE INDEX fish_passage_feature_location_idx ON fish_passage_feature (feature_location_id);
+
+-- other_observation
+CREATE INDEX other_observation_survey_idx ON other_observation (survey_id);
+CREATE INDEX other_observation_location_idx ON other_observation (observation_location_id);
+
+-- survey_event
+CREATE INDEX survey_event_survey_idx ON survey_event (survey_id);
+
+-- fish_encounter
+CREATE INDEX fish_encounter_survey_event_idx ON fish_encounter (survey_event_id);
+CREATE INDEX fish_encounter_location_idx ON fish_encounter (fish_location_id);
+
+-- fish_capture_event
+CREATE INDEX fish_capture_event_fish_encounter_idx ON fish_capture_event (fish_encounter_id);
+CREATE INDEX fish_capture_event_location_idx ON fish_capture_event (disposition_location_id);
+
+-- fish_mark
+CREATE INDEX fish_mark_fish_encounter_idx ON fish_mark (fish_encounter_id);
+
+-- individual_fish
+CREATE INDEX individual_fish_fish_encounter_idx ON individual_fish (fish_encounter_id);
+
+-- fish_length_measurement
+CREATE INDEX fish_length_measurement_individual_fish_idx ON fish_length_measurement (individual_fish_id);
+
+-- redd_encounter
+CREATE INDEX redd_encounter_survey_event_idx ON redd_encounter (survey_event_id);
+CREATE INDEX redd_encounter_location_idx ON redd_encounter (redd_location_id);
+
+-- individual_redd
+CREATE INDEX individual_redd_redd_encounter_idx ON individual_redd (redd_encounter_id);
+
