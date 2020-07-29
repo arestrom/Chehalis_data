@@ -1079,6 +1079,7 @@ CREATE TABLE redd_confidence (
 -- location
 CREATE INDEX location_waterbody_idx ON location (waterbody_id);
 CREATE INDEX location_wria_idx ON location (wria_id);
+CREATE INDEX location_location_type_idx ON location (location_type_id);
 
 -- survey
 CREATE INDEX survey_upper_end_point_idx ON survey (upper_end_point_id);

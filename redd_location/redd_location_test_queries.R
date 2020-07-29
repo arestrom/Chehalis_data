@@ -49,16 +49,13 @@ get_query_one = function(waterbody_id) {
                  "rloc.location_description, ",
                  "datetime(rloc.created_datetime, 'localtime') as created_date, ",
                  "datetime(rloc.modified_datetime, 'localtime') as modified_date, ",
-                 "rloc.created_by, rloc.modified_by, ",
-                 "re.redd_encounter_id ",
+                 "rloc.created_by, rloc.modified_by ",
                  "from location as rloc ",
                  "inner join location_type_lut as lt on rloc.location_type_id = lt.location_type_id ",
                  "left join location_coordinates as lc on rloc.location_id = lc.location_id ",
-                 "left join redd_encounter as re on rloc.location_id = re.redd_location_id ",
                  "inner join stream_channel_type_lut as sc on rloc.stream_channel_type_id = sc.stream_channel_type_id ",
                  "inner join location_orientation_type_lut as lo on rloc.location_orientation_type_id = lo.location_orientation_type_id ",
                  "where rloc.waterbody_id = '{waterbody_id}' ",
-                 "and re.redd_location_id is null ",
                  "and lt.location_type_description = 'Redd encounter'")
   con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
   redd_loc_one = sf::st_read(con, query = qry_one, crs = 2927)
