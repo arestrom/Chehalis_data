@@ -150,6 +150,7 @@
 # 44. Add search boxes to all DTs
 # 45. Enable columns to be hidden
 # 46. Set labels for column headers
+# 48. Do we need interface to dump redd locations with no surveys attached?
 #
 # AS 2020-07-15
 #==============================================================

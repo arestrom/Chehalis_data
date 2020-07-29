@@ -28,7 +28,7 @@ output$redd_name_select = renderUI({
   redd_name_list = c("no location data", redd_name_list)
   selectizeInput("redd_name_select", label = "redd_name",
                  choices = redd_name_list, selected = NULL,
-                 width = "200px")
+                 width = "225px")
 })
 
 #========================================================
