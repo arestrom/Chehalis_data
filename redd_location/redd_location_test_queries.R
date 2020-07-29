@@ -11,22 +11,72 @@ library(tibble)
 library(sf)
 library(glue)
 
-# Set data for query
-# Absher Cr
-waterbody_id = '05a031e6-62b7-411f-9e3c-b5d6efbda33b'
-# Alder Cr
+# # Set data for query
+
+# # Absher Cr
+# waterbody_id = '05a031e6-62b7-411f-9e3c-b5d6efbda33b'
+
+# # Alder Cr
 # waterbody_id = '3fd8a43f-505c-4e1b-9474-94046099af62'
-up_rm = 0.50
+
+# SF Newaukum
+waterbody_id = '2cffd913-8e7a-4967-bed3-2c437b81f15b'
+
+up_rm = 27.0
 #up_rm = "null"
-lo_rm = 0.00
+lo_rm = 23.1
 #lo_rm = "null"
-survey_date = "2019-12-04"
+
+survey_date = "2019-10-31"
 # survey_date = "null"
+
 # # Chinook
 # species_id = "e42aa0fc-c591-4fab-8481-55b0df38dcb1"
+
 # Coho
 species_id = "a0f5b3af-fa07-449c-9f02-14c5368ab304"
 #created_by = Sys.getenv("USERNAME")
+
+get_query_one = function(waterbody_id) {
+  # Define query for new redd locations...no attached surveys yet...finds new entries or orphan entries
+  qry_one = glue("select rloc.location_id as redd_location_id, ",
+                 "rloc.location_name as redd_name, ",
+                 "lc.location_coordinates_id, ",
+                 "lc.geom as geometry, ",
+                 "lc.horizontal_accuracy as horiz_accuracy, ",
+                 "sc.channel_type_description as channel_type, ",
+                 "lo.orientation_type_description as orientation_type, ",
+                 "rloc.location_description, ",
+                 "datetime(rloc.created_datetime, 'localtime') as created_date, ",
+                 "datetime(rloc.modified_datetime, 'localtime') as modified_date, ",
+                 "rloc.created_by, rloc.modified_by, ",
+                 "re.redd_encounter_id ",
+                 "from location as rloc ",
+                 "inner join location_type_lut as lt on rloc.location_type_id = lt.location_type_id ",
+                 "left join location_coordinates as lc on rloc.location_id = lc.location_id ",
+                 "left join redd_encounter as re on rloc.location_id = re.redd_location_id ",
+                 "inner join stream_channel_type_lut as sc on rloc.stream_channel_type_id = sc.stream_channel_type_id ",
+                 "inner join location_orientation_type_lut as lo on rloc.location_orientation_type_id = lo.location_orientation_type_id ",
+                 "where rloc.waterbody_id = '{waterbody_id}' ",
+                 "and re.redd_location_id is null ",
+                 "and lt.location_type_description = 'Redd encounter'")
+  con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+  redd_loc_one = sf::st_read(con, query = qry_one, crs = 2927)
+  dbDisconnect(con)
+  return(redd_loc_one)
+}
+
+# Test
+strt = Sys.time()
+redd_locs = get_query_one(waterbody_id)
+nd = Sys.time(); nd - strt
+
+
+
+
+
+
+
 
 get_redd_locations = function(waterbody_id, up_rm, lo_rm, survey_date, species_id) {
   # Define query for new redd locations...no attached surveys yet...finds new entries or orphan entries

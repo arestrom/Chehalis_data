@@ -147,6 +147,9 @@
 # 41. Need interface for media. Copy code from mykos.
 # 42. Need to speed up redd_locations query. Can probably use waterbody and year to filter.
 # 43. Need to set up a env lockfile to constrain package versions.
+# 44. Add search boxes to all DTs
+# 45. Enable columns to be hidden
+# 46. Set labels for column headers
 #
 # AS 2020-07-15
 #==============================================================

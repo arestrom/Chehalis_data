@@ -13,7 +13,7 @@ redd_location_ui = tags$div(
                        "To enable tracking redds over time, please enter the redd ",
                        "location data first. Then to associate your redd count data ",
                        "with a redd location, select the 'redd_name' in drop-down ",
-                       "menu associated with the Redd counts' table below. To enter",
+                       "menu associated with the Redd counts' table below. To enter ",
                        "counts only (no location) select 'no location data' in the ",
                        "'redd_name' drop-down. You can also edit existing redd count ",
                        "data and remove the location association by selecting ",
