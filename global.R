@@ -28,6 +28,8 @@
 #     PATH="${RTOOLS40_HOME}\usr\bin;${PATH}"
 #  2. Will need a .Renviron file for iformr
 #  3. Will need a shared place for sqlite DB
+#  4. The latest version of shinydashboardPlus (v0.7.5) broke the accordions
+#     So use: remotes::install_version("shinydashboardPlus", version = "0.7.0", repos = "http://cran.us.r-project.org")
 #
 # Notes:
 #  1. Very strange error using the pool and dbplyr query for
@@ -144,6 +146,7 @@
 # 40. Need script to sync central DB location data with local.
 # 41. Need interface for media. Copy code from mykos.
 # 42. Need to speed up redd_locations query. Can probably use waterbody and year to filter.
+# 43. Need to set up a env lockfile to constrain package versions.
 #
 # AS 2020-07-15
 #==============================================================
