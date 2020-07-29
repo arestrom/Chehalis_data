@@ -28,7 +28,7 @@ output$redd_name_select = renderUI({
   redd_name_list = c("no location data", redd_name_list)
   selectizeInput("redd_name_select", label = "redd_name",
                  choices = redd_name_list, selected = NULL,
-                 width = "200px")
+                 width = "225px")
 })
 
 #========================================================
@@ -51,10 +51,11 @@ output$redd_encounters = renderDT({
   # Generate table
   datatable(redd_encounter_data,
             selection = list(mode = 'single'),
-            options = list(dom = 'ltp',
+            options = list(dom = 'Blftp',
                            pageLength = 5,
-                           lengthMenu = c(1, 5, 10, 20),
+                           lengthMenu = c(1, 5, 10, 20, 50, 200),
                            scrollX = T,
+                           buttons = c('excel', 'print'),
                            initComplete = JS(
                              "function(settings, json) {",
                              "$(this.api().table().header()).css({'background-color': '#9eb3d6'});",

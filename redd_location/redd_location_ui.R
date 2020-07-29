@@ -21,7 +21,7 @@ redd_location_ui = tags$div(
                        "are optional, but highly recommended.<span>")),
   br(),
   br(),
-  textInput(inputId = "redd_name_input", label = "redd_name", width = "125px"),
+  textInput(inputId = "redd_name_input", label = "redd_name", width = "225px"),
   uiOutput("channel_type_select", inline = TRUE),
   uiOutput("orientation_type_select", inline = TRUE),
   numericInput(inputId = "redd_latitude_input", label = "latitude", value = NULL,
