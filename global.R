@@ -151,6 +151,11 @@
 # 45. Enable columns to be hidden
 # 46. Set labels for column headers
 # 48. Do we need interface to dump redd locations with no surveys attached?
+# 49. For redd_location title, why does:
+#     {format(as.Date(selected_survey_data()$survey_date) - months(3), '%m/%d/%Y')} work, but,
+#     {format(as.Date(selected_survey_data()$survey_date) - months(4), '%m/%d/%Y')} not work?
+#     For now changed both redd and fish locations to 3 months. But remember to change both
+#     title and query in global to 4 months for redd_location if that's preferred by users.
 #
 # AS 2020-07-15
 #==============================================================

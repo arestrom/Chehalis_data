@@ -51,10 +51,11 @@ output$redd_encounters = renderDT({
   # Generate table
   datatable(redd_encounter_data,
             selection = list(mode = 'single'),
-            options = list(dom = 'ltp',
+            options = list(dom = 'Blftp',
                            pageLength = 5,
-                           lengthMenu = c(1, 5, 10, 20),
+                           lengthMenu = c(1, 5, 10, 20, 50, 200),
                            scrollX = T,
+                           buttons = c('excel', 'print'),
                            initComplete = JS(
                              "function(settings, json) {",
                              "$(this.api().table().header()).css({'background-color': '#9eb3d6'});",
