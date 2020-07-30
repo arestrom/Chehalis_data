@@ -156,6 +156,8 @@
 #     {format(as.Date(selected_survey_data()$survey_date) - months(4), '%m/%d/%Y')} not work?
 #     For now changed both redd and fish locations to 3 months. But remember to change both
 #     title and query in global to 4 months for redd_location if that's preferred by users.
+# 50. Add selectable input for the number of months of previous redds or carcasses to display
+#     in the redd_location and fish_location tables.
 #
 # AS 2020-07-15
 #==============================================================
