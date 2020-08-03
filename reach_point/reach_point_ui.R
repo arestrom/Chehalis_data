@@ -14,7 +14,7 @@ reach_point_ui = tags$div(
                        "and longitude coordinates using a map interface.<span>")),
   br(),
   br(),
-  numericInput(inputId = "river_mile_input", label = "rive_mile", value = NULL,
+  numericInput(inputId = "river_mile_input", label = "river_mile", value = NULL,
                min = 0, step = 0.1, width = "125px"),
   uiOutput("reach_point_type_select", inline = TRUE),
   textInput(inputId = "reach_point_code_input", label = "reach_point_code", width = "125px"),
