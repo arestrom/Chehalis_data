@@ -9,8 +9,11 @@
 *.shp
 *.shx
 *.rds
+*.laccdb
+*.accdb
 # Ignore the following .R files
 R6_SGS_Download.R
 R6_Repopulate_Redd_Option_List.R
 output_chehalis_reach_points.R
 test_upload_ids.rds
+R6_Spawning_Ground_Surveys.laccdb
