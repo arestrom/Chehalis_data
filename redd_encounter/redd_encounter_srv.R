@@ -25,7 +25,7 @@ current_redd_locations = reactive({
 
 output$redd_name_select = renderUI({
   redd_name_list = current_redd_locations()$redd_name
-  redd_name_list = c("no location data", redd_name_list)
+  redd_name_list = c("no location data", unique(redd_name_list))
   selectizeInput("redd_name_select", label = "redd_name",
                  choices = redd_name_list, selected = NULL,
                  width = "225px")
@@ -152,8 +152,8 @@ redd_encounter_create = reactive({
   } else {
     redd_location = current_redd_locations() %>%
       filter(redd_name == loc_select)
-    redd_location_id = redd_location$redd_location_id
-    redd_name_input = redd_location$redd_name
+    redd_location_id = redd_location$redd_location_id[1]
+    redd_name_input = redd_location$redd_name[1]
   }
   new_redd_encounter = tibble(survey_event_id = survey_event_id_input,
                               survey_date = survey_date,
@@ -286,8 +286,8 @@ redd_encounter_edit = reactive({
   } else {
     redd_location = current_redd_locations() %>%
       filter(redd_name == loc_select)
-    redd_location_id = redd_location$redd_location_id
-    redd_name_input = redd_location$redd_name
+    redd_location_id = redd_location$redd_location_id[1]
+    redd_name_input = redd_location$redd_name[1]
   }
   edit_redd_encounter = tibble(redd_encounter_id = selected_redd_encounter_data()$redd_encounter_id,
                                # Need to create full datetime values below modal
