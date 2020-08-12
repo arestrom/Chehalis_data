@@ -55,7 +55,7 @@ get_previous_redd_location = function(waterbody_id, up_rm, lo_rm, survey_date, s
              "left join location_coordinates as lc on rloc.location_id = lc.location_id ",
              "inner join stream_channel_type_lut as sc on rloc.stream_channel_type_id = sc.stream_channel_type_id ",
              "inner join location_orientation_type_lut as lo on rloc.location_orientation_type_id = lo.location_orientation_type_id ",
-             "where date(s.survey_datetime) between date('{survey_date}', '-3 month') and date('{survey_date}') ",
+             "where date(s.survey_datetime) between date('{survey_date}', '-4 month') and date('{survey_date}') ",
              "and rloc.waterbody_id = '{waterbody_id}' ",
              "and uploc.river_mile_measure <= {up_rm} ",
              "and loloc.river_mile_measure >= {lo_rm} ",

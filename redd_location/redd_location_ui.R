@@ -35,5 +35,5 @@ redd_location_ui = tags$div(
   br(),
   br(),
   br(),
-  DT::DTOutput("redd_locations")
+  DT::DTOutput("redd_locations") %>% withSpinner()
 )
