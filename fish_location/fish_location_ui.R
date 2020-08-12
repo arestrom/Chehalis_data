@@ -36,5 +36,5 @@ fish_location_ui = tags$div(
   br(),
   br(),
   br(),
-  DT::DTOutput("fish_locations")
+  DT::DTOutput("fish_locations") %>% withSpinner()
 )

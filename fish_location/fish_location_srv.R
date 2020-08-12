@@ -31,7 +31,7 @@ output$fish_locations = renderDT({
   # Title
   fish_location_title = glue("{selected_survey_event_data()$species} carcass locations for {input$stream_select} ",
                              "from river mile {selected_survey_data()$up_rm} to {selected_survey_data()$lo_rm}, ",
-                             "for the period {format(as.Date(selected_survey_data()$survey_date) - months(3), '%m/%d/%Y')} ",
+                             "for the period {format(as.Date(selected_survey_data()$survey_date) %m-% months(3), '%m/%d/%Y')} ",
                              "to {format(as.Date(selected_survey_data()$survey_date), '%m/%d/%Y')}")
   # Collect parameters
   up_rm = selected_survey_data()$up_rm
