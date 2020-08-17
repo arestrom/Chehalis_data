@@ -236,7 +236,7 @@ pool = pool::dbPool(RSQLite::SQLite(), dbname = "database/spawning_ground_lite.s
 # chehalis_lite_path = "C:/Users/stromas/OneDrive - Washington State Executive Branch Agencies/chehalis_lite/spawning_ground_lite.sqlite"
 # pool = pool::dbPool(RSQLite::SQLite(), dbname = chehalis_lite_path, host = "localhost")
 
-# # Test using S-drive....no go.
+# # Test using S-drive, no go. High latency. Windows file system locking is unreliable. May corrupt DB.
 # chehalis_lite_path = "S:/FP/Science/AreStrom/ChehalisData/spawning_ground_lite.sqlite"
 # pool = pool::dbPool(RSQLite::SQLite(), dbname = chehalis_lite_path, host = "localhost")
 
