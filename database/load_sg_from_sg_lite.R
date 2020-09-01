@@ -90,12 +90,12 @@ test_upload_ids = readRDS("data/test_upload_ids.rds")
 test_location_ids = readRDS("data/test_location_ids.rds")
 
 # Pull out location IDs: 3172 rows
-loc_ids = c(unique(test_location_ids$location_id), unique(new_location_ids$location_id))
-loc_ids = loc_ids[!is.na(loc_ids)]
-loc_ids = unique(loc_ids)
-length(loc_ids)
+loc_id = c(unique(test_location_ids$location_id), unique(new_location_ids$location_id))
+loc_id = loc_id[!is.na(loc_id)]
+loc_id = unique(loc_id)
+length(loc_id)
 length(unique(test_location_ids$location_id)) + length(unique(new_location_ids$location_id))
-loc_ids = paste0(paste0("'", loc_ids, "'"), collapse = ", ")
+loc_ids = paste0(paste0("'", loc_id, "'"), collapse = ", ")
 
 # Pull out survey IDs
 s_id = c(unique(test_upload_ids$survey_id), unique(new_survey_ids$survey_id))
@@ -158,21 +158,126 @@ se_id_two = no_counts %>%
   pull(survey_event_id)
 
 # Pull out survey_event IDs
-se_id = c(unique(se_id$survey_event_id), unique(se_id_two))
-se_id = unique(se_id)
-se_id = se_id[!is.na(se_id)]
+se_id = se_id %>%
+  filter(!survey_event_id %in% se_id_two) %>%
+  filter(!is.na(survey_event_id)) %>%
+  distinct() %>%
+  pull(survey_event_id)
+
+# Check and create string
 length(se_id)
 se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
 
+#============================================================================
+# Verify none of the IDs are already in SG on local
+#============================================================================
+
+# Verify none of the location IDs are already in sg local: NONE !!!
+qry = glue("select location_id ",
+           "from location ",
+           "where location_id in ({loc_ids})")
+db_con = pg_con_local(dbname = "spawning_ground")
+prev_loc = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Verify none of the survey IDs are already in sg local: NONE !!!
+qry = glue("select survey_id ",
+           "from survey ",
+           "where survey_id in ({s_ids})")
+db_con = pg_con_local(dbname = "spawning_ground")
+prev_surv = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+# Verify none of the survey_event IDs are already in sg local: NONE !!!
+qry = glue("select survey_event_id ",
+           "from survey_event ",
+           "where survey_event_id in ({se_ids})")
+db_con = pg_con_local(dbname = "spawning_ground")
+prev_se = dbGetQuery(db_con, qry)
+dbDisconnect(db_con)
+
+#============================================================================
+# Get the mobile data from sqlite that needs to be written to SG local
+#============================================================================
+
+#--------------- Location data -------------------------
+
+# Get location data
+qry = glue("select * ",
+           "from location ",
+           "where location_id in ({loc_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+location = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Verify location
+any(is.na(location$location_id))
+any(duplicated(location$location_id))
+any(is.na(location$waterbody_id))
+any(is.na(location$wria_id))
+any(is.na(location$location_type_id))
+any(is.na(location$stream_channel_type_id))
+any(is.na(location$location_orientation_type_id))
+any(is.na(location$created_datetime))
+any(is.na(location$created_by))
+
+#=======  Insert location =================
+
+# location: 3172 rows
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'location', location, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# Get location_coordinates data
+qry = glue("select * ",
+           "from location_coordinates ",
+           "where location_id in ({loc_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+location_coordinates = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Verify location_coordinates
+any(duplicated(location_coordinates$location_id))
+any(is.na(location_coordinates$location_coordinates_id))
+any(is.na(location_coordinates$location_id))
+
+#=======  Insert location_coordinates =================
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!
+
+
+# location: 3172 rows
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'location', location, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
 
 
 
-# STOPPED HERE. SHOULD BE GOOD...CHECK TUESDAY !!!!!!!!!!!!
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+# Verify media_location
+any(is.na(media_location_prep$media_location_id))
+any(is.na(media_location_prep$location_id))
+any(is.na(media_location_prep$media_type_id))
+any(is.na(media_location_prep$media_url))
+any(is.na(media_location_prep$created_datetime))
+any(is.na(media_location_prep$created_by))
 
 
 
@@ -222,29 +327,7 @@ ird_ids = paste0(paste0("'", ird_ids, "'"), collapse = ", ")
 # CHECK FOR MISSING REQUIRED VALUES
 #================================================================================================
 
-# Verify location_prep
-any(is.na(location_prep$location_id))
-any(duplicated(location_prep$location_id))
-any(is.na(location_prep$waterbody_id))
-any(is.na(location_prep$wria_id))
-any(is.na(location_prep$location_type_id))
-any(is.na(location_prep$stream_channel_type_id))
-any(is.na(location_prep$location_orientation_type_id))
-any(is.na(location_prep$created_datetime))
-any(is.na(location_prep$created_by))
 
-# Verify location_coordinates_prep
-any(duplicated(location_coordinates_prep$location_id))
-any(is.na(location_coordinates_prep$location_coordinates_id))
-any(is.na(location_coordinates_prep$location_id))
-
-# Verify media_location
-any(is.na(media_location_prep$media_location_id))
-any(is.na(media_location_prep$location_id))
-any(is.na(media_location_prep$media_type_id))
-any(is.na(media_location_prep$media_url))
-any(is.na(media_location_prep$created_datetime))
-any(is.na(media_location_prep$created_by))
 
 # Verify survey_prep
 any(duplicated(survey_prep$survey_id))
