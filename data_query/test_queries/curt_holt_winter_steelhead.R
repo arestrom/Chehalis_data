@@ -75,11 +75,11 @@ pg_con_local = function(dbname, port = '5432') {
 #============================================================================
 
 # Set selectable values
-selected_run_year = 2019                     # Only for computing Steelhead origin. Line 376
-selected_species = "Chinook salmon"
-selected_run = "Fall"      # Fall or Spring
+selected_run_year = 2020                    # Only for computing Steelhead origin. Line 376
+selected_species = "Steelhead trout"
+selected_run = "Winter"      # Fall or Spring
 start_date = "2019-09-01"
-end_date = "2020-02-29"
+end_date = "2020-09-01"
 
 # Function to get header data...use multiselect for year
 get_header_data = function(start_date, end_date) {
@@ -129,9 +129,12 @@ get_header_data = function(start_date, end_date) {
   return(surveys)
 }
 
-# Run the function: 10130 rows
+# Run the function: 5708 rows
 header_data = get_header_data(start_date, end_date) %>%
   arrange(stream_name, rml, rmu, survey_dt)
+
+# Check
+anyNA(header_data$stream_name)
 
 # Identify fake surveys
 fake_id = header_data %>%
@@ -140,7 +143,7 @@ fake_id = header_data %>%
   distinct() %>%
   pull(survey_id)
 
-# Filter to real surveys...10124 left
+# Filter to real surveys...5702 left
 header_data = header_data %>%
   filter(!survey_id %in% fake_id)
 
@@ -187,22 +190,22 @@ get_intent = function(header_data) {
 count_intent = get_intent(header_data)
 
 #============================================================================
-# Filter surveys to those where counts for chinook were intended
+# Filter surveys to those where counts for steelhead were intended
 #============================================================================
 
-# Get chinook intent
-chinook_intent = count_intent %>%
+# Get steelhead intent
+steelhead_intent = count_intent %>%
   filter(species == selected_species)
 
 # Pull out survey_ids
-chinook_survey_id = chinook_intent %>%
+steelhead_survey_id = steelhead_intent %>%
   select(survey_id) %>%
   distinct() %>%
   pull(survey_id)
 
-# Use species intent to filter header_data: 10014 rows left
+# Use species intent to filter header_data: 4134 rows left
 header_data = header_data %>%
-  filter(survey_id %in% chinook_survey_id) %>%
+  filter(survey_id %in% steelhead_survey_id) %>%
   arrange(stream_name, type, survey_dt, run_year)
 
 # Pull out full set of basic header data so surveys with no selected species are preserved for zero entries: 1254 rows
@@ -215,25 +218,29 @@ full_header = header_data %>%
 # Check: None, correct
 any(duplicated(full_header$survey_id))
 unique(header_data$species)
+anyNA(header_data$stream_name)
 
 #============================================================================
-# Filter surveys to those where counts for "fall" chinook were intended
+# Filter surveys to those where counts for steelhead were intended
 #============================================================================
 
-# Change any unknown run values recorded for surveys prior to October 16 to "Spring".
-# Any unknown values for surveys after that date will be "Fall".
-# Then filter to only desired species and run
+# According to Lea, all run types should be Winter
+
+# Change any unknown run values to Winter
+# Then filter to only desired species
 table(header_data$run, useNA = "ifany")
 table(header_data$species, useNA = "ifany")
-cut_off_date = as.Date(paste0(selected_run_year, "-10-16"))
 header_data_adj = header_data %>%
-  filter(species == "Chinook salmon") %>%
-  mutate(run = if_else(run == "Unknown" & survey_dt < cut_off_date,
-                       "Spring", run)) %>%
-  mutate(run = if_else(run == "Unknown" & survey_dt >= cut_off_date,
-                       "Fall", run)) %>%
-  filter(run == "Fall") %>%
+  filter(species == selected_species) %>%
   distinct()
+
+# Check
+table(header_data_adj$run, useNA = "ifany")
+table(header_data_adj$species, useNA = "ifany")
+
+# Update run to Winter
+header_data_adj = header_data_adj %>%
+  mutate(run = if_else(run == "Unknown", "Winter", run))
 
 # Check
 table(header_data_adj$run, useNA = "ifany")
@@ -376,6 +383,7 @@ table(head_dat$run, useNA = "ifany")
 table(head_dat$run_year, useNA = "ifany")
 table(head_dat$species, useNA = "ifany")
 table(head_dat$type, useNA = "ifany")
+anyNA(head_dat$stream_name)
 
 # Add to fish_counts
 fish_dat = fish_counts %>%
@@ -386,23 +394,23 @@ fish_dat = fish_counts %>%
          fish_count, prev_count, fish_comments, survey_dt) %>%
   arrange(stream_name, survey_dt, rml, rmu)
 
-# Calculate origin based on Kim's rules.....NEED TO VERIFY RUN YEAR FOR STEELHEAD...ALWAYS RUN_YEAR + 1 ????
+# Check
+anyNA(fish_dat$stream_name)
+
+# Calculate origin based on Kim's rules.....Set to either hatchery or wild
 unique(fish_dat$species)
 unique(fish_dat$type)
 fish_dat = fish_dat %>%
   mutate(origin = case_when(
     species == "Steelhead trout" &
-      survey_dt < as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y") &
-      type == "Index" ~ "Hatchery",
+      survey_dt < as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y")  ~ "Hatchery",
     species == "Steelhead trout" &
-      survey_dt >= as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y") &
-      type == "Index" ~ "Wild",
-    species == "Steelhead trout" &
-      type %in% c("Supp", "Explor") ~ "Unknown",
+      survey_dt >= as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y")  ~ "Wild",
     !species == "Steelhead trout" ~ "Unknown"))
 
 # Check
-unique(fish_dat$origin)
+table(fish_dat$origin, useNA = "ifany")
+anyNA(fish_dat$stream_name)
 
 # Compute sums for live and dead categories
 fish_sums = fish_dat %>%
@@ -509,24 +517,24 @@ redd_dat = redd_counts %>%
   arrange(stream_name, survey_dt, rml, rmu) %>%
   distinct()
 
-# Calculate origin based on Kim's rules.....NEED TO VERIFY RUN YEAR FOR STEELHEAD...ALWAYS RUN_YEAR + 1 ????
+# Check
+anyNA(redd_dat$stream_name)
+
+# Calculate origin based on Kim's rules
 # SHOULD DO THIS IN header_data !!!!!!!!!!!!
 unique(redd_dat$species)
 unique(redd_dat$type)
 redd_dat = redd_dat %>%
   mutate(origin = case_when(
     species == "Steelhead trout" &
-      survey_dt < as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y") &
-      type == "Index" ~ "Hatchery",
+      survey_dt < as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y")  ~ "Hatchery",
     species == "Steelhead trout" &
-      survey_dt >= as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y") &
-      type == "Index" ~ "Wild",
-    species == "Steelhead trout" &
-      type %in% c("Supp", "Explor") ~ "Unknown",
+      survey_dt >= as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y")  ~ "Wild",
     !species == "Steelhead trout" ~ "Unknown"))
 
 # Check
-unique(redd_dat$origin)
+table(redd_dat$origin, useNA = "ifany")
+anyNA(redd_dat$stream_name)
 
 # Compute sums for redd categories.....Need to add in species and run...and origin? before computing totals
 redd_sums = redd_dat %>%
@@ -698,7 +706,7 @@ all_surveys = all_surveys %>%
   # HACK ALERT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! VERIFY HERE !!!!!!!!!!!!!!!!!
   mutate(RCUM = if_else(Type %in% c("Supp", "Explor"), cumsum(RNEW), cumsum(RNEW))) %>%
   ungroup() %>%
-  filter(survey_id %in% chinook_survey_id) %>%
+  filter(survey_id %in% steelhead_survey_id) %>%
   arrange(Type, StreamName, RML, RMU, survey_dt)
 
 # Format names
@@ -754,10 +762,13 @@ dat = rbind(all_surveys, dat_empty) %>%
 # out_name = paste0(run_year, "_", run, "_", "Chinook.xlsx")
 # write.xlsx(dat, file = out_name, colNames = TRUE, sheetName = "Chinook")
 
+# Check max date
+max(as.Date(header_data$survey_date, format = "%m/%d/%Y"))
+
 # Or fancier with styling
-out_name = paste0("data_query/FallChinook_WRIAs_22-23.xlsx")
+out_name = paste0("data_query/test_queries/WinterSteehead_WRIAs_22-23.xlsx")
 wb <- createWorkbook(out_name)
-addWorksheet(wb, "Sept-Feb_Surveys", gridLines = TRUE)
+addWorksheet(wb, "Sept-Jun_Surveys", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)
 ## create and add a style to the column headers
 headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
