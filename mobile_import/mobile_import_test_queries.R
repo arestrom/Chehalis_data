@@ -4730,7 +4730,7 @@ dbWriteTable(db_con, 'individual_redd', individual_redd_prep, row.names = FALSE,
 dbDisconnect(db_con)
 
 # #===========================================================================================================
-# # Delete freshly uploaded data
+# # Get IDs needed to delete freshly uploaded data
 # #===========================================================================================================
 #
 # # Get IDs
@@ -4836,7 +4836,7 @@ dbDisconnect(db_con)
 #
 # #======== Survey event ===============
 #
-# # survey_event: 9068 rows
+# # survey_event: 9068 rows....only deleted 2106 rows Aug 31st...must be ok since all surveys were deleted.
 # db_con = pg_con_local("spawning_ground")
 # dbExecute(db_con, glue('delete from survey_event where survey_event_id in ({se_ids})'))
 # dbDisconnect(db_con)
