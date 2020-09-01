@@ -1,16 +1,9 @@
 #===============================================================================
-# Verify queries work
+# Load mobile data from edited sqlite DB to SG on local
 #
-# Notes:
-#  1.
+#  Successfully loaded on 2020-09-01 at 12:38 PM
 #
-# ToDo:
-#  1.
-#
-#
-#  Successfully loaded edited sg_lite data from Nick on ..... PM
-#
-# AS 2020-08-31
+# AS 2020-09-01
 #===============================================================================
 
 # Load libraries
@@ -230,271 +223,6 @@ db_con = pg_con_local("spawning_ground")
 dbWriteTable(db_con, 'location', location, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# Get location_coordinates data
-qry = glue("select * ",
-           "from location_coordinates ",
-           "where location_id in ({loc_ids})")
-
-# Get values from source
-con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
-location_coordinates = dbGetQuery(con, qry)
-dbDisconnect(con)
-
-# Verify location_coordinates
-any(duplicated(location_coordinates$location_id))
-any(is.na(location_coordinates$location_coordinates_id))
-any(is.na(location_coordinates$location_id))
-
-#=======  Insert location_coordinates =================
-
-# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!
-
-
-# location: 3172 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'location', location, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Verify media_location
-any(is.na(media_location_prep$media_location_id))
-any(is.na(media_location_prep$location_id))
-any(is.na(media_location_prep$media_type_id))
-any(is.na(media_location_prep$media_url))
-any(is.na(media_location_prep$created_datetime))
-any(is.na(media_location_prep$created_by))
-
-
-
-
-# Get fish_encounter_ids
-qry = glue("select fish_encounter_id from fish_encounter where survey_event_id in ({se_ids})")
-db_con = pg_con_local("spawning_ground")
-fish_id = dbGetQuery(db_con, qry)
-dbDisconnect(db_con)
-
-# Pull out fish IDs
-fs_ids = unique(fish_id$fish_encounter_id)
-fs_ids = paste0(paste0("'", fs_ids, "'"), collapse = ", ")
-
-# Get individual_fish IDs
-qry = glue("select individual_fish_id from individual_fish where fish_encounter_id in ({fs_ids})")
-db_con = pg_con_local("spawning_ground")
-indf_id = dbGetQuery(db_con, qry)
-dbDisconnect(db_con)
-
-# Pull out ind_fish IDs
-ifs_ids = unique(indf_id$individual_fish_id)
-ifs_ids = paste0(paste0("'", ifs_ids, "'"), collapse = ", ")
-
-# Get redd_encounter_ids
-qry = glue("select redd_encounter_id from redd_encounter where survey_event_id in ({se_ids})")
-db_con = pg_con_local("spawning_ground")
-redd_id = dbGetQuery(db_con, qry)
-dbDisconnect(db_con)
-
-# Pull out redd IDs
-rd_ids = unique(redd_id$redd_encounter_id)
-rd_ids = paste0(paste0("'", rd_ids, "'"), collapse = ", ")
-
-# Get individual_redd_ids
-qry = glue("select individual_redd_id from individual_redd where redd_encounter_id in ({rd_ids})")
-db_con = pg_con_local("spawning_ground")
-iredd_id = dbGetQuery(db_con, qry)
-dbDisconnect(db_con)
-
-# Pull out individual_redd IDs
-ird_ids = unique(iredd_id$individual_redd_id)
-ird_ids = paste0(paste0("'", ird_ids, "'"), collapse = ", ")
-
-
-#================================================================================================
-# CHECK FOR MISSING REQUIRED VALUES
-#================================================================================================
-
-
-
-# Verify survey_prep
-any(duplicated(survey_prep$survey_id))
-any(is.na(survey_prep$survey_id))
-any(is.na(survey_prep$survey_datetime))
-any(is.na(survey_prep$data_source_id))
-any(is.na(survey_prep$data_source_unit_id))
-any(is.na(survey_prep$survey_method_id))
-any(is.na(survey_prep$data_review_status_id))
-any(is.na(survey_prep$upper_end_point_id))
-any(is.na(survey_prep$lower_end_point_id))
-any(is.na(survey_prep$survey_completion_status_id))
-any(is.na(survey_prep$incomplete_survey_type_id))
-any(is.na(survey_prep$created_datetime))
-any(is.na(survey_prep$created_by))
-
-# Check survey_comment
-any(duplicated(comment_prep$survey_comment_id))
-any(is.na(comment_prep$survey_comment_id))
-any(is.na(comment_prep$survey_id))
-any(is.na(comment_prep$created_datetime))
-any(is.na(comment_prep$created_by))
-
-# Check survey_intent
-any(duplicated(intent_prep$survey_intent_id))
-any(is.na(intent_prep$survey_intent_id))
-any(is.na(intent_prep$survey_id))
-any(is.na(intent_prep$species_id))
-any(is.na(intent_prep$count_type_id))
-any(is.na(intent_prep$created_datetime))
-any(is.na(intent_prep$created_by))
-
-# Check waterbody_measurement
-any(duplicated(waterbody_meas_prep$waterbody_measurement_id))
-any(is.na(waterbody_meas_prep$survey_id))
-any(is.na(waterbody_meas_prep$water_clarity_type_id))
-any(is.na(waterbody_meas_prep$water_clarity_meter))
-any(is.na(waterbody_meas_prep$created_datetime))
-any(is.na(waterbody_meas_prep$created_by))
-
-# Check mobile_survey_form
-any(duplicated(mobile_survey_form_prep$mobile_survey_form_id))
-any(is.na(mobile_survey_form_prep$mobile_survey_form_id))
-any(is.na(mobile_survey_form_prep$survey_id))
-any(is.na(mobile_survey_form_prep$parent_form_survey_id))
-any(is.na(mobile_survey_form_prep$parent_form_survey_guid))
-any(is.na(mobile_survey_form_prep$created_datetime))
-any(is.na(mobile_survey_form_prep$created_by))
-
-# Check fish_passage_feature
-any(duplicated(fish_passage_feature_prep$fish_passage_feature_id))
-any(is.na(fish_passage_feature_prep$fish_passage_feature_id))
-any(is.na(fish_passage_feature_prep$survey_id))
-any(is.na(fish_passage_feature_prep$passage_feature_type_id))
-any(is.na(fish_passage_feature_prep$feature_location_id))
-any(is.na(fish_passage_feature_prep$feature_height_type_id))
-any(is.na(fish_passage_feature_prep$plunge_pool_depth_type_id))
-any(is.na(fish_passage_feature_prep$created_datetime))
-any(is.na(fish_passage_feature_prep$created_by))
-
-# Check other_observations
-any(duplicated(other_observation_prep$other_observation_id))
-any(is.na(other_observation_prep$other_observation_id))
-any(is.na(other_observation_prep$survey_id))
-any(is.na(other_observation_prep$observation_type_id))
-any(is.na(other_observation_prep$created_datetime))
-any(is.na(other_observation_prep$created_by))
-
-# Check survey_event
-any(duplicated(survey_event_prep$survey_event_id))
-any(is.na(survey_event_prep$survey_event_id))
-any(is.na(survey_event_prep$survey_id))
-any(is.na(survey_event_prep$species_id))
-any(is.na(survey_event_prep$survey_design_type_id))
-any(is.na(survey_event_prep$cwt_detection_method_id))
-any(is.na(survey_event_prep$run_id))
-any(is.na(survey_event_prep$run_year))
-any(is.na(survey_event_prep$created_datetime))
-any(is.na(survey_event_prep$created_by))
-
-# Check fish_encounter
-any(duplicated(fish_encounter_prep$fish_encounter_id))
-any(is.na(fish_encounter_prep$fish_encounter_id))
-any(is.na(fish_encounter_prep$survey_event_id))
-any(is.na(fish_encounter_prep$fish_status_id))
-any(is.na(fish_encounter_prep$sex_id))
-any(is.na(fish_encounter_prep$maturity_id))
-any(is.na(fish_encounter_prep$origin_id))
-any(is.na(fish_encounter_prep$cwt_detection_status_id))
-any(is.na(fish_encounter_prep$adipose_clip_status_id))
-any(is.na(fish_encounter_prep$fish_behavior_type_id))
-any(is.na(fish_encounter_prep$mortality_type_id))
-any(is.na(fish_encounter_prep$fish_count))
-any(is.na(fish_encounter_prep$previously_counted_indicator))
-any(is.na(fish_encounter_prep$created_datetime))
-any(is.na(fish_encounter_prep$created_by))
-
-# Check fish_capture_event
-any(duplicated(fish_capture_event_prep$fish_capture_event_id))
-any(is.na(fish_capture_event_prep$fish_capture_event_id))
-any(is.na(fish_capture_event_prep$fish_capture_status_id))
-any(is.na(fish_capture_event_prep$disposition_type_id))
-any(is.na(fish_capture_event_prep$disposition_id))
-any(is.na(fish_capture_event_prep$created_datetime))
-any(is.na(fish_capture_event_prep$created_by))
-
-# Check fish_mark
-any(duplicated(fish_mark_prep$fish_mark_id))
-any(is.na(fish_mark_prep$fish_mark_id))
-any(is.na(fish_mark_prep$mark_type_id))
-any(is.na(fish_mark_prep$mark_status_id))
-any(is.na(fish_mark_prep$mark_orientation_id))
-any(is.na(fish_mark_prep$mark_placement_id))
-any(is.na(fish_mark_prep$mark_size_id))
-any(is.na(fish_mark_prep$mark_color_id))
-any(is.na(fish_mark_prep$mark_shape_id))
-any(is.na(fish_mark_prep$created_datetime))
-any(is.na(fish_mark_prep$created_by))
-
-# Check individual_fish
-any(duplicated(individual_fish_prep$individual_fish_id))
-any(is.na(individual_fish_prep$individual_fish_id))
-any(is.na(individual_fish_prep$fish_encounter_id))
-any(is.na(individual_fish_prep$fish_condition_type_id))
-any(is.na(individual_fish_prep$fish_trauma_type_id))
-any(is.na(individual_fish_prep$gill_condition_type_id))
-any(is.na(individual_fish_prep$spawn_condition_type_id))
-any(is.na(individual_fish_prep$cwt_result_type_id))
-any(is.na(individual_fish_prep$created_datetime))
-any(is.na(individual_fish_prep$created_by))
-
-# Check fish_length_measurement
-any(duplicated(fish_length_measurement_prep$fish_length_measurement_id))
-any(is.na(fish_length_measurement_prep$fish_length_measurement_id))
-any(is.na(fish_length_measurement_prep$individual_fish_id))
-any(is.na(fish_length_measurement_prep$fish_length_measurement_type_id))
-any(is.na(fish_length_measurement_prep$length_measurement_centimeter))
-
-# Check redd_encounter
-any(duplicated(redd_encounter_prep$redd_encounter_id))
-any(is.na(redd_encounter_prep$redd_encounter_id))
-any(is.na(redd_encounter_prep$survey_event_id))
-any(is.na(redd_encounter_prep$redd_status_id))
-any(is.na(redd_encounter_prep$redd_count))
-any(is.na(redd_encounter_prep$created_datetime))
-any(is.na(redd_encounter_prep$created_by))
-
-# Check individual_redd
-any(duplicated(individual_redd_prep$individual_redd_id))
-any(is.na(individual_redd_prep$individual_redd_id))
-any(is.na(individual_redd_prep$redd_encounter_id))
-any(is.na(individual_redd_prep$redd_shape_id))
-any(is.na(individual_redd_prep$created_datetime))
-any(is.na(individual_redd_prep$created_by))
-
-#================================================================================================
-# LOAD TO DB
-#================================================================================================
-
-
-
-#==========================================================================================
-# Load data table
-#==========================================================================================
-
-#======== Location tables ===============
-
 #============================================================
 # Reset gid_sequence
 #============================================================
@@ -511,12 +239,22 @@ db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
 
-#=======  Insert location =================
+# Get location_coordinates data
+qry = glue("select * ",
+           "from location_coordinates ",
+           "where location_id in ({loc_ids})")
 
-# location: 3170 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'location', location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+location_coordinates = sf::st_read(con, query = qry, crs = 2927)
+dbDisconnect(con)
+
+# Verify location_coordinates
+any(duplicated(location_coordinates$location_id))
+any(is.na(location_coordinates$location_coordinates_id))
+any(is.na(location_coordinates$location_id))
+
+#=======  Insert location_coordinates =================
 
 # Get the current max_gid from the location_coordinates table
 qry = "select max(gid) from location_coordinates"
@@ -526,8 +264,8 @@ DBI::dbDisconnect(db_con)
 next_gid = max_gid$max + 1
 
 # Pull out data for location_coordinates table
-location_coordinates_temp = location_coordinates_prep %>%
-  mutate(gid = seq(next_gid, nrow(location_coordinates_prep) + next_gid - 1)) %>%
+location_coordinates_temp = location_coordinates %>%
+  mutate(gid = seq(next_gid, nrow(location_coordinates) + next_gid - 1)) %>%
   select(location_coordinates_id, location_id, horizontal_accuracy,
          comment_text, gid, created_datetime, created_by,
          modified_datetime, modified_by)
@@ -540,12 +278,12 @@ DBI::dbDisconnect(db_con)
 # Use select into query to get data into location_coordinates
 qry = glue::glue("INSERT INTO location_coordinates ",
                  "SELECT CAST(location_coordinates_id AS UUID), CAST(location_id AS UUID), ",
-                 "horizontal_accuracy, comment_text, gid, geometry AS geom, ",
+                 "horizontal_accuracy, comment_text, gid, geom, ",
                  "CAST(created_datetime AS timestamptz), created_by, ",
                  "CAST(modified_datetime AS timestamptz), modified_by ",
                  "FROM location_coordinates_temp")
 
-# Insert select to spawning_ground: 3105 rows
+# Insert select to spawning_ground: 3112 rows
 db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
@@ -554,11 +292,6 @@ DBI::dbDisconnect(db_con)
 db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, "DROP TABLE location_coordinates_temp")
 DBI::dbDisconnect(db_con)
-
-# media_location: 178 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'media_location', media_location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
 
 #============================================================
 # Reset gid_sequence
@@ -576,110 +309,471 @@ db_con = pg_con_local(dbname = "spawning_ground")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
 
+#=======  Insert media_location =================
+
+# Get media_location data
+qry = glue("select * ",
+           "from media_location ",
+           "where location_id in ({loc_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+media_location = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Rearrange columns
+media_location = media_location %>%
+  select(media_location_id, location_id, media_type_id,
+         media_url, created_datetime, created_by,
+         modified_datetime, modified_by, comment_text)
+
+# Verify media_location
+any(is.na(media_location$media_location_id))
+any(is.na(media_location$location_id))
+any(is.na(media_location$media_type_id))
+any(is.na(media_location$media_url))
+any(is.na(media_location$created_datetime))
+any(is.na(media_location$created_by))
+
+# media_location: 178 rows
+db_con = pg_con_local("spawning_ground")
+dbWriteTable(db_con, 'media_location', media_location, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
 #======== Survey level tables ===============
 
-# survey: 2044 rows
+# Get data
+qry = glue("select * ",
+           "from survey ",
+           "where survey_id in ({s_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+survey = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check survey
+any(duplicated(survey$survey_id))
+any(is.na(survey$survey_id))
+any(is.na(survey$survey_datetime))
+any(is.na(survey$data_source_id))
+any(is.na(survey$data_source_unit_id))
+any(is.na(survey$survey_method_id))
+any(is.na(survey$data_review_status_id))
+any(is.na(survey$upper_end_point_id))
+any(is.na(survey$lower_end_point_id))
+any(is.na(survey$survey_completion_status_id))
+any(is.na(survey$incomplete_survey_type_id))
+any(is.na(survey$created_datetime))
+any(is.na(survey$created_by))
+
+# survey: 2047 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'survey', survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'survey', survey, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_comment: 2044 rows
+# Get data
+qry = glue("select * ",
+           "from survey_comment ",
+           "where survey_id in ({s_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+survey_comment = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check survey_comment
+any(duplicated(survey_comment$survey_comment_id))
+any(is.na(survey_comment$survey_comment_id))
+any(is.na(survey_comment$survey_id))
+any(is.na(survey_comment$created_datetime))
+any(is.na(survey_comment$created_by))
+
+# survey_comment: 2047 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'survey_comment', comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'survey_comment', survey_comment, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+# Get data
+qry = glue("select * ",
+           "from survey_intent ",
+           "where survey_id in ({s_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+survey_intent = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check survey_intent
+any(duplicated(survey_intent$survey_intent_id))
+any(is.na(survey_intent$survey_intent_id))
+any(is.na(survey_intent$survey_id))
+any(is.na(survey_intent$species_id))
+any(is.na(survey_intent$count_type_id))
+any(is.na(survey_intent$created_datetime))
+any(is.na(survey_intent$created_by))
 
 # survey_intent: 22749 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'survey_intent', intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'survey_intent', survey_intent, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# waterbody_measurement: 2044 rows
+# Get data
+qry = glue("select * ",
+           "from waterbody_measurement ",
+           "where survey_id in ({s_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+waterbody_measurement = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check waterbody_measurement
+any(duplicated(waterbody_measurement$waterbody_measurement_id))
+any(is.na(waterbody_measurement$survey_id))
+any(is.na(waterbody_measurement$water_clarity_type_id))
+any(is.na(waterbody_measurement$water_clarity_meter))
+any(is.na(waterbody_measurement$created_datetime))
+any(is.na(waterbody_measurement$created_by))
+
+# waterbody_measurement: 2043 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'waterbody_measurement', waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'waterbody_measurement', waterbody_measurement, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+# Get data
+qry = glue("select * ",
+           "from mobile_survey_form ",
+           "where survey_id in ({s_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+mobile_survey_form = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check mobile_survey_form
+any(duplicated(mobile_survey_form$mobile_survey_form_id))
+any(is.na(mobile_survey_form$mobile_survey_form_id))
+any(is.na(mobile_survey_form$survey_id))
+any(is.na(mobile_survey_form$parent_form_survey_id))
+any(is.na(mobile_survey_form$parent_form_survey_guid))
+any(is.na(mobile_survey_form$created_datetime))
+any(is.na(mobile_survey_form$created_by))
 
 # mobile_survey_form: 2044 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'mobile_survey_form', mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'mobile_survey_form', mobile_survey_form, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+# Get data
+qry = glue("select * ",
+           "from fish_passage_feature ",
+           "where survey_id in ({s_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+fish_passage_feature = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check fish_passage_feature
+any(duplicated(fish_passage_feature$fish_passage_feature_id))
+any(is.na(fish_passage_feature$fish_passage_feature_id))
+any(is.na(fish_passage_feature$survey_id))
+any(is.na(fish_passage_feature$passage_feature_type_id))
+any(is.na(fish_passage_feature$feature_location_id))
+any(is.na(fish_passage_feature$feature_height_type_id))
+any(is.na(fish_passage_feature$plunge_pool_depth_type_id))
+any(is.na(fish_passage_feature$created_datetime))
+any(is.na(fish_passage_feature$created_by))
 
 # fish_passage_feature: 76 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_passage_feature', fish_passage_feature_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'fish_passage_feature', fish_passage_feature, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+# Get data
+qry = glue("select * ",
+           "from other_observation ",
+           "where survey_id in ({s_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+other_observation = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check other_observations
+any(duplicated(other_observation$other_observation_id))
+any(is.na(other_observation$other_observation_id))
+any(is.na(other_observation$survey_id))
+any(is.na(other_observation$observation_type_id))
+any(is.na(other_observation$created_datetime))
+any(is.na(other_observation$created_by))
 
 # other_observation: 239 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'other_observation', other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'other_observation', other_observation, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event: 9068 rows
+# Get data
+qry = glue("select * ",
+           "from survey_event ",
+           "where survey_event_id in ({se_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+survey_event = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check survey_event
+any(duplicated(survey_event$survey_event_id))
+any(is.na(survey_event$survey_event_id))
+any(is.na(survey_event$survey_id))
+any(is.na(survey_event$species_id))
+any(is.na(survey_event$survey_design_type_id))
+any(is.na(survey_event$cwt_detection_method_id))
+any(is.na(survey_event$run_id))
+any(is.na(survey_event$run_year))
+any(is.na(survey_event$created_datetime))
+any(is.na(survey_event$created_by))
+
+# survey_event: 2101 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'survey_event', survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'survey_event', survey_event, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== fish data ===============
 
+# Get data
+qry = glue("select * ",
+           "from fish_encounter ",
+           "where survey_event_id in ({se_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+fish_encounter = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check fish_encounter
+any(duplicated(fish_encounter$fish_encounter_id))
+any(is.na(fish_encounter$fish_encounter_id))
+any(is.na(fish_encounter$survey_event_id))
+any(is.na(fish_encounter$fish_status_id))
+any(is.na(fish_encounter$sex_id))
+any(is.na(fish_encounter$maturity_id))
+any(is.na(fish_encounter$origin_id))
+any(is.na(fish_encounter$cwt_detection_status_id))
+any(is.na(fish_encounter$adipose_clip_status_id))
+any(is.na(fish_encounter$fish_behavior_type_id))
+any(is.na(fish_encounter$mortality_type_id))
+any(is.na(fish_encounter$fish_count))
+any(is.na(fish_encounter$previously_counted_indicator))
+any(is.na(fish_encounter$created_datetime))
+any(is.na(fish_encounter$created_by))
+
 # fish_encounter: 2136 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_encounter', fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'fish_encounter', fish_encounter, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+# Get fish_encounter_ids
+qry = glue("select fish_encounter_id from fish_encounter where survey_event_id in ({se_ids})")
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+fish_id = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Pull out fish IDs
+fs_ids = unique(fish_id$fish_encounter_id)
+fs_ids = paste0(paste0("'", fs_ids, "'"), collapse = ", ")
+
+# Get data
+qry = glue("select * ",
+           "from fish_capture_event ",
+           "where fish_encounter_id in ({fs_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+fish_capture_event = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check fish_capture_event
+any(duplicated(fish_capture_event$fish_capture_event_id))
+any(is.na(fish_capture_event$fish_capture_event_id))
+any(is.na(fish_capture_event$fish_capture_status_id))
+any(is.na(fish_capture_event$disposition_type_id))
+any(is.na(fish_capture_event$disposition_id))
+any(is.na(fish_capture_event$created_datetime))
+any(is.na(fish_capture_event$created_by))
 
 # fish_capture_event: 4654 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_capture_event', fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'fish_capture_event', fish_capture_event, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+# Get data
+qry = glue("select * ",
+           "from fish_mark ",
+           "where fish_encounter_id in ({fs_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+fish_mark = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check fish_mark
+any(duplicated(fish_mark$fish_mark_id))
+any(is.na(fish_mark$fish_mark_id))
+any(is.na(fish_mark$mark_type_id))
+any(is.na(fish_mark$mark_status_id))
+any(is.na(fish_mark$mark_orientation_id))
+any(is.na(fish_mark$mark_placement_id))
+any(is.na(fish_mark$mark_size_id))
+any(is.na(fish_mark$mark_color_id))
+any(is.na(fish_mark$mark_shape_id))
+any(is.na(fish_mark$created_datetime))
+any(is.na(fish_mark$created_by))
 
 # fish_mark: 6880 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_mark', fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'fish_mark', fish_mark, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+# Get data
+qry = glue("select * ",
+           "from individual_fish ",
+           "where fish_encounter_id in ({fs_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+individual_fish = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check individual_fish
+any(duplicated(individual_fish$individual_fish_id))
+any(is.na(individual_fish$individual_fish_id))
+any(is.na(individual_fish$fish_encounter_id))
+any(is.na(individual_fish$fish_condition_type_id))
+any(is.na(individual_fish$fish_trauma_type_id))
+any(is.na(individual_fish$gill_condition_type_id))
+any(is.na(individual_fish$spawn_condition_type_id))
+any(is.na(individual_fish$cwt_result_type_id))
+any(is.na(individual_fish$created_datetime))
+any(is.na(individual_fish$created_by))
 
 # individual_fish: 2537 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'individual_fish', individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'individual_fish', individual_fish, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+# Get individual_fish IDs
+qry = glue("select individual_fish_id from individual_fish where fish_encounter_id in ({fs_ids})")
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+indf_id = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Pull out ind_fish IDs
+ifs_ids = unique(indf_id$individual_fish_id)
+ifs_ids = paste0(paste0("'", ifs_ids, "'"), collapse = ", ")
+
+# Get data
+qry = glue("select * ",
+           "from fish_length_measurement ",
+           "where individual_fish_id in ({ifs_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+fish_length_measurement = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check fish_length_measurement
+any(duplicated(fish_length_measurement$fish_length_measurement_id))
+any(is.na(fish_length_measurement$fish_length_measurement_id))
+any(is.na(fish_length_measurement$individual_fish_id))
+any(is.na(fish_length_measurement$fish_length_measurement_type_id))
+any(is.na(fish_length_measurement$length_measurement_centimeter))
 
 # fish_length_measurement: 2263 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_length_measurement', fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'fish_length_measurement', fish_length_measurement, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== redd data ===============
 
-# redd_encounter: 11498 rows
+# Get data
+qry = glue("select * ",
+           "from redd_encounter ",
+           "where survey_event_id in ({se_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+redd_encounter = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check redd_encounter
+any(duplicated(redd_encounter$redd_encounter_id))
+any(is.na(redd_encounter$redd_encounter_id))
+any(is.na(redd_encounter$survey_event_id))
+any(is.na(redd_encounter$redd_status_id))
+any(is.na(redd_encounter$redd_count))
+any(is.na(redd_encounter$created_datetime))
+any(is.na(redd_encounter$created_by))
+
+# redd_encounter: 11492 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'redd_encounter', redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'redd_encounter', redd_encounter, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_redd: 7724 rows
+# Get redd_encounter_ids
+qry = glue("select redd_encounter_id from redd_encounter where survey_event_id in ({se_ids})")
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+redd_id = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Pull out redd IDs
+rd_ids = unique(redd_id$redd_encounter_id)
+rd_ids = paste0(paste0("'", rd_ids, "'"), collapse = ", ")
+
+# Get data
+qry = glue("select * ",
+           "from individual_redd ",
+           "where redd_encounter_id in ({rd_ids})")
+
+# Get values from source
+con = dbConnect(RSQLite::SQLite(), dbname = 'database/spawning_ground_lite.sqlite')
+individual_redd = dbGetQuery(con, qry)
+dbDisconnect(con)
+
+# Check individual_redd
+any(duplicated(individual_redd$individual_redd_id))
+any(is.na(individual_redd$individual_redd_id))
+any(is.na(individual_redd$redd_encounter_id))
+any(is.na(individual_redd$redd_shape_id))
+any(is.na(individual_redd$created_datetime))
+any(is.na(individual_redd$created_by))
+
+# individual_redd: 7722 rows
 db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'individual_redd', individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbWriteTable(db_con, 'individual_redd', individual_redd, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+#===========================================================================================================
+# Save reference IDs for possible later use
+#===========================================================================================================
+
+# # Output IDs to data folder
+# saveRDS(object = loc_ids, file = "data/loc_ids.rds")
+# saveRDS(object = s_ids, file = "data/s_ids.rds")
+# saveRDS(object = se_ids, file = "data/se_ids.rds")
 
 # #===========================================================================================================
 # # Get IDs needed to delete freshly uploaded data
 # #===========================================================================================================
 #
 # # Get IDs
-# test_upload_ids = readRDS("data/test_upload_ids.rds")
-# test_location_ids = readRDS("data/test_location_ids.rds")
-#
-# # Pull out survey IDs
-# s_id = unique(test_upload_ids$survey_id)
-# s_id = s_id[!is.na(s_id)]
-# s_ids = paste0(paste0("'", s_id, "'"), collapse = ", ")
-#
-# # Pull out survey_event IDs
-# se_id = unique(test_upload_ids$survey_event_id)
-# se_id = se_id[!is.na(se_id)]
-# se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
-#
-# # Pull out location IDs: 3160 rows
-# loc_ids = unique(test_location_ids$location_id)
-# loc_ids = paste0(paste0("'", loc_ids, "'"), collapse = ", ")
+# loc_ids = readRDS("data/loc_ids.rds")
+# s_ids = readRDS("data/s_ids.rds")
+# se_ids = readRDS("data/se_ids.rds")
 #
 # # Get fish_encounter_ids
 # qry = glue("select fish_encounter_id from fish_encounter where survey_event_id in ({se_ids})")
