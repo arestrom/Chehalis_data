@@ -75,7 +75,7 @@ pg_con_local = function(dbname, port = '5432') {
 #============================================================================
 
 # Set selectable values
-selected_run_year = 2020                    # Only for computing Steelhead origin. Line 376
+selected_run_year = 2020L                    # Only for computing Steelhead origin. Line 376
 selected_species = "Steelhead trout"
 selected_run = "Winter"      # Should be only winter
 start_date = "2019-11-30"
@@ -108,13 +108,14 @@ get_header_data = function(start_date, end_date) {
              "left join survey_comment as sc on s.survey_id = sc.survey_id ",
              "left join stream_flow_type_lut as sf on sc.stream_flow_type_id = sf.stream_flow_type_id ",
              "left join visibility_type_lut as vt on sc.visibility_type_id = vt.visibility_type_id ",
-             "where survey_datetime between '{start_date}' and '{end_date}' ",
+             "where s.survey_datetime > '{start_date}' ",
              "and wr.wria_code in ('22', '23')")
   con = pg_con_local("spawning_ground")
   surveys = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   surveys = surveys %>%
     mutate(survey_date = as.Date(survey_date)) %>%
+    filter(survey_date <= as.Date(end_date)) %>%
     mutate(survey_dt = survey_date) %>%
     mutate(statweek = remisc::fish_stat_week(survey_date, start_day = "Sun")) %>%
     mutate(survey_date = format(survey_date, "%m/%d/%Y")) %>%
@@ -219,7 +220,7 @@ header_data = header_data %>%
   filter(survey_id %in% steelhead_survey_id) %>%
   arrange(stream_name, type, survey_dt, run_year)
 
-# Pull out full set of basic header data so surveys with no selected species are preserved for zero entries: 837 rows
+# Pull out full set of basic header data so surveys with no selected species are preserved for zero entries: 1336 rows
 full_header = header_data %>%
   select(survey_id, wria, stream_name, llid, type, survey_date, statweek,
          rml, rmu, method, flow, rifflevis, obs, survey_status, survey_dt) %>%
@@ -407,6 +408,8 @@ head_labels = get_head_labels(header_data_adj) %>%
 # Add some helper fields from header_data
 head_dat = header_data %>%
   filter(!is.na(survey_id)) %>%
+  mutate(run_year = if_else(species == selected_species, selected_run_year, run_year)) %>%
+  mutate(run = if_else(species == selected_species, selected_run, run)) %>%
   select(survey_id, stream_name, survey_date, species,
          run_year, run, type, rml, rmu, method, obs,
          survey_dt) %>%
@@ -422,15 +425,28 @@ unique(fish_counts$species)
 unique(fish_counts$run_year)
 unique(fish_counts$run)
 
+# Check
+test_data = head_dat %>%
+  filter(stream_name == "Newaukum R (23.0882)") %>%
+  filter(survey_dt == as.Date("2020-02-27")) %>%
+  filter(rmu == 5.8)
+
+# Check
+unique(fish_counts$species)
+unique(fish_counts$run_year)
+unique(fish_counts$run)
+
 # Add to fish_counts
 fish_dat = fish_counts %>%
-  mutate()
+  mutate(run_year = if_else(species == selected_species, selected_run_year, run_year)) %>%
+  mutate(run = if_else(species == selected_species, selected_run, run)) %>%
   left_join(head_dat, by = c("survey_id", "species", "run_year", "run")) %>%
   select(survey_id, survey_event_id, fish_encounter_id, stream_name,
          survey_date, type, rml, rmu, method, obs, species, run_year,
          run, fish_status, sex, maturity, clip_status, cwt_detect,
          fish_count, prev_count, fish_comments, survey_dt) %>%
-  arrange(stream_name, survey_dt, rml, rmu)
+  arrange(stream_name, survey_dt, rml, rmu) %>%
+  filter(!is.na(stream_name))
 
 # Check
 anyNA(fish_dat$stream_name)
@@ -547,11 +563,14 @@ fish_clip_sums = fish_dat %>%
 
 # Add to fish_counts
 redd_dat = redd_counts %>%
+  mutate(run_year = if_else(species == selected_species, selected_run_year, run_year)) %>%
+  mutate(run = if_else(species == selected_species, selected_run, run)) %>%
   left_join(head_dat, by = c("survey_id", "species", "run_year", "run")) %>%
   select(survey_id, survey_event_id, redd_encounter_id, stream_name, survey_date, type,
          rml, rmu, method, obs, species, run_year, run, redd_status, redd_count,
          survey_dt) %>%
   filter(!is.na(redd_encounter_id)) %>%
+  filter(!is.na(stream_name)) %>%
   arrange(stream_name, survey_dt, rml, rmu) %>%
   distinct()
 
@@ -707,6 +726,10 @@ head_fields = full_header %>%
   arrange(StreamName, RML, RMU, survey_dt)
 any(duplicated(head_fields$survey_id))
 
+# Check for count_intent survey_type values
+check_count_intent = count_intent %>%
+  filter(survey_id == '39b622f0-aedf-43b2-a51c-580d20b42743')
+
 # Pivot out count_types for intent
 intent_pivot = count_intent %>%
   filter(species == selected_species) %>%
@@ -722,6 +745,10 @@ intent_concat = intent_pivot %>%
   mutate(SurveyIntent = stri_replace_all_fixed(count_type, pattern = ", NA", replacement = "")) %>%
   select(survey_id, species, SurveyIntent)
 
+# Check if test data is there
+check_intent = intent_concat %>%
+  filter(survey_id == '39b622f0-aedf-43b2-a51c-580d20b42743')
+
 # Combine head_fields and intent fields to get full set of species per survey
 all_surveys = intent_concat %>%
   left_join(head_fields, by = "survey_id") %>%
@@ -731,6 +758,10 @@ all_surveys = intent_concat %>%
   filter(drop_row == "keep") %>%
   distinct() %>%
   arrange(StreamName, RML, RMU, survey_dt)
+
+# Check if test data is there
+check_all = all_surveys %>%
+  filter(survey_id == '39b622f0-aedf-43b2-a51c-580d20b42743')
 
 # Set empty cells to zero
 # names(all_surveys)
@@ -746,6 +777,10 @@ all_surveys = all_surveys %>%
   ungroup() %>%
   filter(survey_id %in% steelhead_survey_id) %>%
   arrange(Type, StreamName, RML, RMU, survey_dt)
+
+# Check if test data is there
+check_all = all_surveys %>%
+  filter(survey_id == '39b622f0-aedf-43b2-a51c-580d20b42743')
 
 # Format names
 all_surveys = all_surveys %>%
