@@ -77,8 +77,8 @@ pg_con_local = function(dbname, port = '5432') {
 # Set selectable values
 selected_run_year = 2020                    # Only for computing Steelhead origin. Line 376
 selected_species = "Steelhead trout"
-selected_run = "Winter"      # Fall or Spring
-start_date = "2019-09-01"
+selected_run = "Winter"      # Should be only winter
+start_date = "2019-11-30"
 end_date = "2020-09-01"
 
 # Function to get header data...use multiselect for year
@@ -114,9 +114,6 @@ get_header_data = function(start_date, end_date) {
   surveys = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   surveys = surveys %>%
-    # HACK WARNING: TimeZone was screwed up !!!!!!!!! Using New York in profile !!!!!
-    # as.Date uses local timezone so conversion should come out correctly
-    # But may need to adjust after dates are corrected in DB !!!!!!!!!!!!!!!
     mutate(survey_date = as.Date(survey_date)) %>%
     mutate(survey_dt = survey_date) %>%
     mutate(statweek = remisc::fish_stat_week(survey_date, start_day = "Sun")) %>%
@@ -129,12 +126,16 @@ get_header_data = function(start_date, end_date) {
   return(surveys)
 }
 
-# Run the function: 5708 rows
+# Run the function: 3464 rows
 header_data = get_header_data(start_date, end_date) %>%
   arrange(stream_name, rml, rmu, survey_dt)
 
 # Check
 anyNA(header_data$stream_name)
+test_data = header_data %>%
+  filter(stream_name == "Newaukum R (23.0882)") %>%
+  filter(survey_dt == as.Date("2020-02-27")) %>%
+  filter(rmu == 5.8)
 
 # Identify fake surveys
 fake_id = header_data %>%
@@ -143,7 +144,7 @@ fake_id = header_data %>%
   distinct() %>%
   pull(survey_id)
 
-# Filter to real surveys...5702 left
+# Filter to real surveys...3458 left
 header_data = header_data %>%
   filter(!survey_id %in% fake_id)
 
@@ -156,27 +157,33 @@ table(header_data$type, useNA = "ifany")
 table(header_data$run_year, useNA = "ifany")
 table(header_data$run, useNA = "ifany")
 
+# Check
+test_data = header_data %>%
+  filter(stream_name == "Newaukum R (23.0882)") %>%
+  filter(survey_dt == as.Date("2020-02-27")) %>%
+  filter(rmu == 5.8)
+
 #============================================================================
 # Get intents for surveys above...can now use survey_event_id for filter
 #============================================================================
 
 # Function to get fish_counts
 get_intent = function(header_data) {
-  # Pull out the survey_event_ids
-  se_id = header_data %>%
-    filter(!is.na(survey_event_id)) %>%
-    pull(survey_event_id)
-  se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
+  # Pull out the survey_ids
+  s_id = header_data %>%
+    filter(!is.na(survey_id)) %>%
+    pull(survey_id)
+  s_ids = paste0(paste0("'", s_id, "'"), collapse = ", ")
   # Query to pull intent and survey_type
   qry = glue("select si.survey_id, se.survey_event_id, sp.common_name as species, ",
              "ct.count_type_code as count_type, sd.survey_design_type_code as survey_type ",
              "from survey_intent as si ",
              "inner join survey as s on si.survey_id = s.survey_id ",
-             "inner join survey_event as se on s.survey_id = se.survey_id ",
-             "inner join survey_design_type_lut as sd on se.survey_design_type_id = sd.survey_design_type_id ",
+             "left join survey_event as se on s.survey_id = se.survey_id ",
+             "left join survey_design_type_lut as sd on se.survey_design_type_id = sd.survey_design_type_id ",
              "left join species_lut as sp on si.species_id = sp.species_id ",
              "left join count_type_lut as ct on si.count_type_id = ct.count_type_id ",
-             "where se.survey_event_id in ({se_ids})")
+             "where s.survey_id in ({s_ids})")
   con = pg_con_local("spawning_ground")
   count_intent = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
@@ -186,8 +193,12 @@ get_intent = function(header_data) {
   return(count_intent)
 }
 
-# Run the function: 58551 rows
+# Run the function: 19399 rows
 count_intent = get_intent(header_data)
+
+# Check if test data is there
+check_intent = count_intent %>%
+  filter(survey_id == '39b622f0-aedf-43b2-a51c-580d20b42743')
 
 #============================================================================
 # Filter surveys to those where counts for steelhead were intended
@@ -203,12 +214,12 @@ steelhead_survey_id = steelhead_intent %>%
   distinct() %>%
   pull(survey_id)
 
-# Use species intent to filter header_data: 4134 rows left
+# Use species intent to filter header_data: 3430 rows left
 header_data = header_data %>%
   filter(survey_id %in% steelhead_survey_id) %>%
   arrange(stream_name, type, survey_dt, run_year)
 
-# Pull out full set of basic header data so surveys with no selected species are preserved for zero entries: 1254 rows
+# Pull out full set of basic header data so surveys with no selected species are preserved for zero entries: 837 rows
 full_header = header_data %>%
   select(survey_id, wria, stream_name, llid, type, survey_date, statweek,
          rml, rmu, method, flow, rifflevis, obs, survey_status, survey_dt) %>%
@@ -220,6 +231,18 @@ any(duplicated(full_header$survey_id))
 unique(header_data$species)
 anyNA(header_data$stream_name)
 
+# Check
+test_data = header_data %>%
+  filter(stream_name == "Newaukum R (23.0882)") %>%
+  filter(survey_dt == as.Date("2020-02-27")) %>%
+  filter(rmu == 5.8)
+
+# Check
+test_data = full_header %>%
+  filter(stream_name == "Newaukum R (23.0882)") %>%
+  filter(survey_dt == as.Date("2020-02-27")) %>%
+  filter(rmu == 5.8)
+
 #============================================================================
 # Filter surveys to those where counts for steelhead were intended
 #============================================================================
@@ -227,7 +250,7 @@ anyNA(header_data$stream_name)
 # According to Lea, all run types should be Winter
 
 # Change any unknown run values to Winter
-# Then filter to only desired species
+# Then filter to only desired species...503 rows in header_data_adj
 table(header_data$run, useNA = "ifany")
 table(header_data$species, useNA = "ifany")
 header_data_adj = header_data %>%
@@ -245,6 +268,14 @@ header_data_adj = header_data_adj %>%
 # Check
 table(header_data_adj$run, useNA = "ifany")
 table(header_data_adj$species, useNA = "ifany")
+test_data = header_data %>%
+  filter(stream_name == "Newaukum R (23.0882)") %>%
+  filter(survey_dt == as.Date("2020-02-27")) %>%
+  filter(rmu == 5.8)
+test_data = header_data_adj %>%
+  filter(stream_name == "Newaukum R (23.0882)") %>%
+  filter(survey_dt == as.Date("2020-02-27")) %>%
+  filter(rmu == 5.8)
 
 #============================================================================
 # Get all live and dead counts for surveys above
@@ -252,18 +283,19 @@ table(header_data_adj$species, useNA = "ifany")
 
 # Function to get fish_counts
 get_fish_counts = function(header_data_adj) {
-  # Pull out the survey_event_ids
-  se_id = header_data_adj %>%
-    filter(!is.na(survey_event_id)) %>%
-    pull(survey_event_id)
-  se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
+  # Pull out the survey_ids
+  s_id = header_data_adj %>%
+    filter(!is.na(survey_id)) %>%
+    pull(survey_id)
+  s_ids = paste0(paste0("'", s_id, "'"), collapse = ", ")
   # Query to pull out all counts by species and sex-maturity-mark groups
-  qry = glue("select se.survey_id, se.survey_event_id, fe.fish_encounter_id, sp.common_name as species, ",
+  qry = glue("select s.survey_id, se.survey_event_id, fe.fish_encounter_id, sp.common_name as species, ",
              "se.run_year, fs.fish_status_description as fish_status, se.comment_text as fish_comments, ",
              "sx.sex_description as sex, mat.maturity_short_description as maturity, ",
              "ad.adipose_clip_status_code as clip_status, cwt.detection_status_description as cwt_detect, ",
              "fe.fish_count, fe.previously_counted_indicator as prev_count ",
-             "from survey_event as se ",
+             "from survey as s ",
+             "left join survey_event as se on s.survey_id = se.survey_id ",
              "left join fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
              "left join species_lut as sp on se.species_id = sp.species_id ",
              "left join fish_status_lut as fs on fe.fish_status_id = fs.fish_status_id ",
@@ -271,7 +303,7 @@ get_fish_counts = function(header_data_adj) {
              "left join maturity_lut as mat on fe.maturity_id = mat.maturity_id ",
              "left join adipose_clip_status_lut as ad on fe.adipose_clip_status_id = ad.adipose_clip_status_id ",
              "left join cwt_detection_status_lut as cwt on fe.cwt_detection_status_id = cwt.cwt_detection_status_id ",
-             "where se.survey_event_id in ({se_ids})")
+             "where s.survey_id in ({s_ids})")
   con = pg_con_local("spawning_ground")
   fish_counts = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
@@ -282,7 +314,7 @@ get_fish_counts = function(header_data_adj) {
   return(fish_counts)
 }
 
-# Run the function: 1844 rows
+# Run the function: 631 rows
 fish_counts = get_fish_counts(header_data_adj) %>%
   mutate(run = selected_run) %>%
   select(survey_id, survey_event_id, fish_encounter_id, species,
@@ -295,17 +327,18 @@ fish_counts = get_fish_counts(header_data_adj) %>%
 
 # Function to get redd counts
 get_redd_counts = function(header_data_adj) {
-  se_id = header_data_adj %>%
-    filter(!is.na(survey_event_id)) %>%
-    pull(survey_event_id)
-  se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
-  qry = glue("select se.survey_id, se.survey_event_id, rd.redd_encounter_id, sp.common_name as species, ",
+  s_id = header_data_adj %>%
+    filter(!is.na(survey_id)) %>%
+    pull(survey_id)
+  s_ids = paste0(paste0("'", s_id, "'"), collapse = ", ")
+  qry = glue("select s.survey_id, se.survey_event_id, rd.redd_encounter_id, sp.common_name as species, ",
              "se.run_year, rs.redd_status_short_description as redd_status, rd.redd_count ",
-             "from survey_event as se ",
+             "from survey as s ",
+             "left join survey_event as se on s.survey_id = se.survey_id ",
              "left join species_lut as sp on se.species_id = sp.species_id ",
              "left join redd_encounter as rd on se.survey_event_id = rd.survey_event_id ",
              "left join redd_status_lut as rs on rd.redd_status_id = rs.redd_status_id ",
-             "where se.survey_event_id in ({se_ids})")
+             "where s.survey_id in ({s_ids})")
   con = pg_con_local("spawning_ground")
   redd_counts = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
@@ -315,7 +348,7 @@ get_redd_counts = function(header_data_adj) {
   return(redd_counts)
 }
 
-# Run the function: 4040 rows
+# Run the function: 4499 rows
 redd_counts = get_redd_counts(header_data_adj) %>%
   mutate(run = selected_run) %>%
   select(survey_id, survey_event_id, redd_encounter_id, species,
@@ -327,17 +360,18 @@ redd_counts = get_redd_counts(header_data_adj) %>%
 
 # Function to get cwt labels
 get_head_labels = function(header_data_adj) {
-  se_id = header_data_adj %>%
-    filter(!is.na(survey_event_id)) %>%
-    pull(survey_event_id)
-  se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
-  qry = glue("select se.survey_id, se.survey_event_id, sp.common_name as species, ",
+  s_id = header_data_adj %>%
+    filter(!is.na(survey_id)) %>%
+    pull(survey_id)
+  s_ids = paste0(paste0("'", s_id, "'"), collapse = ", ")
+  qry = glue("select s.survey_id, se.survey_event_id, sp.common_name as species, ",
              "se.run_year, indf.cwt_snout_sample_number as cwt_head_label ",
-             "from survey_event as se ",
+             "from survey as s ",
+             "left join survey_event as se on s.survey_id = se.survey_id ",
              "left join species_lut as sp on se.species_id = sp.species_id ",
              "left join fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
              "left join individual_fish as indf on fe.fish_encounter_id = indf.fish_encounter_id ",
-             "where se.survey_event_id in ({se_ids}) and ",
+             "where s.survey_id in ({s_ids}) and ",
              "indf.cwt_snout_sample_number is not null")
   con = pg_con_local("spawning_ground")
   head_labels = DBI::dbGetQuery(con, qry)
@@ -348,7 +382,7 @@ get_head_labels = function(header_data_adj) {
   return(head_labels)
 }
 
-# Run the function: 3 rows .... all from fake data
+# Run the function: 0 rows .... all from fake data
 head_labels = get_head_labels(header_data_adj) %>%
   mutate(run = selected_run) %>%
   select(survey_id, survey_event_id, species, run_year,
@@ -371,8 +405,8 @@ head_labels = get_head_labels(header_data_adj) %>%
 #   distinct()
 
 # Add some helper fields from header_data
-head_dat = header_data_adj %>%
-  filter(!is.na(survey_event_id)) %>%
+head_dat = header_data %>%
+  filter(!is.na(survey_id)) %>%
   select(survey_id, stream_name, survey_date, species,
          run_year, run, type, rml, rmu, method, obs,
          survey_dt) %>%
@@ -384,9 +418,13 @@ table(head_dat$run_year, useNA = "ifany")
 table(head_dat$species, useNA = "ifany")
 table(head_dat$type, useNA = "ifany")
 anyNA(head_dat$stream_name)
+unique(fish_counts$species)
+unique(fish_counts$run_year)
+unique(fish_counts$run)
 
 # Add to fish_counts
 fish_dat = fish_counts %>%
+  mutate()
   left_join(head_dat, by = c("survey_id", "species", "run_year", "run")) %>%
   select(survey_id, survey_event_id, fish_encounter_id, stream_name,
          survey_date, type, rml, rmu, method, obs, species, run_year,
@@ -768,7 +806,7 @@ max(as.Date(header_data$survey_date, format = "%m/%d/%Y"))
 # Or fancier with styling
 out_name = paste0("data_query/test_queries/WinterSteehead_WRIAs_22-23.xlsx")
 wb <- createWorkbook(out_name)
-addWorksheet(wb, "Sept-Jun_Surveys", gridLines = TRUE)
+addWorksheet(wb, "Dec-Jun_Surveys", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)
 ## create and add a style to the column headers
 headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
