@@ -36,5 +36,6 @@ fish_location_ui = tags$div(
   br(),
   br(),
   br(),
-  DT::DTOutput("fish_locations") %>% withSpinner()
+  DT::DTOutput("fish_locations") %>%
+    shinycssloaders::withSpinner(., size = 0.5)
 )
