@@ -3,7 +3,7 @@
 #
 # Did not work....needed to update waterbody_lut and probably other stream data
 #    so decided to load all data tables from local using:
-#    copy_sg_local_data_to_fish_prod.R
+#    copy_sg_local_data_to_fish_prod.R in spawning_grounds repo.
 #
 # AS 2020-09-01
 #===============================================================================
