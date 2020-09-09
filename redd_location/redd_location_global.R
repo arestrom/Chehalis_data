@@ -159,7 +159,7 @@ get_redd_coordinates = function(redd_location_id) {
 #==========================================================================
 
 # Redd status
-get_channel_type = function() {
+get_redd_channel_type = function() {
   qry = glue("select stream_channel_type_id, channel_type_description as channel_type ",
              "from stream_channel_type_lut ",
              "where obsolete_datetime is null")
@@ -172,7 +172,7 @@ get_channel_type = function() {
 }
 
 # Redd status
-get_orientation_type = function() {
+get_redd_orientation_type = function() {
   qry = glue("select location_orientation_type_id, orientation_type_description as orientation_type ",
              "from location_orientation_type_lut ",
              "where obsolete_datetime is null")

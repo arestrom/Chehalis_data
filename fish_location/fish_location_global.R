@@ -162,7 +162,7 @@ get_fish_coordinates = function(fish_location_id) {
 # Get generic lut input values
 #==========================================================================
 
-# Redd status
+# Channel type
 get_fish_channel_type = function() {
   qry = glue("select stream_channel_type_id, channel_type_description as channel_type ",
              "from stream_channel_type_lut ",
@@ -175,7 +175,7 @@ get_fish_channel_type = function() {
   return(channel_type_list)
 }
 
-# Redd status
+# Orientation type
 get_fish_orientation_type = function() {
   qry = glue("select location_orientation_type_id, orientation_type_description as orientation_type ",
              "from location_orientation_type_lut ",

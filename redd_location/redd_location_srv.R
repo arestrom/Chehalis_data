@@ -4,18 +4,18 @@
 # Generate lut select ui's
 #========================================================
 
-output$channel_type_select = renderUI({
-  channel_type_list = get_channel_type()$channel_type
+output$redd_channel_type_select = renderUI({
+  channel_type_list = get_redd_channel_type()$channel_type
   channel_type_list = c("", channel_type_list)
-  selectizeInput("channel_type_select", label = "channel_type",
+  selectizeInput("redd_channel_type_select", label = "channel_type",
                  choices = channel_type_list, selected = NULL,
                  width = "250px")
 })
 
-output$orientation_type_select = renderUI({
-  orientation_type_list = get_orientation_type()$orientation_type
+output$redd_orientation_type_select = renderUI({
+  orientation_type_list = get_redd_orientation_type()$orientation_type
   orientation_type_list = c("", orientation_type_list)
-  selectizeInput("orientation_type_select", label = "orientation_type",
+  selectizeInput("redd_orientation_type_select", label = "orientation_type",
                  choices = orientation_type_list, selected = NULL,
                  width = "275px")
 })
@@ -105,12 +105,12 @@ selected_redd_location_data = reactive({
 observeEvent(input$redd_locations_rows_selected, {
   srldat = selected_redd_location_data()
   updateTextInput(session, "redd_name_input", value = srldat$redd_name)
-  updateSelectizeInput(session, "channel_type_select", selected = srldat$channel_type)
-  updateSelectizeInput(session, "orientation_type_select", selected = srldat$orientation_type)
+  updateSelectizeInput(session, "redd_channel_type_select", selected = srldat$channel_type)
+  updateSelectizeInput(session, "redd_orientation_type_select", selected = srldat$orientation_type)
   updateNumericInput(session, "redd_latitude_input", value = srldat$latitude)
   updateNumericInput(session, "redd_longitude_input", value = srldat$longitude)
   updateNumericInput(session, "redd_horiz_accuracy_input", value = srldat$horiz_accuracy)
-  updateTextAreaInput(session, "location_description_input", value = srldat$location_description)
+  updateTextAreaInput(session, "redd_location_description_input", value = srldat$location_description)
 })
 
 #================================================================
@@ -168,7 +168,7 @@ output$redd_map <- renderLeaflet({
                      overlayGroups = c("Streams"),
                      options = layersControlOptions(collapsed = TRUE)) %>%
     # Add edit features
-    leaflet.extras::addDrawToolbar(
+    leaflet.extras::addDrawToolbar(.,
       targetGroup = "redd_edits",
       position = "topleft",
       polylineOptions = FALSE,
@@ -297,34 +297,34 @@ redd_location_create = reactive({
   req(input$surveys_rows_selected)
   req(input$survey_events_rows_selected)
   # Channel type
-  channel_type_input = input$channel_type_select
-  if ( channel_type_input == "" ) {
+  redd_channel_type_input = input$redd_channel_type_select
+  if ( redd_channel_type_input == "" ) {
     stream_channel_type_id = NA
   } else {
-    channel_type_vals = get_channel_type()
-    stream_channel_type_id = channel_type_vals %>%
-      filter(channel_type == channel_type_input) %>%
+    redd_channel_type_vals = get_redd_channel_type()
+    stream_channel_type_id = redd_channel_type_vals %>%
+      filter(channel_type == redd_channel_type_input) %>%
       pull(stream_channel_type_id)
   }
   # Orientation type
-  orientation_type_input = input$orientation_type_select
-  if ( orientation_type_input == "" ) {
+  redd_orientation_type_input = input$redd_orientation_type_select
+  if ( redd_orientation_type_input == "" ) {
     location_orientation_type_id = NA
   } else {
-    orientation_type_vals = get_orientation_type()
-    location_orientation_type_id = orientation_type_vals %>%
-      filter(orientation_type == orientation_type_input) %>%
+    redd_orientation_type_vals = get_redd_orientation_type()
+    location_orientation_type_id = redd_orientation_type_vals %>%
+      filter(orientation_type == redd_orientation_type_input) %>%
       pull(location_orientation_type_id)
   }
   new_redd_location = tibble(redd_name = input$redd_name_input,
-                             channel_type = channel_type_input,
+                             channel_type = redd_channel_type_input,
                              stream_channel_type_id = stream_channel_type_id,
-                             orientation_type = orientation_type_input,
+                             orientation_type = redd_orientation_type_input,
                              location_orientation_type_id = location_orientation_type_id,
                              latitude = input$redd_latitude_input,
                              longitude = input$redd_longitude_input,
                              horiz_accuracy = input$redd_horiz_accuracy_input,
-                             location_description = input$location_description_input,
+                             location_description = input$redd_location_description_input,
                              created_dt = lubridate::with_tz(Sys.time(), "UTC"),
                              created_by = Sys.getenv("USERNAME"))
   return(new_redd_location)
@@ -464,35 +464,35 @@ redd_location_edit = reactive({
   req(input$redd_locations_rows_selected)
   req(!is.na(selected_redd_location_data()$redd_location_id))
   # Channel type
-  channel_type_input = input$channel_type_select
-  if ( channel_type_input == "" ) {
+  redd_channel_type_input = input$redd_channel_type_select
+  if ( redd_channel_type_input == "" ) {
     stream_channel_type_id = NA
   } else {
-    channel_type_vals = get_channel_type()
-    stream_channel_type_id = channel_type_vals %>%
-      filter(channel_type == channel_type_input) %>%
+    redd_channel_type_vals = get_redd_channel_type()
+    stream_channel_type_id = redd_channel_type_vals %>%
+      filter(channel_type == redd_channel_type_input) %>%
       pull(stream_channel_type_id)
   }
   # Orientation type
-  orientation_type_input = input$orientation_type_select
-  if ( orientation_type_input == "" ) {
+  redd_orientation_type_input = input$redd_orientation_type_select
+  if ( redd_orientation_type_input == "" ) {
     location_orientation_type_id = NA
   } else {
-    orientation_type_vals = get_orientation_type()
-    location_orientation_type_id = orientation_type_vals %>%
-      filter(orientation_type == orientation_type_input) %>%
+    redd_orientation_type_vals = get_redd_orientation_type()
+    location_orientation_type_id = redd_orientation_type_vals %>%
+      filter(orientation_type == redd_orientation_type_input) %>%
       pull(location_orientation_type_id)
   }
   edit_redd_location = tibble(redd_location_id = selected_redd_location_data()$redd_location_id,
                               redd_name = input$redd_name_input,
-                              channel_type = channel_type_input,
+                              channel_type = redd_channel_type_input,
                               stream_channel_type_id = stream_channel_type_id,
-                              orientation_type = orientation_type_input,
+                              orientation_type = redd_orientation_type_input,
                               location_orientation_type_id = location_orientation_type_id,
                               latitude = input$redd_latitude_input,
                               longitude = input$redd_longitude_input,
                               horiz_accuracy = input$redd_horiz_accuracy_input,
-                              location_description = input$location_description_input,
+                              location_description = input$redd_location_description_input,
                               modified_dt = lubridate::with_tz(Sys.time(), "UTC"),
                               modified_by = Sys.getenv("USERNAME"))
   return(edit_redd_location)
