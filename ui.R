@@ -47,14 +47,12 @@ ui = dashboardPagePlus(
                       survey_comment_ui
                     ),
                     accordionItem(
-                      id = 2,
                       title = "Survey intent",
                       color = "purple",
                       collapsed = TRUE,
                       survey_intent_ui
                     ),
                     accordionItem(
-                      id = 3,
                       title = "Waterbody measurements",
                       color = "purple",
                       collapsed = TRUE,
