@@ -260,7 +260,7 @@ st_llid = llid_chehalis %>%
 # Check crs
 st_crs(st_llid)$epsg
 
-#===== Verify stream is not already in SG based on stream_name or cat_coe ==================
+#===== Verify stream is not already in SG based on stream_name or cat_code ==================
 
 # Get info from cat_llid
 st_cat = cat_llid_chehalis %>%
