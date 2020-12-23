@@ -22,7 +22,10 @@
 #     table. This will make the intent explicit in the export
 #     that no survey was conducted for that species.
 #
-# AS 2020-07-01
+#  Sent out new preliminary from prod on 2020-12-22. Once script
+#  has been verified I need to delete the relevant notes above !!!!!!
+#
+# AS 2020-12-22
 #================================================================
 
 # Clear workspace
@@ -59,19 +62,19 @@ pg_host <- function(host_label) {
 }
 
 # Function to connect to postgres
-pg_con_local = function(dbname, port = '5432') {
+pg_con_prod = function(dbname, port = '5432') {
   con <- dbConnect(
     RPostgres::Postgres(),
-    host = "localhost",
+    host = pg_host("pg_host_prod"),
     dbname = dbname,
     user = pg_user("pg_user"),
-    password = pg_pw("pg_pwd_local"),
+    password = pg_pw("pg_pwd_prod"),
     port = "5432")
   con
 }
 
 #============================================================================
-# Get all surveys within data-range for WRIAs 22 and 23
+# Get all surveys within date-range for WRIAs 22 and 23
 #============================================================================
 
 # Set selectable values
@@ -91,26 +94,26 @@ get_header_data = function(start_date, end_date) {
              "sm.survey_method_code as method, sf.flow_type_short_description as flow, ",
              "vt.visibility_type_short_description as rifflevis, s.observer_last_name as obs, ",
              "cs.completion_status_description as survey_status ",
-             "from waterbody_lut as wb ",
-             "inner join stream as st on wb.waterbody_id = st.waterbody_id ",
-             "inner join wria_lut as wr on st_intersects(st.geom, wr.geom) ",
-             "left join location as loc on wb.waterbody_id = loc.waterbody_id ",
-             "left join survey as s on (loc.location_id = s.upper_end_point_id or ",
+             "from spawning_ground.waterbody_lut as wb ",
+             "inner join spawning_ground.stream as st on wb.waterbody_id = st.waterbody_id ",
+             "inner join spawning_ground.wria_lut as wr on st_intersects(st.geom, wr.geom) ",
+             "left join spawning_ground.location as loc on wb.waterbody_id = loc.waterbody_id ",
+             "left join spawning_ground.survey as s on (loc.location_id = s.upper_end_point_id or ",
              "loc.location_id = s.lower_end_point_id) ",
-             "left join survey_completion_status_lut as cs on s.survey_completion_status_id = cs.survey_completion_status_id ",
-             "left join survey_event as se on s.survey_id = se.survey_id ",
-             "left join species_lut as sp on se.species_id = sp.species_id ",
-             "left join survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
-             "left join run_lut as rn on se.run_id = rn.run_id ",
-             "left join survey_design_type_lut as sd on se.survey_design_type_id = sd.survey_design_type_id ",
-             "left join location as locu on s.upper_end_point_id = locu.location_id ",
-             "left join location as locl on s.lower_end_point_id = locl.location_id ",
-             "left join survey_comment as sc on s.survey_id = sc.survey_id ",
-             "left join stream_flow_type_lut as sf on sc.stream_flow_type_id = sf.stream_flow_type_id ",
-             "left join visibility_type_lut as vt on sc.visibility_type_id = vt.visibility_type_id ",
+             "left join spawning_ground.survey_completion_status_lut as cs on s.survey_completion_status_id = cs.survey_completion_status_id ",
+             "left join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+             "left join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+             "left join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+             "left join spawning_ground.run_lut as rn on se.run_id = rn.run_id ",
+             "left join spawning_ground.survey_design_type_lut as sd on se.survey_design_type_id = sd.survey_design_type_id ",
+             "left join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+             "left join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+             "left join spawning_ground.survey_comment as sc on s.survey_id = sc.survey_id ",
+             "left join spawning_ground.stream_flow_type_lut as sf on sc.stream_flow_type_id = sf.stream_flow_type_id ",
+             "left join spawning_ground.visibility_type_lut as vt on sc.visibility_type_id = vt.visibility_type_id ",
              "where s.survey_datetime > '{start_date}' ",
              "and wr.wria_code in ('22', '23')")
-  con = pg_con_local("spawning_ground")
+  con = pg_con_prod("FISH")
   surveys = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   surveys = surveys %>%
@@ -131,7 +134,7 @@ get_header_data = function(start_date, end_date) {
 header_data = get_header_data(start_date, end_date) %>%
   arrange(stream_name, rml, rmu, survey_dt)
 
-# Check
+# Check...run year and run are both empty
 anyNA(header_data$stream_name)
 test_data = header_data %>%
   filter(stream_name == "Newaukum R (23.0882)") %>%
@@ -149,7 +152,7 @@ fake_id = header_data %>%
 header_data = header_data %>%
   filter(!survey_id %in% fake_id)
 
-# Check
+# Check....TRUE
 any(is.na(header_data$run_year))
 any(is.na(header_data$species))
 
@@ -178,14 +181,14 @@ get_intent = function(header_data) {
   # Query to pull intent and survey_type
   qry = glue("select si.survey_id, se.survey_event_id, sp.common_name as species, ",
              "ct.count_type_code as count_type, sd.survey_design_type_code as survey_type ",
-             "from survey_intent as si ",
-             "inner join survey as s on si.survey_id = s.survey_id ",
-             "left join survey_event as se on s.survey_id = se.survey_id ",
-             "left join survey_design_type_lut as sd on se.survey_design_type_id = sd.survey_design_type_id ",
-             "left join species_lut as sp on si.species_id = sp.species_id ",
-             "left join count_type_lut as ct on si.count_type_id = ct.count_type_id ",
+             "from spawning_ground.survey_intent as si ",
+             "inner join spawning_ground.survey as s on si.survey_id = s.survey_id ",
+             "left join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+             "left join spawning_ground.survey_design_type_lut as sd on se.survey_design_type_id = sd.survey_design_type_id ",
+             "left join spawning_ground.species_lut as sp on si.species_id = sp.species_id ",
+             "left join spawning_ground.count_type_lut as ct on si.count_type_id = ct.count_type_id ",
              "where s.survey_id in ({s_ids})")
-  con = pg_con_local("spawning_ground")
+  con = pg_con_prod("FISH")
   count_intent = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   count_intent = count_intent %>%
@@ -295,17 +298,17 @@ get_fish_counts = function(header_data_adj) {
              "sx.sex_description as sex, mat.maturity_short_description as maturity, ",
              "ad.adipose_clip_status_code as clip_status, cwt.detection_status_description as cwt_detect, ",
              "fe.fish_count, fe.previously_counted_indicator as prev_count ",
-             "from survey as s ",
-             "left join survey_event as se on s.survey_id = se.survey_id ",
-             "left join fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
-             "left join species_lut as sp on se.species_id = sp.species_id ",
-             "left join fish_status_lut as fs on fe.fish_status_id = fs.fish_status_id ",
-             "left join sex_lut as sx on fe.sex_id = sx.sex_id ",
-             "left join maturity_lut as mat on fe.maturity_id = mat.maturity_id ",
-             "left join adipose_clip_status_lut as ad on fe.adipose_clip_status_id = ad.adipose_clip_status_id ",
-             "left join cwt_detection_status_lut as cwt on fe.cwt_detection_status_id = cwt.cwt_detection_status_id ",
+             "from spawning_ground.survey as s ",
+             "left join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+             "left join spawning_ground.fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
+             "left join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+             "left join spawning_ground.fish_status_lut as fs on fe.fish_status_id = fs.fish_status_id ",
+             "left join spawning_ground.sex_lut as sx on fe.sex_id = sx.sex_id ",
+             "left join spawning_ground.maturity_lut as mat on fe.maturity_id = mat.maturity_id ",
+             "left join spawning_ground.adipose_clip_status_lut as ad on fe.adipose_clip_status_id = ad.adipose_clip_status_id ",
+             "left join spawning_ground.cwt_detection_status_lut as cwt on fe.cwt_detection_status_id = cwt.cwt_detection_status_id ",
              "where s.survey_id in ({s_ids})")
-  con = pg_con_local("spawning_ground")
+  con = pg_con_prod("FISH")
   fish_counts = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   fish_counts = fish_counts %>%
@@ -334,13 +337,13 @@ get_redd_counts = function(header_data_adj) {
   s_ids = paste0(paste0("'", s_id, "'"), collapse = ", ")
   qry = glue("select s.survey_id, se.survey_event_id, rd.redd_encounter_id, sp.common_name as species, ",
              "se.run_year, rs.redd_status_short_description as redd_status, rd.redd_count ",
-             "from survey as s ",
-             "left join survey_event as se on s.survey_id = se.survey_id ",
-             "left join species_lut as sp on se.species_id = sp.species_id ",
-             "left join redd_encounter as rd on se.survey_event_id = rd.survey_event_id ",
-             "left join redd_status_lut as rs on rd.redd_status_id = rs.redd_status_id ",
+             "from spawning_ground.survey as s ",
+             "left join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+             "left join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+             "left join spawning_ground.redd_encounter as rd on se.survey_event_id = rd.survey_event_id ",
+             "left join spawning_ground.redd_status_lut as rs on rd.redd_status_id = rs.redd_status_id ",
              "where s.survey_id in ({s_ids})")
-  con = pg_con_local("spawning_ground")
+  con = pg_con_prod("FISH")
   redd_counts = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   redd_counts = redd_counts %>%
@@ -367,14 +370,14 @@ get_head_labels = function(header_data_adj) {
   s_ids = paste0(paste0("'", s_id, "'"), collapse = ", ")
   qry = glue("select s.survey_id, se.survey_event_id, sp.common_name as species, ",
              "se.run_year, indf.cwt_snout_sample_number as cwt_head_label ",
-             "from survey as s ",
-             "left join survey_event as se on s.survey_id = se.survey_id ",
-             "left join species_lut as sp on se.species_id = sp.species_id ",
-             "left join fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
-             "left join individual_fish as indf on fe.fish_encounter_id = indf.fish_encounter_id ",
+             "from spawning_ground.survey as s ",
+             "left join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+             "left join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+             "left join spawning_ground.fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
+             "left join spawning_ground.individual_fish as indf on fe.fish_encounter_id = indf.fish_encounter_id ",
              "where s.survey_id in ({s_ids}) and ",
              "indf.cwt_snout_sample_number is not null")
-  con = pg_con_local("spawning_ground")
+  con = pg_con_prod("FISH")
   head_labels = DBI::dbGetQuery(con, qry)
   dbDisconnect(con)
   head_labels = head_labels %>%
@@ -831,17 +834,13 @@ dat = rbind(all_surveys, dat_empty) %>%
 # Output to Excel
 #============================================================================
 
-# # Write directly to excel
-# out_name = paste0(run_year, "_", run, "_", "Chinook.xlsx")
-# write.xlsx(dat, file = out_name, colNames = TRUE, sheetName = "Chinook")
-
 # Check max date
 max(as.Date(header_data$survey_date, format = "%m/%d/%Y"))
 
-# Or fancier with styling
+# Write to xlsx
 out_name = paste0("data_query/test_queries/WinterSteehead_WRIAs_22-23.xlsx")
 wb <- createWorkbook(out_name)
-addWorksheet(wb, "Dec-Jun_Surveys", gridLines = TRUE)
+addWorksheet(wb, "Dec-Sept_Surveys", gridLines = TRUE)
 writeData(wb, sheet = 1, dat, rowNames = FALSE)
 ## create and add a style to the column headers
 headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
