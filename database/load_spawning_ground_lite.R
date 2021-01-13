@@ -72,13 +72,37 @@ pg_con_local = function(dbname, port = '5432') {
     dbname = dbname,
     user = pg_user("pg_user"),
     password = pg_pw("pg_pwd_local"),
-    port = "5432")
+    port = port)
+  con
+}
+
+# Function to connect to postgres...Testing for Steve Schonning
+pg_con_prod = function(dbname, port = '5432') {
+  con <- dbConnect(
+    RPostgres::Postgres(),
+    host = pg_host("pg_host_prod"),
+    dbname = dbname,
+    user = pg_user("pg_user"),
+    password = pg_pw("pg_pwd_prod"),
+    port = port)
   con
 }
 
 #======================================================================================================
 # Copy LUTs
 #======================================================================================================
+
+# # THIS WORKS !!!!
+# db_con = pg_con_prod("FISH")
+# dbListTables(db_con)
+# dbDisconnect(db_con)
+#
+#
+# # THIS WORKS !!!!
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "adipose_clip_status_lut")
+# dat = dbReadTable(db_con, tbl)
+# dbDisconnect(db_con)
 
 # Read
 pg_con = pg_con_local(dbname = "spawning_ground")

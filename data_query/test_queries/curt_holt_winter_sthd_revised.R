@@ -22,10 +22,15 @@
 #     table. This will make the intent explicit in the export
 #     that no survey was conducted for that species.
 #
-#  Sent out new preliminary from prod on 2020-12-22. Once script
+#  Sent out new preliminary from prod on 2021-01-11. Once script
 #  has been verified I need to delete the relevant notes above !!!!!!
 #
-# AS 2020-12-22
+#  Waiting also for input from Lea and Kim regarding whether zeros
+#  should be added to at least one count category for all species
+#  in the survey_intent table. This would allow pulling out survey_type
+#  to use in script so that counts would be categorized correctly.
+#
+# AS 2021-01-11
 #================================================================
 
 # Clear workspace
@@ -100,7 +105,8 @@ get_header_data = function(start_date, end_date) {
              "left join spawning_ground.location as loc on wb.waterbody_id = loc.waterbody_id ",
              "left join spawning_ground.survey as s on (loc.location_id = s.upper_end_point_id or ",
              "loc.location_id = s.lower_end_point_id) ",
-             "left join spawning_ground.survey_completion_status_lut as cs on s.survey_completion_status_id = cs.survey_completion_status_id ",
+             "left join spawning_ground.survey_completion_status_lut as cs ",
+             "on s.survey_completion_status_id = cs.survey_completion_status_id ",
              "left join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
              "left join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
              "left join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
@@ -770,11 +776,43 @@ check_all = all_surveys %>%
 # names(all_surveys)
 all_surveys[,22:42] = lapply(all_surveys[,22:42], set_na_zero)
 
-# Recompute RCUM....Check later if Exploratory surveys should be cumsum same way as index
+#================================================================================================
+# Split into Wild and Hatchery surveys
+#================================================================================================
+
+# Check hatchery vs wild status
+table(all_surveys$origin, useNA = "ifany")
+
+# Calculate origin based on Kim's rules
+unique(all_surveys$species)
 all_surveys = all_surveys %>%
+  mutate(origin = case_when(
+    species == "Steelhead trout" &
+      survey_dt < as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y")  ~ "Hatchery",
+    species == "Steelhead trout" &
+      survey_dt >= as.Date(glue("03/16/{selected_run_year}"), format = "%m/%d/%Y")  ~ "Wild",
+    !species == "Steelhead trout" ~ "Unknown"))
+
+# Check
+table(all_surveys$origin, useNA = "ifany")
+
+# Pull out wild surveys
+wild_surveys = all_surveys %>%
+  filter(origin == "Wild")
+
+# Pull out wild surveys
+hatchery_surveys = all_surveys %>%
+  filter(origin == "Hatchery")
+
+#==============================================================================================
+# Prep to output Wild data
+#==============================================================================================
+
+# Recompute RCUM....Check later if Exploratory surveys should be cumsum same way as index
+wild_surveys = wild_surveys %>%
   arrange(Type, StreamName, RML, RMU, survey_dt) %>%
   mutate(reach = paste0(Type, "_", StreamName, "_", RML, "_", RMU)) %>%
-  group_by(reach, Type, species, run_year, origin) %>%
+  group_by(reach, Type, species, run_year) %>%
   # HACK ALERT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! VERIFY HERE !!!!!!!!!!!!!!!!!
   mutate(RCUM = if_else(Type %in% c("Supp", "Explor"), cumsum(RNEW), cumsum(RNEW))) %>%
   ungroup() %>%
@@ -782,11 +820,11 @@ all_surveys = all_surveys %>%
   arrange(Type, StreamName, RML, RMU, survey_dt)
 
 # Check if test data is there
-check_all = all_surveys %>%
+check_wild = wild_surveys %>%
   filter(survey_id == '39b622f0-aedf-43b2-a51c-580d20b42743')
 
 # Format names
-all_surveys = all_surveys %>%
+wild_surveys = wild_surveys %>%
   select(WRIA, StreamName, LLID, Type, Date, StatWeek,
          Observer, RML, RMU, Method, Flow, RiffleVis,
          Species = species, Origin = origin, RunYear = run_year,
@@ -802,31 +840,93 @@ all_surveys = all_surveys %>%
 # Create a new reach field to enable pulling out empty row
 #unique(all_surveys$StreamName)
 #unique(all_surveys$WRIA)
-all_surveys = all_surveys %>%
+wild_surveys = wild_surveys %>%
   mutate(Type = if_else(Type == "Explor", "xplor", Type)) %>%
   mutate(reach = paste0(Type, "_", WRIA, "_", StreamName, "_", RML, "_", RMU)) %>%
   mutate(nWRIA = as.numeric(substr(WRIA, 1, 7))) %>%
   mutate(aWRIA = if_else(nchar(WRIA) > 7, substr(WRIA, 8, 8), "A")) %>%
   arrange(Type, nWRIA, aWRIA, StreamName, RML, RMU, survey_dt) %>%
-  mutate(sort_order = seq(1, nrow(all_surveys))) %>%
+  mutate(sort_order = seq(1, nrow(wild_surveys))) %>%
   mutate(Type = if_else(Type == "xplor", "Explor", Type)) %>%
   select(-survey_dt)
 
 # Check run_year NAs for zero counts
-chk_runyr = all_surveys %>%
+chk_runyr = wild_surveys %>%
   filter(is.na(RunYear))
 
 # Pull out unique set of Reaches to add blank rows
-dat_empty = all_surveys %>%
+wild_empty = wild_surveys %>%
   mutate(sort_order = NA_integer_)
-# names(dat_empty)
-dat_empty[,1:41] = ""
-dat_empty = dat_empty %>%
+wild_empty[,1:41] = ""
+wild_empty = wild_empty %>%
   distinct() %>%
   arrange(reach)
 
 # Combine
-dat = rbind(all_surveys, dat_empty) %>%
+wild_dat = rbind(wild_surveys, wild_empty) %>%
+  arrange(reach, sort_order) %>%
+  select(-c(reach, nWRIA, aWRIA, sort_order))
+
+#==============================================================================================
+# Prep to output Hatchery data
+#==============================================================================================
+
+# Recompute RCUM....Check later if Exploratory surveys should be cumsum same way as index
+hatchery_surveys = hatchery_surveys %>%
+  arrange(Type, StreamName, RML, RMU, survey_dt) %>%
+  mutate(reach = paste0(Type, "_", StreamName, "_", RML, "_", RMU)) %>%
+  group_by(reach, Type, species, run_year) %>%
+  # HACK ALERT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! VERIFY HERE !!!!!!!!!!!!!!!!!
+  mutate(RCUM = if_else(Type %in% c("Supp", "Explor"), cumsum(RNEW), cumsum(RNEW))) %>%
+  ungroup() %>%
+  filter(survey_id %in% steelhead_survey_id) %>%
+  arrange(Type, StreamName, RML, RMU, survey_dt)
+
+# Check if test data is there
+check_hatchery = hatchery_surveys %>%
+  filter(survey_id == '39b622f0-aedf-43b2-a51c-580d20b42743')
+
+# Format names
+hatchery_surveys = hatchery_surveys %>%
+  select(WRIA, StreamName, LLID, Type, Date, StatWeek,
+         Observer, RML, RMU, Method, Flow, RiffleVis,
+         Species = species, Origin = origin, RunYear = run_year,
+         Run = run, SurveyIntent, SurveyStatus, LM, LF, LSND,
+         LJ, DM, DF, DSND, DJ, RNEW, RVIS, RCUM, RCOMB,
+         Comments = comments, ADB = ADClippedBeep,
+         ADNB = ADClippedNoBeep, ADNH = ADClippedNoHead,
+         UMB = UnMarkBeep, UMNB = UnMarkNoBeep,
+         UMNH = UnMarkNoHead, UKB = UnknownMarkBeep,
+         UKNB = UnknownMarkNoBeep, UKNH = UnknownMarkNoHead,
+         CWTHeadLabels, survey_dt)
+
+# Create a new reach field to enable pulling out empty row
+#unique(all_surveys$StreamName)
+#unique(all_surveys$WRIA)
+hatchery_surveys = hatchery_surveys %>%
+  mutate(Type = if_else(Type == "Explor", "xplor", Type)) %>%
+  mutate(reach = paste0(Type, "_", WRIA, "_", StreamName, "_", RML, "_", RMU)) %>%
+  mutate(nWRIA = as.numeric(substr(WRIA, 1, 7))) %>%
+  mutate(aWRIA = if_else(nchar(WRIA) > 7, substr(WRIA, 8, 8), "A")) %>%
+  arrange(Type, nWRIA, aWRIA, StreamName, RML, RMU, survey_dt) %>%
+  mutate(sort_order = seq(1, nrow(hatchery_surveys))) %>%
+  mutate(Type = if_else(Type == "xplor", "Explor", Type)) %>%
+  select(-survey_dt)
+
+# Check run_year NAs for zero counts
+chk_runyr = hatchery_surveys %>%
+  filter(is.na(RunYear))
+
+# Pull out unique set of Reaches to add blank rows
+hatchery_empty = hatchery_surveys %>%
+  mutate(sort_order = NA_integer_)
+hatchery_empty[,1:41] = ""
+hatchery_empty = hatchery_empty %>%
+  distinct() %>%
+  arrange(reach)
+
+# Combine
+hatchery_dat = rbind(hatchery_surveys, hatchery_empty) %>%
   arrange(reach, sort_order) %>%
   select(-c(reach, nWRIA, aWRIA, sort_order))
 
@@ -838,14 +938,25 @@ dat = rbind(all_surveys, dat_empty) %>%
 max(as.Date(header_data$survey_date, format = "%m/%d/%Y"))
 
 # Write to xlsx
-out_name = paste0("data_query/test_queries/WinterSteehead_WRIAs_22-23.xlsx")
+out_name = paste0("data_query/test_queries/WildWinterSteehead_WRIAs_22-23.xlsx")
 wb <- createWorkbook(out_name)
 addWorksheet(wb, "Dec-Sept_Surveys", gridLines = TRUE)
-writeData(wb, sheet = 1, dat, rowNames = FALSE)
+writeData(wb, sheet = 1, wild_dat, rowNames = FALSE)
 ## create and add a style to the column headers
 headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(dat), gridExpand = TRUE)
+addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(wild_dat), gridExpand = TRUE)
+saveWorkbook(wb, out_name, overwrite = TRUE)
+
+# Write to xlsx
+out_name = paste0("data_query/test_queries/HatcheryWinterSteehead_WRIAs_22-23.xlsx")
+wb <- createWorkbook(out_name)
+addWorksheet(wb, "Dec-Sept_Surveys", gridLines = TRUE)
+writeData(wb, sheet = 1, hatchery_dat, rowNames = FALSE)
+## create and add a style to the column headers
+headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(hatchery_dat), gridExpand = TRUE)
 saveWorkbook(wb, out_name, overwrite = TRUE)
 
 
