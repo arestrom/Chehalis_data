@@ -18,3 +18,5 @@ output_chehalis_reach_points.R
 test_upload_ids.rds
 R6_Spawning_Ground_Surveys.laccdb
 *.docx
+*.gpkg-shm
+*.gpkg-wal
