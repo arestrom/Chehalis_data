@@ -4,9 +4,9 @@
 # Notes:
 #  1.
 #
-#  Completed: 2020-03-11
+#  Completed: 2021-02-10
 #
-# AS 2020-10-05
+# AS 2021-02-10
 #===========================================================================
 
 # Clear workspace
@@ -82,24 +82,24 @@ dbDisconnect(db_con)
 # write_sf(sg_streams, "data/sg_streams_2020-04-02.gpkg")
 
 # # Output sg_streams as a shape file
-write_sf(sg_streams, dsn = "data/shapefiles/sg_streams_2020-10-05.shp", delete_layer = TRUE)
+write_sf(sg_streams, dsn = "data/shapefiles/sg_streams_2021-02-10.shp", delete_layer = TRUE)
 
-# Trim to needed columns
-streams = sg_streams %>%
-  st_drop_geometry() %>%
-  select(waterbody_id, waterbody_name, waterbody_display_name,
-         llid, cat_code, wria_code, stream_id) %>%
-  distinct()
-
-# Output with styling
-num_cols = ncol(streams)
-current_date = format(Sys.Date())
-out_name = paste0("data/", current_date, "_", "ChehalisStreams.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "ChehalisStreams", gridLines = TRUE)
-writeData(wb, sheet = 1, streams, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
+# # Trim to needed columns
+# streams = sg_streams %>%
+#   st_drop_geometry() %>%
+#   select(waterbody_id, waterbody_name, waterbody_display_name,
+#          llid, cat_code, wria_code, stream_id) %>%
+#   distinct()
+#
+# # Output with styling
+# num_cols = ncol(streams)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "ChehalisStreams.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "ChehalisStreams", gridLines = TRUE)
+# writeData(wb, sheet = 1, streams, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
