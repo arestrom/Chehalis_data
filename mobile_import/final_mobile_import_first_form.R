@@ -50,6 +50,9 @@ library(lubridate)
 library(openxlsx)
 library(sf)
 
+# Keep connections pane from opening
+options("connectionObserver" = NULL)
+
 # Set data for query
 # Profile ID
 profile_id = 417821L
@@ -413,48 +416,47 @@ missing_stream_vals = get_missing_stream_vals(core_survey_data)
 missing_reach_vals = get_missing_reach_vals(core_survey_data)
 add_end_points = get_add_end_points(core_survey_data)
 
-# Export missing stream vals
-num_cols = ncol(missing_stream_vals)
-out_name = paste0("data/MissingStreams_2021-02-18.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "MissingStreams", gridLines = TRUE)
-writeData(wb, sheet = 1, missing_stream_vals, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
-
-# Export add_end_points
-num_cols = ncol(add_end_points)
-out_name = paste0("data/AddEndPoints_2021-02-18.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "AddEndPoints", gridLines = TRUE)
-writeData(wb, sheet = 1, add_end_points, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
-
-# For Lea to verify...this time only...she thought 6348 was earliest survey for this final batch
-# Am pulling only survey before that for her to inspect.
-earliest_surveys = new_survey_data %>%
-  filter(parent_form_survey_id < 6348)
-paste0(paste0("'", unique(earliest_surveys$survey_id), "'"), collapse = ", ")
-
-# Export add_end_points
-num_cols = ncol(earliest_surveys)
-out_name = paste0("data/EarliestSurveys_2021-02-18.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "FirstSurveys", gridLines = TRUE)
-writeData(wb, sheet = 1, earliest_surveys, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
-
+# # Export missing stream vals
+# num_cols = ncol(missing_stream_vals)
+# out_name = paste0("data/MissingStreams_2021-02-18.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "MissingStreams", gridLines = TRUE)
+# writeData(wb, sheet = 1, missing_stream_vals, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+#
+# # Export add_end_points
+# num_cols = ncol(add_end_points)
+# out_name = paste0("data/AddEndPoints_2021-02-18.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "AddEndPoints", gridLines = TRUE)
+# writeData(wb, sheet = 1, add_end_points, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+#
+# # For Lea to verify...this time only...she thought 6348 was earliest survey for this final batch
+# # Am pulling only survey before that for her to inspect.
+# earliest_surveys = new_survey_data %>%
+#   filter(parent_form_survey_id < 6348)
+# paste0(paste0("'", unique(earliest_surveys$survey_id), "'"), collapse = ", ")
+#
+# # Export add_end_points
+# num_cols = ncol(earliest_surveys)
+# out_name = paste0("data/EarliestSurveys_2021-02-18.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "FirstSurveys", gridLines = TRUE)
+# writeData(wb, sheet = 1, earliest_surveys, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
 #======================================================================================
 # Get top-level header data
@@ -515,7 +517,11 @@ any(is.na(header_data$survey_date))
 # chk_time = header_data %>%
 #   mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles"))
 
-# Update run_year using a rule. Lea's form is incorrect: HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!
+# Update run_year using a rule. Lea's form is incorrect: HACK WARNING !!!!!!!!!!!!!!!
+
+#===============================================================================
+# CHECK WITH LEA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#===============================================================================
 header_data = header_data %>%
   mutate(run_month = as.integer(substr(survey_date, 6, 7))) %>%
   mutate(run_year = as.integer(substr(survey_date, 1, 4))) %>%
@@ -535,6 +541,7 @@ header_data = header_data %>%
     run_year == 2020 & run_month < 4 ~ "2019",
     run_year == 2020 & run_month <= 4 ~ "2020",
     TRUE ~ "2019"))
+#===============================================================================
 
 # Check
 table(header_data$steelhead_run_year, useNA = "ifany")
@@ -601,6 +608,14 @@ unique(header_data$observers)
 unique(header_data$data_entry_type)
 unique(header_data$reachsplit_yn)
 
+#===============================================================================
+# CHECK WITH LEA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#===============================================================================
+
+# Got some cases of Fake_data
+#===============================================================================
+
+
 # Check for missing values...required fields
 any(is.na(header_data$survey_date))
 any(is.na(header_data$survey_start_datetime))
@@ -635,19 +650,19 @@ any(header_data$survey_uuid == "")
 unique(nchar(header_data$survey_uuid))
 min(header_data$parent_record_id)
 
-# Generate new survey_id where missing...pull into separate datasets
-no_survey_id = header_data %>%
-  filter(is.na(survey_uuid))
-
-with_survey_id = header_data %>%
-  filter(!is.na(survey_uuid))
-
-# Add uuid
-no_survey_id = no_survey_id %>%
-  mutate(survey_uuid = remisc::get_uuid(nrow(no_survey_id)))
-
-# Combine
-header_data = rbind(no_survey_id, with_survey_id)
+# # Generate new survey_id where missing...pull into separate datasets
+# no_survey_id = header_data %>%
+#   filter(is.na(survey_uuid))
+#
+# with_survey_id = header_data %>%
+#   filter(!is.na(survey_uuid))
+#
+# # Add uuid
+# no_survey_id = no_survey_id %>%
+#   mutate(survey_uuid = remisc::get_uuid(nrow(no_survey_id)))
+#
+# # Combine
+# header_data = rbind(no_survey_id, with_survey_id)
 
 # Check
 any(is.na(header_data$survey_uuid))
@@ -656,11 +671,18 @@ unique(nchar(header_data$survey_uuid))
 any(duplicated(header_data$survey_uuid))
 min(header_data$parent_record_id)
 
+#===============================================================================
+# CHECK WITH LEA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#===============================================================================
+
 # Pull out data with duplicated survey_uuid....now none
 chk_uuid = header_data %>%
   filter(duplicated(survey_uuid)) %>%
   select(survey_uuid) %>%
   left_join(header_data, by = "survey_uuid")
+
+# WHY DUPLICATED HEADER ID !!!!!!!!!!!!!!  Look at new_survey_data....UUID function not working properly !!!!
+#==============================================================================
 
 #---------- END OF CHECKS -----------------------------------------------------
 
