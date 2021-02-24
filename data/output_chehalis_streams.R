@@ -4,9 +4,9 @@
 # Notes:
 #  1.
 #
-#  Completed: 2021-02-10
+#  Completed: 2021-02-24
 #
-# AS 2021-02-10
+# AS 2021-02-24
 #===========================================================================
 
 # Clear workspace
@@ -82,7 +82,7 @@ dbDisconnect(db_con)
 # write_sf(sg_streams, "data/sg_streams_2020-04-02.gpkg")
 
 # # Output sg_streams as a shape file
-write_sf(sg_streams, dsn = "data/shapefiles/sg_streams_2021-02-10.shp", delete_layer = TRUE)
+write_sf(sg_streams, dsn = "data/shapefiles/sg_streams_2021-02-24.shp", delete_layer = TRUE)
 
 # # Trim to needed columns
 # streams = sg_streams %>%
