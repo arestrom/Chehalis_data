@@ -44,7 +44,7 @@
 #  Successfully loaded final batch from inital iform on 2021-03-  at  PM
 #  The only ones now being pulled are those with no survey_uuid.
 #
-# AS 2021-02-18
+# AS 2021-03-09
 #===============================================================================
 
 # Load libraries
@@ -315,7 +315,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Get new survey_data: currently 2040 records
+# Get new survey_data: currently 2219 records
 new_survey_data = get_new_survey_data(profile_id, parent_form_page_id, access_token)
 
 # Reactive to process gps data
@@ -920,6 +920,9 @@ any(is.na(comment_prep$created_datetime))
 any(is.na(comment_prep$created_by))
 
 # Survey intent ================================
+# A zero is needed for every species that was intended to be counted on each survey
+# This is to ensure that a survey_type is entered for each intended species, regardless
+# of whether any were encountered. Need survey_type for curt_holt_exports
 
 # Pull out survey_intent data
 intent_prep = header_data %>%
@@ -931,12 +934,12 @@ intent_prep = header_data %>%
 # Check target_species
 unique(intent_prep$target_species)
 
-# Get all stream data in DB
+# Get all intent data in DB
 get_mobile_intent = function() {
   qry = glue("select species_id as target_species, ",
              "common_name as target_species_name ",
-             "from species_lut")
-  con = pg_con_local("spawning_ground")
+             "from spawning_ground.species_lut")
+  con = pg_con_prod("FISH")
   #con = poolCheckout(pool)
   intent = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -944,26 +947,12 @@ get_mobile_intent = function() {
   return(intent)
 }
 
-# # Get all stream data in DB
-# get_mobile_intent = function() {
-#   qry = glue("select species_id as target_species, ",
-#              "common_name as target_species_name ",
-#              "from species_lut")
-#   con = DBI::dbConnect(RSQLite::SQLite(),
-#                        dbname = 'database/spawning_ground_lite.sqlite')
-#   #con = poolCheckout(pool)
-#   intent = dbGetQuery(con, qry)
-#   DBI::dbDisconnect(con)
-#   #poolReturn(con)
-#   return(intent)
-# }
-
 # Add to intent_pred
 intent_prep = intent_prep %>%
   left_join(get_mobile_intent(), by = "target_species")
 
-# # Check
-# unique(intent_prep$target_species_name)
+# Check
+unique(intent_prep$target_species_name)
 
 # Split and combine
 chinook_intent = intent_prep %>%
@@ -994,7 +983,7 @@ no_survey_intent = rbind(chinook_intent, coho_intent, sthd_intent, chum_intent) 
   filter(count_type == "no_survey") %>%
   arrange(survey_id)
 
-# Combine        VALIDATE THIS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Combine        VALIDATE THIS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 intent_prep = rbind(chinook_intent, coho_intent, sthd_intent, chum_intent) %>%
   filter(!count_type == "no_survey") %>%
   arrange(survey_id)
@@ -1034,27 +1023,14 @@ species_ids = get_mobile_intent() %>%
 # Get all stream data in DB
 get_mobile_count_type = function() {
   qry = glue("select count_type_id, count_type_code as count_categories ",
-             "from count_type_lut")
-  con = pg_con_local("spawning_ground")
+             "from spawning_ground.count_type_lut")
+  con = pg_con_prod("FISH")
   #con = poolCheckout(pool)
   count_type = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
   #poolReturn(con)
   return(count_type)
 }
-
-# # Get all stream data in DB
-# get_mobile_count_type = function() {
-#   qry = glue("select count_type_id, count_type_code as count_categories ",
-#              "from count_type_lut")
-#   con = DBI::dbConnect(RSQLite::SQLite(),
-#                        dbname = 'database/spawning_ground_lite.sqlite')
-#   #con = poolCheckout(pool)
-#   count_type = dbGetQuery(con, qry)
-#   DBI::dbDisconnect(con)
-#   #poolReturn(con)
-#   return(count_type)
-# }
 
 # Pull out needed data
 intent_prep = intent_prep %>%
@@ -1419,14 +1395,14 @@ survey_loc_trim = survey_loc_info %>%
   select(survey_id, wria_id, waterbody_id) %>%
   distinct()
 
-# Prepare barrier_location: 76 rows
+# Prepare barrier_location: 140 rows
 barrier_location = barrier_location %>%
   mutate(location_type_id = "8944c684-7cfc-44cf-a2d8-be66723c1ae0")                      # Fish barrier
 
 # Check
 any(duplicated(barrier_location$location_id))
 
-# Prepare obs_location: 226 rows
+# Prepare obs_location: 139 rows
 obs_location = obs_location %>%
   mutate(location_type_id = "ead419f2-0e72-4d41-9715-7833879b71a8")                      # Other
 
@@ -1517,16 +1493,10 @@ while (is.null(access_token)) {
 start_id = min(header_data$parent_record_id) - 1
 #start_id = 1
 
-# Test...currently 2655 records
+# Test...currently 2262 records
 strt = Sys.time()
 dead = get_dead(profile_id, dead_fish_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
-
-# # Dump any records that are not in header_data
-# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# # Filter to header_data with no missing stream or reach_id for now. 2655 records after filter
-# dead = dead %>%
-#   filter(!parent_record_id %in% del_id)
 
 # Process dates
 dead = dead %>%
@@ -1587,16 +1557,16 @@ chin_run = chin_run %>%
   filter(run_type %in% c("2a9f3c67-aa7a-4214-87a6-af09879fc914", "94e1757f-b9c7-4b06-a461-17a2d804cd2f")) %>%
   left_join(chin_head, by = "parent_record_id")
 
-# # Output
-# out_name = paste0("data_query/RunTypeCheck_DeadSubform.xlsx")
-# wb <- createWorkbook(out_name)
-# addWorksheet(wb, "RunTypeCheck", gridLines = TRUE)
-# writeData(wb, sheet = 1, chin_run, rowNames = FALSE)
-# ## create and add a style to the column headers
-# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(chin_run), gridExpand = TRUE)
-# saveWorkbook(wb, out_name, overwrite = TRUE)
+# Output
+out_name = paste0("data_query/RunTypeCheck_DeadSubform.xlsx")
+wb <- createWorkbook(out_name)
+addWorksheet(wb, "RunTypeCheck", gridLines = TRUE)
+writeData(wb, sheet = 1, chin_run, rowNames = FALSE)
+## create and add a style to the column headers
+headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(chin_run), gridExpand = TRUE)
+saveWorkbook(wb, out_name, overwrite = TRUE)
 
 # Correct species and run_type....HACK WARNING. Will not need to do in future. Will be fixed in IFB
 dead_se = dead_se %>%
@@ -4534,11 +4504,8 @@ any(is.na(individual_redd_prep$created_datetime))
 any(is.na(individual_redd_prep$created_by))
 
 #================================================================================================
-# LOAD TO DBs
-#  1. Load to local postgres first, so constraints engage,
-#     and also so script does not think data has already been loaded
-#  2. After all tables loaded...load to sqlite
-#  3. Write separate script to load to SGS
+# LOAD TO DB
+#  1. Load directly to FISH...this is now where all editing by field staff occurs.
 #================================================================================================
 
 # Create rd file to hold copy of survey_ids and survey_event_ids in case test fails
@@ -4557,7 +4524,7 @@ saveRDS(object = test_upload_ids, file = "data/test_upload_ids.rds")
 saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
 
 #==========================================================================================
-# Load data table
+# Load data tables
 #==========================================================================================
 
 #======== Location tables ===============
@@ -4567,16 +4534,25 @@ saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
 #============================================================
 
 # Get the current max_gid from the location_coordinates table
-qry = "select max(gid) from location_coordinates"
-db_con = pg_con_local(dbname = "spawning_ground")
+qry = "select max(gid) from spawning_ground.location_coordinates"
+db_con = pg_con_prod(dbname = "FISH")
 max_gid = DBI::dbGetQuery(db_con, qry)
 DBI::dbDisconnect(db_con)
 
 # Code to reset sequence
-qry = glue("SELECT setval('location_coordinates_gid_seq', {max_gid}, true)")
-db_con = pg_con_local(dbname = "spawning_ground")
+qry = glue("SELECT setval('spawning_ground.location_coordinates_gid_seq', {max_gid}, true)")
+db_con = pg_con_prod(dbname = "FISH")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
+
+
+
+
+# REWRITE ALL BELOW TO GO DIRECTLY TO THE FISH PROD spawning_ground schema !!!!!!!!!!!!!!!!!!!
+
+
+
+
 
 #=======  Insert location =================
 
