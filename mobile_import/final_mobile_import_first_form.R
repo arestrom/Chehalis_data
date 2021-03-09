@@ -29,9 +29,19 @@
 #  7. Need a zero for each case where a species was intended but
 #     none were encountered. Needed for Curt Holt script to work correctly.
 #     See: intent_zeros.R in \data_query\test_queries\
+#  8. Carefully inspect code where species are assigned to previous redds
+#     based on what was assigned initally to the new redd that shares
+#     the same ReddID. In the iform there are now cases where those
+#     redd_species have been assigned incorrectly.
+#  9. Several not observable surveys were entered where the header_id
+#     was copied from another already existing survey. These all need
+#     to be given new unique header_ids. Maybe just pull out the
+#     second instance for each case, then assign a new id, verify
+#     that in each case the parent_form_id is unique. If so then
+#     join the new header_id back into the header data based on the
+#     parent_form_id
 #
-#
-#  Successfully loaded most recent batch on 2020-07-13 13:05 PM
+#  Successfully loaded final batch from inital iform on 2021-03-  at  PM
 #  The only ones now being pulled are those with no survey_uuid.
 #
 # AS 2021-02-18
@@ -49,6 +59,7 @@ library(tidyr)
 library(lubridate)
 library(openxlsx)
 library(sf)
+library(remisc)
 
 # Keep connections pane from opening
 options("connectionObserver" = NULL)
@@ -501,7 +512,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 2044 records....approx 4.0 seconds
+# Test...currently 2219 records....approx 4.5 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -513,34 +524,29 @@ nd = Sys.time(); nd - strt
 # Check some date and time values
 any(is.na(header_data$survey_date))
 
-# # Test how to handle timezone issue. Profile is set to New York
-# chk_time = header_data %>%
-#   mutate(created_datetime = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles"))
-
-# Update run_year using a rule. Lea's form is incorrect: HACK WARNING !!!!!!!!!!!!!!!
-
 #===============================================================================
 # CHECK WITH LEA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Update run_year using a rule. Lea's form is incorrect: HACK WARNING
 #===============================================================================
 header_data = header_data %>%
   mutate(run_month = as.integer(substr(survey_date, 6, 7))) %>%
   mutate(run_year = as.integer(substr(survey_date, 1, 4))) %>%
-  mutate(steelhead_run_year = "2020") %>%
+  mutate(steelhead_run_year = "2021") %>%
   mutate(coho_run_year = case_when(
-    run_year == 2019 ~ "2019",
-    run_year == 2020 & run_month < 4 ~ "2019",
-    run_year == 2020 & run_month <= 4 ~ "2020",
-    TRUE ~ "2019")) %>%
+    run_year == 2020 ~ "2020",
+    run_year == 2021 & run_month < 4 ~ "2020",
+    run_year == 2021 & run_month <= 4 ~ "2020",
+    TRUE ~ "2020")) %>%
   mutate(chum_run_year = case_when(
-    run_year == 2019 ~ "2019",
-    run_year == 2020 & run_month < 4 ~ "2019",
-    run_year == 2020 & run_month <= 4 ~ "2020",
-    TRUE ~ "2019")) %>%
+    run_year == 2020 ~ "2020",
+    run_year == 2021 & run_month < 4 ~ "2020",
+    run_year == 2021 & run_month <= 4 ~ "2020",
+    TRUE ~ "2020")) %>%
   mutate(chinook_run_year = case_when(
-    run_year == 2019 ~ "2019",
-    run_year == 2020 & run_month < 4 ~ "2019",
-    run_year == 2020 & run_month <= 4 ~ "2020",
-    TRUE ~ "2019"))
+    run_year == 2020 ~ "2020",
+    run_year == 2021 & run_month < 4 ~ "2020",
+    run_year == 2021 & run_month <= 4 ~ "2020",
+    TRUE ~ "2020"))
 #===============================================================================
 
 # Check
@@ -584,15 +590,6 @@ header_data = header_data %>%
          carcass_tagging, code_reach)
 
 # # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# # Filter to header_data with no missing stream or reach_id for now: 1949
-# header_data = header_data %>%
-#   filter(!parent_record_id %in% del_id)
-
-# Pull out data with issues below for inspection
-chk_hack = header_data %>%
-  filter(parent_record_id %in% c(1050, 1947))
-
-# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # # Change one set of RM values.....identified below at line 577
 # header_data$reach[header_data$parent_record_id == 1050L] = "1239182470329_010.70-010.70"
 #
@@ -607,14 +604,6 @@ chk_hack = header_data %>%
 unique(header_data$observers)
 unique(header_data$data_entry_type)
 unique(header_data$reachsplit_yn)
-
-#===============================================================================
-# CHECK WITH LEA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#===============================================================================
-
-# Got some cases of Fake_data
-#===============================================================================
-
 
 # Check for missing values...required fields
 any(is.na(header_data$survey_date))
@@ -650,39 +639,43 @@ any(header_data$survey_uuid == "")
 unique(nchar(header_data$survey_uuid))
 min(header_data$parent_record_id)
 
-# # Generate new survey_id where missing...pull into separate datasets
-# no_survey_id = header_data %>%
-#   filter(is.na(survey_uuid))
-#
-# with_survey_id = header_data %>%
-#   filter(!is.na(survey_uuid))
-#
-# # Add uuid
-# no_survey_id = no_survey_id %>%
-#   mutate(survey_uuid = remisc::get_uuid(nrow(no_survey_id)))
-#
-# # Combine
-# header_data = rbind(no_survey_id, with_survey_id)
+# Check for dups in key IDs....Since no dups in parent_id use to assign new header_id
+any(duplicated(header_data$survey_uuid))
+any(duplicated(header_data$parent_record_id))
+
+# Pull out cases where header_id is duplicated
+dup_head_id = header_data %>%
+  arrange(parent_record_id, created_by) %>%
+  group_by(survey_uuid) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq > 1L) %>%
+  select(parent_record_id, survey_uuid,
+         created_datetime, created_by)
 
 # Check
+any(duplicated(header_data$parent_record_id))
+any(duplicated(dup_head_id$parent_record_id))
+
+# Generate new header_id for duplicated cases
+new_head_id = dup_head_id %>%
+  mutate(new_header_id = get_uuid(nrow(dup_head_id))) %>%
+  select(parent_record_id, new_header_id)
+
+# Check
+any(duplicated(new_head_id$new_header_id))
+
+# Join to header_data by parent_record_id to assign new value
+header_data = header_data %>%
+  left_join(new_head_id, by = "parent_record_id") %>%
+  mutate(survey_uuid = if_else(!is.na(new_header_id), new_header_id, survey_uuid))
+
+# Check
+any(duplicated(header_data$survey_uuid))
 any(is.na(header_data$survey_uuid))
 any(header_data$survey_uuid == "")
 unique(nchar(header_data$survey_uuid))
-any(duplicated(header_data$survey_uuid))
 min(header_data$parent_record_id)
-
-#===============================================================================
-# CHECK WITH LEA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#===============================================================================
-
-# Pull out data with duplicated survey_uuid....now none
-chk_uuid = header_data %>%
-  filter(duplicated(survey_uuid)) %>%
-  select(survey_uuid) %>%
-  left_join(header_data, by = "survey_uuid")
-
-# WHY DUPLICATED HEADER ID !!!!!!!!!!!!!!  Look at new_survey_data....UUID function not working properly !!!!
-#==============================================================================
 
 #---------- END OF CHECKS -----------------------------------------------------
 
@@ -777,12 +770,46 @@ no_reach_point = survey_prep %>%
   distinct() %>%
   arrange(stream_name_text, lo_rm, up_rm)
 
+# Format for output
+need_reach_point = no_reach_point %>%
+  select(parent_record_id, stream_name_text, reach_text, reach, survey_datetime,
+         observers, created_by, modified_by, llid, lo_rm, up_rm, lower_end_point_id,
+         upper_end_point_id)
+
 # Warn if any missing
-if ( nrow(no_reach_point) > 0L ) {
+if ( nrow(need_reach_point) > 0L ) {
   cat("\nWARNING: Some end-points still missing. Do not pass go!\n\n")
+  # Output to excel
+  num_cols = ncol(need_reach_point)
+  current_date = format(Sys.Date())
+  out_name = paste0("data/NeedReachPoint_", current_date, ".xlsx")
+  wb <- createWorkbook(out_name)
+  addWorksheet(wb, "NeedReachPoint", gridLines = TRUE)
+  writeData(wb, sheet = 1, need_reach_point, rowNames = FALSE)
+  ## create and add a style to the column headers
+  headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+                             fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+  addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+  saveWorkbook(wb, out_name, overwrite = TRUE)
 } else {
   cat("\nAll end-points now present. Ok to proceed.\n\n")
 }
+
+
+
+
+
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+
+
+
+
+
 
 # Get location info for adding to tables below
 survey_loc_info = survey_prep %>%
