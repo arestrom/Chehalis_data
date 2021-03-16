@@ -2582,7 +2582,7 @@ no_redd_coords_old = old_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
 
-# Pull out cases with missing redd_names for inspection: 800 cases
+# Pull out cases with missing redd_names for inspection: 806 cases
 no_redd_name_new = new_redd_loc %>%
   mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
   filter(is.na(sgs_redd_name) | sgs_redd_name == "")
@@ -2621,7 +2621,7 @@ old_redd_no_names = redds %>%
          prev_species_code, sgs_run, species_redd, sgs_species) %>%
   arrange(stream_name, created_date)
 
-# Pull out all old redds to see if a matching new_redd name exists: 6186
+# Pull out all old redds to see if a matching new_redd name exists: 6187
 old_redd_with_names = redds %>%
   filter(redd_type == "previously_flagged") %>%
   filter(!is.na(sgs_redd_name)) %>%
@@ -2652,31 +2652,31 @@ short_new_redd_name = redds %>%
          prev_species_code) %>%
   arrange(stream_name, created_date)
 
-# Output with styling
-num_cols = ncol(old_redd_no_names)
-current_date = format(Sys.Date())
-out_name = paste0("data/", current_date, "_", "OldReddNoNames.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "NoReddName", gridLines = TRUE)
-writeData(wb, sheet = 1, old_redd_no_names, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
-
-# Output
-num_cols = ncol(short_old_redd_name)
-current_date = format(Sys.Date())
-out_name = paste0("data/", current_date, "_", "ShortOldReddNames.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "ShortOldReddNames", gridLines = TRUE)
-writeData(wb, sheet = 1, short_old_redd_name, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
+# # Output with styling
+# num_cols = ncol(old_redd_no_names)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "OldReddNoNames.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "NoReddName", gridLines = TRUE)
+# writeData(wb, sheet = 1, old_redd_no_names, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+#
+# # Output
+# num_cols = ncol(short_old_redd_name)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "ShortOldReddNames.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "ShortOldReddNames", gridLines = TRUE)
+# writeData(wb, sheet = 1, short_old_redd_name, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 #
 # # Output
 # num_cols = ncol(short_new_redd_name)
@@ -2704,7 +2704,7 @@ new_redd_names = new_redd_loc %>%
 new_sgs_redd_names = new_redd_names %>%
   pull(sgs_redd_name)
 
-# Filter to matching redd_names 6080
+# Filter to matching redd_names 6088
 matching_old_redd_names = old_redd_with_names %>%
   filter(sgs_redd_name %in% new_sgs_redd_names)
 
@@ -2753,7 +2753,7 @@ redd_dump_ids = no_redd_coords_or_name_new %>%
 #   select(survey_id, create_by = head_create_by,
 #          mod_by = head_mod_by)
 
-# Prep redd_location data: 2862 remaining
+# Prep redd_location data: 2755 remaining
 redd_location_prep = new_redd_loc %>%
   filter(!redd_id %in% redd_dump_ids)
 
@@ -2785,7 +2785,7 @@ headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left
 addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
 saveWorkbook(wb, out_name, overwrite = TRUE)
 
-# Create and organize needed fields: 2819 records
+# Create and organize needed fields: 2755 records
 redd_location_prep = redd_location_prep %>%
   mutate(location_id = remisc::get_uuid(nrow(redd_location_prep))) %>%
   mutate(location_type_id = "d5edb1c0-f645-4e82-92af-26f5637b2de0") %>%      # Redd encounter
