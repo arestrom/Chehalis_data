@@ -2785,6 +2785,13 @@ headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left
 addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
 saveWorkbook(wb, out_name, overwrite = TRUE)
 
+
+
+# VERIFY NO DUPS and NO MISSING REDD NAMES (no_match_to_old_redd_names above) !!!!!!!!!!!!!
+
+
+
+
 # Create and organize needed fields: 2755 records
 redd_location_prep = redd_location_prep %>%
   mutate(location_id = remisc::get_uuid(nrow(redd_location_prep))) %>%
