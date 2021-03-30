@@ -583,15 +583,6 @@ header_data = header_data %>%
          coho_run_year, steelhead_run_year, chum_run_year, chinook_run_year,
          carcass_tagging, code_reach)
 
-# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# # Change one set of RM values.....identified below at line 577
-# header_data$reach[header_data$parent_record_id == 1050L] = "1239182470329_010.70-010.70"
-#
-# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# # Change one partial survey no_survey reason to Not Applicable.....identified below at line 610
-# # Based on answer from Lea....but fix did not stick
-# header_data$no_survey[header_data$parent_record_id == 1947L] = "cde5d9fb-bb33-47c6-9018-177cd65d15f5"
-
 # CHECKS -------------------------------------------------------
 
 # Check some values
@@ -672,7 +663,6 @@ unique(nchar(header_data$survey_uuid))
 min(header_data$parent_record_id)
 
 #---------- END OF CHECKS -----------------------------------------------------
-
 
 # Generate created and modified data
 header_data = header_data %>%
@@ -1139,7 +1129,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 279 records
+# Test...currently 280 records
 strt = Sys.time()
 other_obs = get_other_obs(profile_id, other_obs_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -1169,7 +1159,7 @@ get_other_pictures = function(profile_id, other_pics_page_id, start_id, access_t
   return(other_pics)
 }
 
-# Test...currently 280 records
+# Test...currently 221 records
 strt = Sys.time()
 other_pictures = get_other_pictures(profile_id, other_pics_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -1906,12 +1896,6 @@ strt = Sys.time()
 recaps = get_carcass_recoveries(profile_id, recaps_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
-# # Dump any records that are not in header_data
-# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# # Filter to header_data with no missing stream or reach_id for now. 2655 records after filter
-# recaps = recaps %>%
-#   filter(!parent_record_id %in% del_id)
-
 # Process dates
 recaps = recaps %>%
   mutate(created_date = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles")) %>%
@@ -2101,16 +2085,10 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 1105 records: Checked that I got first and last parent_record_id
+# Test...currently 1127 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 live = get_live(profile_id, live_fish_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
-
-# # Dump any records that are not in header_data
-# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# # Filter to header_data with no missing stream or reach_id for now. 859 records after filter
-# live = live %>%
-#   filter(!parent_record_id %in% del_id)
 
 # Process dates
 live = live %>%
@@ -2456,16 +2434,10 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 8986 records: 27 secs
+# Test...currently 8966 records: 27 secs
 strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
-
-# # Dump any records that are not in header_data
-# # FOR NOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# # Filter to header_data with no missing stream or reach_id for now. 10651 records after filter
-# redds = redds %>%
-#   filter(!parent_record_id %in% del_id)
 
 # Process dates
 redds = redds %>%
@@ -2529,11 +2501,11 @@ new_redd_loc = redds %>%
          redd_orientation, redd_channel_type, sgs_run, species_redd, sgs_species) %>%
   distinct()
 
-# Check run values: 8 Not applicable, 2251 Unknown, 71 Spring, 542 Fall.
+# Check run values: 8 Not applicable
 table(new_redd_loc$sgs_run, useNA = "ifany")
 any(duplicated(new_redd_loc$redd_id))
 
-# Get redd location data: 6209 records
+# Get redd location data: 6189 records
 old_redd_loc = redds %>%
   filter(redd_type == "previously_flagged") %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by,
@@ -2542,7 +2514,7 @@ old_redd_loc = redds %>%
          sgs_redd_name, redd_latitude, redd_longitude, redd_loc_accuracy,
          redd_orientation, redd_channel_type, sgs_run, species_redd, sgs_species)
 
-# Check run values: 6113 Not applicable, 64 Unknown, 19 Spring, 13 Fall.
+# Check run values: 6093 Not applicable, 64 Unknown, 19 Spring, 13 Fall.
 table(old_redd_loc$sgs_run, useNA = "ifany")
 table(old_redd_loc$species_redd, useNA = "ifany")
 table(old_redd_loc$sgs_species, useNA = "ifany")
@@ -2574,7 +2546,7 @@ no_redd_coords_new = new_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
 
-# Pull out cases with missing coordinates for inspection: 6147 cases...None had coordinates
+# Pull out cases with missing coordinates for inspection: 6127 cases...None had coordinates
 no_redd_coords_old = old_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
@@ -2591,7 +2563,7 @@ no_redd_coords_or_name_new = new_redd_loc %>%
            redd_latitude < 45 | redd_longitude > -121) %>%
   filter(is.na(sgs_redd_name) | sgs_redd_name == "")
 
-# Pull out cases where redd_name is missing: 833 cases...all new redds
+# Pull out cases where redd_name is missing: 808 cases...all new redds
 no_redd_name = redds %>%
   filter(is.na(sgs_redd_name)) %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by, created_location,
@@ -2605,7 +2577,7 @@ no_redd_name = redds %>%
 # Inspect
 unique(no_redd_name$redd_type)
 
-# Pull out all old redds to see if a matching new_redd name exists: 25 cases
+# Pull out all old redds to see if a matching new_redd name exists: 0 cases
 old_redd_no_names = redds %>%
   filter(redd_type == "previously_flagged") %>%
   filter(is.na(sgs_redd_name)) %>%
@@ -2618,7 +2590,7 @@ old_redd_no_names = redds %>%
          prev_species_code, sgs_run, species_redd, sgs_species) %>%
   arrange(stream_name, created_date)
 
-# Pull out all old redds to see if a matching new_redd name exists: 6184
+# Pull out all old redds to see if a matching new_redd name exists: 6189
 old_redd_with_names = redds %>%
   filter(redd_type == "previously_flagged") %>%
   filter(!is.na(sgs_redd_name)) %>%
@@ -2631,7 +2603,7 @@ old_redd_with_names = redds %>%
          prev_species_code, sgs_run, species_redd, sgs_species) %>%
   arrange(stream_name, created_date)
 
-# Inspect any with nchar less than 7: 10 cases
+# Inspect any with nchar less than 7: 0 cases
 short_old_redd_name = old_redd_with_names %>%
   filter(nchar(sgs_redd_name) < 7L)
 unique(short_old_redd_name$sgs_redd_name)
@@ -2701,11 +2673,11 @@ new_redd_names = new_redd_loc %>%
 new_sgs_redd_names = new_redd_names %>%
   pull(sgs_redd_name)
 
-# Filter to matching redd_names 6088
+# Filter to matching redd_names 6189
 matching_old_redd_names = old_redd_with_names %>%
   filter(sgs_redd_name %in% new_sgs_redd_names)
 
-# Identify those where no match occurs: 99 cases.
+# Identify those where no match occurs: 0 cases.
 no_match_to_old_redd_names = old_redd_with_names %>%
   filter(!sgs_redd_name %in% new_sgs_redd_names)
 
@@ -3024,6 +2996,17 @@ chin_run = chin_run %>%
 # addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:ncol(chin_run), gridExpand = TRUE)
 # saveWorkbook(wb, out_name, overwrite = TRUE)
 
+# Check for missing run types in chin_run
+chk_chin_run = chin_run %>%
+  filter(is.na(sgs_run) | sgs_run == "")
+
+# # Since Lea is out I'm changing all NAs in run to unknown....Can always update in front-end later
+# redds_se = redds_se %>%
+#   # Convert missing values for Chinook run to unknown
+#   mutate(sgs_run = if_else(sgs_species == "e42aa0fc-c591-4fab-8481-55b0df38dcb1" &
+#                            (is.na(sgs_run) | sgs_run == ""),
+#                            "94e1757f-b9c7-4b06-a461-17a2d804cd2f", sgs_run))
+
 # Correct species and run_type....HACK WARNING. Will not need to do in future. Will be fixed in IFB
 redds_se = redds_se %>%
   # Convert all coho to fall
@@ -3090,20 +3073,20 @@ dead_sev = dead_se %>%
          run_id, subsource)
 # Recaps
 recaps_sev = recaps_se %>%
-  mutate(subsource = "recap") %>%
+  mutate(subsource = "d_recap") %>%
   select(recap_id, survey_id, species_id, survey_design_type_id,
          run_id, subsource)
 # Live
 live_sev = live_se %>%
   left_join(header_se, by = "survey_id") %>%
-  mutate(subsource = "live") %>%
+  mutate(subsource = "alive") %>%
   select(live_id, survey_id, species_id = species_fish,
          survey_design_type_id, run_id = run_type,
          subsource)
 
 # Redds
 redds_sev = redds_se %>%
-  mutate(subsource = "redd") %>%
+  mutate(subsource = "b_redd") %>%
   select(redd_id, survey_id, species_id = sgs_species,
          survey_design_type_id, run_id = sgs_run,
          subsource)
@@ -3129,17 +3112,44 @@ intent_sev = intent_prep %>%
     count_type_id == "7a785819-3a9f-4728-88db-7e77e580cd41" ~ "live")) %>%
   mutate(run_id = "94e1757f-b9c7-4b06-a461-17a2d804cd2f") %>%
   left_join(header_se, by = "survey_id") %>%
-  mutate(subsource = "intent") %>%
+  mutate(subsource = "x_intent") %>%
   select(count_type, survey_id, species_id, survey_design_type_id,
          run_id, subsource) %>%
   distinct()
+
+# Get run types
+get_run_id = function() {
+  qry = glue("select run_id, run_short_description as run ",
+             "from spawning_ground.run_lut")
+  con = pg_con_prod("FISH")
+  #con = poolCheckout(pool)
+  run_ids = dbGetQuery(con, qry)
+  DBI::dbDisconnect(con)
+  #poolReturn(con)
+  return(run_ids)
+}
 
 # Stack the sev tables
 survey_event = bind_rows(intent_sev, dead_sev, recaps_sev,
                          live_sev, redds_sev) %>%
   select(count_type, dead_id, live_id, recap_id, redd_id,
          survey_id, species_id, survey_design_type_id,
-         run_id, subsource)
+         run_id, subsource) %>%
+  left_join(species_ids, by = "species_id") %>%
+  left_join(get_run_id(), by = "run_id") %>%
+  mutate(count_type = if_else(is.na(count_type), "actual", count_type)) %>%
+  mutate(count_type = case_when(
+    count_type == "live" ~ "alive",
+    count_type == "redd" ~ "bredd",
+    count_type == "carcass" ~ "carcass",
+    count_type == "actual" ~ "actual",
+    TRUE ~ count_type)) %>%
+  mutate(run = if_else(run == "Unknown", "xUnknown", run)) %>%
+  arrange(survey_id, species_id, run, subsource, count_type, survey_design_type_id) %>%
+  group_by(survey_id, species_id) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  arrange(survey_id, species_id, n_seq, subsource, count_type, survey_design_type_id)
 
 # Check
 table(survey_event$species_id, useNA = "ifany")
@@ -3156,24 +3166,29 @@ unique(survey_event$run_id[!nchar(survey_event$run_id) == 36L])
 # Dump intent subsource if survey_type for species already present
 #=========================================================================
 
-# First verify that all surveys are present in survey_event
+# First verify that all surveys are present in survey_event....All are present
+s_ids = unique(survey_prep$survey_id)
+chk_se = survey_event %>%
+  filter(!survey_id %in% s_ids)
 
+# Inspect values 27384 rows
+unique(survey_event$subsource)
+unique(survey_event$run)
 
-# Then identify any that can be dumped and dump
+# Keep only the first case of n_seq....if source is intent then add zero's to either
+# fish_encounter or redd_encounter depending on count_type...Now 16731 rows
+survey_event = survey_event %>%
+  mutate(del_row = if_else(subsource == "x_intent" & n_seq > 1L, "dump", "keep")) %>%
+  filter(del_row == "keep")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Keep only the first case of survey_id, species, and run: 5686 records left
+survey_event = survey_event %>%
+  arrange(survey_id, common_name, run, subsource, survey_design_type_id) %>%
+  group_by(survey_id, species_id, run) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  arrange(survey_id, common_name, run, n_seq, subsource, count_type, survey_design_type_id) %>%
+  filter(n_seq == 1L)
 
 # Add detection method info
 dead_detect = dead_fe %>%
@@ -3235,7 +3250,7 @@ table(chk_na_run$species_id, useNA = "ifany")
 unique(survey_event$run_id)
 table(survey_event$run_id, useNA = "ifany")
 
-# Add run definitions where needed
+# Add run definitions where needed...still 5686 rows....good!
 survey_event = survey_event %>%
   left_join(run_year_info, by = "survey_id") %>%
   mutate(run_year = case_when(
@@ -3263,28 +3278,8 @@ survey_event = survey_event %>%
                               "d29ca246-acfa-48d5-ba55-e61323d59fa7"),            # WB Lamprey
                           "59e1e01f-3aef-498c-8755-5862c025eafa", run_id)) %>%    # Not applicable
   select(count_type, dead_id, live_id, recap_id, redd_id, survey_id,
-         species_id, survey_design_type_id, run_id,
+         species_id, survey_design_type_id, run_id, subsource, common_name, run,
          cwt_detection_method_id, run_year)
-
-
-
-
-# Add a mini-section !!!!!!!!!!!!!!!!!!!!!!   SEE add_intent_zeros.R in data_query folder !!!!!!!!!!!!!
-
-# 1. VERY IMPORTANT: VERIFY THERE IS AT LEAST ONE ENTRY IN SURVEY_EVENT TABLE FOR EVERY SPECIES
-#    THAT WAS INTENDED FOR COUNTING IN THE SURVEY_INTENT TABLE
-# 2. FOR EVERY CASE WHERE A SURVEY_EVENT NEEDS TO BE ADDED BASED ON INTENT DATA, ADD A
-#    COUNT OF ZERO FOR EACH SPECIES IN THE FISH_ENCOUNTER OR REDD_ENCOUNTER TABLES. START
-#    WITH FISH_ENCOUNTER AND ONLY ADD ZERO TO REDD_ENCOUNTER IF REDDS_ONLY.
-
-
-
-
-
-
-
-
-
 
 # Check for missing species
 any(is.na(survey_event$survey_id))
@@ -3302,7 +3297,7 @@ survey_event = survey_event %>%
   ungroup() %>%
   select(count_type, dead_id, live_id, recap_id, redd_id, survey_event_id,
          survey_id, species_id, survey_design_type_id, run_id,
-         cwt_detection_method_id, run_year) %>%
+         cwt_detection_method_id, run_year, subsource, common_name, run,) %>%
   arrange(survey_event_id)
 
 # Pull out just the table data
@@ -3341,6 +3336,19 @@ survey_event_prep = survey_event_prep %>%
 # Verify values
 any(duplicated(survey_event_prep$survey_event_id))
 any(is.na(survey_event_prep$created_datetime))
+
+
+
+
+
+# Add a mini-section !!!!!!!!!!!!!!!!!!!!!!   SEE add_intent_zeros.R in data_query folder !!!!!!!!!!!!!
+
+# 1. VERY IMPORTANT: VERIFY THERE IS AT LEAST ONE ENTRY IN SURVEY_EVENT TABLE FOR EVERY SPECIES
+#    THAT WAS INTENDED FOR COUNTING IN THE SURVEY_INTENT TABLE
+# 2. FOR EVERY CASE WHERE A SURVEY_EVENT NEEDS TO BE ADDED BASED ON INTENT DATA, ADD A
+#    COUNT OF ZERO FOR EACH SPECIES IN THE FISH_ENCOUNTER OR REDD_ENCOUNTER TABLES. START
+#    WITH FISH_ENCOUNTER AND ONLY ADD ZERO TO REDD_ENCOUNTER IF REDDS_ONLY.
+
 
 #================================================================================================
 # Pull out live fish encounter data from redds subform
