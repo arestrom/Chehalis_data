@@ -7,7 +7,7 @@
 #     and end-point RMs to match with surveys already uploaded.
 #
 # ToDo:
-#  1. Stopped at line 862....Need to add data and then manually add survey type for exported xlsx data
+#  1.
 #
 #
 # AS 2021-01-12

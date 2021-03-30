@@ -3077,43 +3077,36 @@ table(wblamp_run$sgs_run, useNA = "ifany")
 # Combine all se tables to calculate survey_event_id...can tie back using subform id
 #================================================================================================
 
+# Prep tables for stacking ========================================
 
-
-
-# STOPPED HERE...Somewhere below. Need to add one zero or maybe just the survey_event_id for
-# each case where a count was intended but no fish of the species was found. We need the
-# survey_type for Curt's output
-
-
-
-
-
-
-
-
-# Prep tables for stacking
 # Dead
 dead_sev = dead_se %>%
   select(dead_id, survey_id, species_id = species_fish,
          run_id = run_type, created_date, created_by,
          modified_date, modified_by) %>%
   left_join(header_se, by = "survey_id") %>%
+  mutate(subsource = "dead") %>%
   select(dead_id, survey_id, species_id, survey_design_type_id,
-         run_id)
+         run_id, subsource)
 # Recaps
 recaps_sev = recaps_se %>%
+  mutate(subsource = "recap") %>%
   select(recap_id, survey_id, species_id, survey_design_type_id,
-         run_id)
+         run_id, subsource)
 # Live
 live_sev = live_se %>%
   left_join(header_se, by = "survey_id") %>%
+  mutate(subsource = "live") %>%
   select(live_id, survey_id, species_id = species_fish,
-         survey_design_type_id, run_id = run_type)
+         survey_design_type_id, run_id = run_type,
+         subsource)
 
-# Add to redds_se
+# Redds
 redds_sev = redds_se %>%
+  mutate(subsource = "redd") %>%
   select(redd_id, survey_id, species_id = sgs_species,
-         survey_design_type_id, run_id = sgs_run)
+         survey_design_type_id, run_id = sgs_run,
+         subsource)
 
 # Double-check
 table(redds_sev$species_id, useNA = "ifany")
@@ -3136,14 +3129,17 @@ intent_sev = intent_prep %>%
     count_type_id == "7a785819-3a9f-4728-88db-7e77e580cd41" ~ "live")) %>%
   mutate(run_id = "94e1757f-b9c7-4b06-a461-17a2d804cd2f") %>%
   left_join(header_se, by = "survey_id") %>%
-  select(count_type, survey_id, species_id, survey_design_type_id, run_id) %>%
+  mutate(subsource = "intent") %>%
+  select(count_type, survey_id, species_id, survey_design_type_id,
+         run_id, subsource) %>%
   distinct()
 
 # Stack the sev tables
 survey_event = bind_rows(intent_sev, dead_sev, recaps_sev,
                          live_sev, redds_sev) %>%
   select(count_type, dead_id, live_id, recap_id, redd_id,
-         survey_id, species_id, survey_design_type_id, run_id)
+         survey_id, species_id, survey_design_type_id,
+         run_id, subsource)
 
 # Check
 table(survey_event$species_id, useNA = "ifany")
@@ -3154,6 +3150,30 @@ unique(survey_event$survey_id[!nchar(survey_event$survey_id) == 36L])
 unique(survey_event$species_id[!nchar(survey_event$species_id) == 36L])
 unique(survey_event$survey_design_type_id[!nchar(survey_event$survey_design_type_id) == 36L])
 unique(survey_event$run_id[!nchar(survey_event$run_id) == 36L])
+
+#=========================================================================
+# We only need one survey_type per intended species for each survey
+# Dump intent subsource if survey_type for species already present
+#=========================================================================
+
+# First verify that all surveys are present in survey_event
+
+
+# Then identify any that can be dumped and dump
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Add detection method info
 dead_detect = dead_fe %>%
