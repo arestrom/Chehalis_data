@@ -3129,7 +3129,7 @@ get_run_id = function() {
   return(run_ids)
 }
 
-# Stack the sev tables
+# Stack the sev tables: 27384 rows
 survey_event = bind_rows(intent_sev, dead_sev, recaps_sev,
                          live_sev, redds_sev) %>%
   select(count_type, dead_id, live_id, recap_id, redd_id,
@@ -3147,9 +3147,9 @@ survey_event = bind_rows(intent_sev, dead_sev, recaps_sev,
   mutate(run = if_else(run == "Unknown", "xUnknown", run)) %>%
   arrange(survey_id, species_id, run, subsource, count_type, survey_design_type_id) %>%
   group_by(survey_id, species_id) %>%
-  mutate(n_seq = row_number()) %>%
+  mutate(n_seq_intent = row_number()) %>%
   ungroup() %>%
-  arrange(survey_id, species_id, n_seq, subsource, count_type, survey_design_type_id)
+  arrange(survey_id, species_id, n_seq_intent, subsource, count_type, survey_design_type_id)
 
 # Check
 table(survey_event$species_id, useNA = "ifany")
@@ -3175,20 +3175,18 @@ chk_se = survey_event %>%
 unique(survey_event$subsource)
 unique(survey_event$run)
 
-# Keep only the first case of n_seq....if source is intent then add zero's to either
-# fish_encounter or redd_encounter depending on count_type...Now 16731 rows
+# Keep only the first case of n_seq_intent....if source is intent then add zero's to either
+# fish_encounter or redd_encounter depending on count_type
 survey_event = survey_event %>%
-  mutate(del_row = if_else(subsource == "x_intent" & n_seq > 1L, "dump", "keep")) %>%
-  filter(del_row == "keep")
+  mutate(del_row_intent = if_else(subsource == "x_intent" & n_seq_intent > 1L, "dump", "keep"))
 
-# Keep only the first case of survey_id, species, and run: 5686 records left
+# Keep only the first case of survey_id, species, and run: Look below, should be 5686 records left
 survey_event = survey_event %>%
   arrange(survey_id, common_name, run, subsource, survey_design_type_id) %>%
   group_by(survey_id, species_id, run) %>%
-  mutate(n_seq = row_number()) %>%
+  mutate(n_seq_run = row_number()) %>%
   ungroup() %>%
-  arrange(survey_id, common_name, run, n_seq, subsource, count_type, survey_design_type_id) %>%
-  filter(n_seq == 1L)
+  arrange(survey_id, common_name, run, n_seq_run, subsource, count_type, survey_design_type_id)
 
 # Add detection method info
 dead_detect = dead_fe %>%
@@ -3250,7 +3248,7 @@ table(chk_na_run$species_id, useNA = "ifany")
 unique(survey_event$run_id)
 table(survey_event$run_id, useNA = "ifany")
 
-# Add run definitions where needed...still 5686 rows....good!
+# Add run definitions where needed...27384 rows
 survey_event = survey_event %>%
   left_join(run_year_info, by = "survey_id") %>%
   mutate(run_year = case_when(
@@ -3279,7 +3277,7 @@ survey_event = survey_event %>%
                           "59e1e01f-3aef-498c-8755-5862c025eafa", run_id)) %>%    # Not applicable
   select(count_type, dead_id, live_id, recap_id, redd_id, survey_id,
          species_id, survey_design_type_id, run_id, subsource, common_name, run,
-         cwt_detection_method_id, run_year)
+         n_seq_intent, del_row_intent, n_seq_run, cwt_detection_method_id, run_year)
 
 # Check for missing species
 any(is.na(survey_event$survey_id))
@@ -3297,10 +3295,11 @@ survey_event = survey_event %>%
   ungroup() %>%
   select(count_type, dead_id, live_id, recap_id, redd_id, survey_event_id,
          survey_id, species_id, survey_design_type_id, run_id,
-         cwt_detection_method_id, run_year, subsource, common_name, run,) %>%
+         cwt_detection_method_id, run_year, subsource, common_name, run,
+         n_seq_intent, del_row_intent, n_seq_run) %>%
   arrange(survey_event_id)
 
-# Pull out just the table data
+# Pull out just the table data: 7045 rows
 survey_event_prep = survey_event %>%
   mutate(comment_text = NA_character_) %>%
   mutate(estimated_percent_fish_seen = NA_integer_) %>%
@@ -3336,19 +3335,6 @@ survey_event_prep = survey_event_prep %>%
 # Verify values
 any(duplicated(survey_event_prep$survey_event_id))
 any(is.na(survey_event_prep$created_datetime))
-
-
-
-
-
-# Add a mini-section !!!!!!!!!!!!!!!!!!!!!!   SEE add_intent_zeros.R in data_query folder !!!!!!!!!!!!!
-
-# 1. VERY IMPORTANT: VERIFY THERE IS AT LEAST ONE ENTRY IN SURVEY_EVENT TABLE FOR EVERY SPECIES
-#    THAT WAS INTENDED FOR COUNTING IN THE SURVEY_INTENT TABLE
-# 2. FOR EVERY CASE WHERE A SURVEY_EVENT NEEDS TO BE ADDED BASED ON INTENT DATA, ADD A
-#    COUNT OF ZERO FOR EACH SPECIES IN THE FISH_ENCOUNTER OR REDD_ENCOUNTER TABLES. START
-#    WITH FISH_ENCOUNTER AND ONLY ADD ZERO TO REDD_ENCOUNTER IF REDDS_ONLY.
-
 
 #================================================================================================
 # Pull out live fish encounter data from redds subform
@@ -3585,6 +3571,20 @@ chk_count = chk_count %>%
 #     then to recaps_fish_capture using recaps_id
 #  4. Join new fish_encounter_id to live_redd using redd_id
 
+
+
+
+
+# Add a mini-section !!!!!!!!!!!!!!!!!!!!!!   SEE add_intent_zeros.R in data_query folder !!!!!!!!!!!!!
+
+# 1. VERY IMPORTANT: VERIFY THERE IS AT LEAST ONE ENTRY IN SURVEY_EVENT TABLE FOR EVERY SPECIES
+#    THAT WAS INTENDED FOR COUNTING IN THE SURVEY_INTENT TABLE
+# 2. FOR EVERY CASE WHERE A SURVEY_EVENT NEEDS TO BE ADDED BASED ON INTENT DATA, ADD A
+#    COUNT OF ZERO FOR EACH SPECIES IN THE FISH_ENCOUNTER OR REDD_ENCOUNTER TABLES. START
+#    WITH FISH_ENCOUNTER AND ONLY ADD ZERO TO REDD_ENCOUNTER IF REDDS_ONLY.
+
+
+
 # Prep dead data
 dead_se_id = survey_event %>%
   select(dead_id, survey_event_id) %>%
@@ -3734,10 +3734,59 @@ unique(fish_encounter$previously_counted_indicator)
 chk_fish_count = fish_encounter %>%
   filter(is.na(fish_count))
 
-# # Update fish_count HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# fish_encounter$fish_count[fish_encounter$redd_id == 4905L & is.na(fish_encounter$fish_count)] = 1L
-# fish_encounter$fish_count[fish_encounter$redd_id == 28538L & is.na(fish_encounter$fish_count)] = 1L
-# fish_encounter$fish_count[fish_encounter$redd_id == 465L & is.na(fish_encounter$fish_count)] = 1L
+#===============================================================================================
+# Section to add zeros from survey_intent where needed
+#===============================================================================================
+
+# Get first instance of survey_event data generated from survey_intent...used to add zeros
+intent_zero = survey_event %>%
+  filter(subsource == "x_intent" & n_seq_intent == 1L)
+
+# Verify all are from survey_intent. None are actual: Good...and none need to be added to redd_encounter!
+unique(intent_zero$count_type)
+
+# Pull out data needed for intent_fev
+intent_fev = intent_zero %>%
+  mutate(fish_location_id = NA_character_) %>%
+  mutate(fish_status_id = if_else(count_type == "alive",
+                                  "6a200904-8a57-4dd5-8c82-2353f91186ac",           # Live
+                                  "b185dc5d-6b15-4b5b-a54e-3301aec0270f")) %>%      # Dead
+  mutate(sex_id = "b97eaba9-4205-431b-ab09-a34636557666") %>%                       # Not applicable
+  mutate(maturity_id = "060732b9-230c-48f3-8264-bcb3c078a6e7") %>%                  # Not applicable
+  mutate(origin_id = "80c121fe-da0a-41f9-890f-3a5f39a314bb") %>%                    # Not applicable
+  mutate(cwt_detection_status_id = "bd7c5765-2ca3-4ab4-80bc-ce1a61ad8115") %>%      # Not applicable
+  mutate(adipose_clip_status_id = "1d61246c-003b-49e9-b2a3-cffdddb3905c") %>%       # Not applicable
+  mutate(fish_behavior_type_id = "70454429-724e-4ccf-b8a6-893cafba356a") %>%        # Not applicable
+  mutate(mortality_type_id = "149aefd0-0369-4f2c-b85f-4ec6c5e8679c") %>%            # Not applicable
+  mutate(fish_encounter_datetime = as.POSIXct(NA)) %>%
+  mutate(fish_count = 0L) %>%
+  mutate(previously_counted_indicator = 0L) %>%
+  select(dead_id, recap_id, live_id, redd_id, survey_id, survey_event_id,
+         fish_location_id, fish_status_id, sex_id, maturity_id,
+         origin_id, cwt_detection_status_id, adipose_clip_status_id,
+         fish_behavior_type_id, mortality_type_id, fish_count,
+         previously_counted_indicator)
+
+# Check
+any(duplicated(intent_fev$survey_event_id))      # Correct...none
+any(duplicated(intent_fev$survey_id))            # Correct...multiple species per survey
+
+# Check n_species....None: Good !
+chk_n_species = intent_fev %>%
+  group_by(survey_id) %>%
+  mutate(n_seq = row_number()) %>%
+  ungroup() %>%
+  filter(n_seq > 4L)
+
+# Add to fish_encounter
+fish_encounter = bind_rows(fish_encounter, intent_fev) %>%
+  select(dead_id, recap_id, live_id, redd_id, survey_id, survey_event_id,
+         fish_location_id, fish_status_id, sex_id, maturity_id,
+         origin_id, cwt_detection_status_id, adipose_clip_status_id,
+         fish_behavior_type_id, mortality_type_id, fish_count,
+         previously_counted_indicator)
+
+#===============================================================================================
 
 # Generate fish_encounter_id
 fish_encounter = fish_encounter %>%
@@ -3857,8 +3906,8 @@ unique(redd_enc$redd_count)
 chk_redd_count = redd_enc %>%
   filter(is.na(redd_count))
 
-# Update redd_count HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-redd_enc$redd_count[redd_enc$redd_id == 7947L] = 1
+# # Update redd_count HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# redd_enc$redd_count[redd_enc$redd_id == 7947L] = 1
 
 # Generate redd_encounter_id
 redd_encounter = redd_enc %>%
@@ -3915,9 +3964,23 @@ unique(ind_redd$percent_si)
 #unique(ind_redd$si_by)
 
 # First look for cases where redd_count > 1, but ind_redd data occurs
-# Result: None....can safely dump data where redd_count > 1
+# Result: Only a few redd_degradeds. Will send to Lea...can safely dump data where redd_count > 1
 chk_redd_count = ind_redd %>%
-  filter(redd_count > 1)
+  filter(redd_count > 1) %>%
+  filter(!is.na(redd_degraded) & !redd_degraded == "")
+
+# # Output
+# num_cols = ncol(chk_redd_count)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "MultipleIndivReddCounts.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "MultIndReddCounts", gridLines = TRUE)
+# writeData(wb, sheet = 1, chk_redd_count, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
 # Trim to only counts of one
 ind_redd = ind_redd %>%
@@ -3927,6 +3990,14 @@ ind_redd = ind_redd %>%
 unique(ind_redd$redd_count)
 unique(ind_redd$redd_length)
 unique(ind_redd$redd_width)
+unique(ind_redd$redd_degraded)
+
+# Correct some percent degraded values
+ind_redd$redd_degraded[ind_redd$redd_degraded %in% c("NV")] = NA_character_
+ind_redd$redd_degraded[ind_redd$redd_degraded %in% c("")] = NA_character_
+ind_redd$redd_degraded[ind_redd$redd_degraded %in% c("0%")] = "0"
+ind_redd$redd_degraded[ind_redd$redd_degraded %in% c("100%")] = "100"
+
 
 # Correct some values
 ind_redd = ind_redd %>%
@@ -4120,6 +4191,10 @@ unique(individual_fish$cwt_snout_sample_number)
 unique(individual_fish$genetic_sample_number)
 unique(individual_fish$comment_text)
 
+# Correct one comment
+individual_fish$comment_text[individual_fish$comment_text == "No head, only skin and tail \r\nFork length approx 72\r\n20kuc4 B-6"] = "No head, only skin and tail. Fork length approx 72. 20kuc4 B-6"
+unique(individual_fish$comment_text)
+
 # Dump rows with no data
 individual_fish = individual_fish %>%
   mutate(dump_rows = if_else(
@@ -4172,10 +4247,10 @@ individual_fish_prep = individual_fish %>%
          genetic_sample_number, otolith_sample_number, comment_text,
          created_datetime, created_by, modified_datetime, modified_by)
 
-# HACK ALERT...UPDATE ONE INCORRECT UUID
-individual_fish_prep = individual_fish_prep %>%
-  mutate(spawn_condition_type_id = if_else(spawn_condition_type_id == "d8129c5a-8005-4ef6-90cb-5950325ac0e",
-                                           "d8129c5a-8005-4ef6-90cb-5950325ac0e1", spawn_condition_type_id))
+# # HACK ALERT...UPDATE ONE INCORRECT UUID
+# individual_fish_prep = individual_fish_prep %>%
+#   mutate(spawn_condition_type_id = if_else(spawn_condition_type_id == "d8129c5a-8005-4ef6-90cb-5950325ac0e",
+#                                            "d8129c5a-8005-4ef6-90cb-5950325ac0e1", spawn_condition_type_id))
 
 # Check for dup ids...could be comments
 any(duplicated(individual_fish_prep$individual_fish_id))
@@ -4259,6 +4334,10 @@ fish_capture_event_two = fish_capture_event_two %>%
 
 # Check
 any(is.na(fish_capture_event_two$fish_encounter_id))
+
+# Check
+chk_capture_event = fish_capture_event_two %>%
+  filter(is.na(fish_encounter_id))
 
 #================================================================================================
 # Combine fish_capture_event data from dead and recaps
@@ -4610,6 +4689,22 @@ any(is.na(individual_redd_prep$redd_encounter_id))
 any(is.na(individual_redd_prep$redd_shape_id))
 any(is.na(individual_redd_prep$created_datetime))
 any(is.na(individual_redd_prep$created_by))
+
+#================================================================================================
+# Combine all survey_event_ids from downstream tables and see if any can be eliminated
+# from the survey_event table
+#================================================================================================
+
+
+
+
+
+
+
+
+
+
+
 
 #================================================================================================
 # LOAD TO DB
