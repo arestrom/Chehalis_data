@@ -4328,9 +4328,9 @@ fish_enc_recap_id = fish_encounter %>%
 # Add fish_encounter_id
 fish_capture_event_two = fish_capture_event_two %>%
   left_join(fish_enc_recap_id, by = "recap_id") %>%
-  select(fish_encounter_id, fish_capture_status_id, disposition_type_id,
-         disposition_id, disposition_location_id, created_datetime,
-         created_by, modified_datetime, modified_by)
+  select(recap_id, parent_record_id, survey_id, fish_capture_status_id, disposition_type_id,
+         disposition_id, disposition_location_id, fish_encounter_id, survey_event_id,
+         created_datetime, created_by, modified_datetime, modified_by)
 
 # Check
 any(is.na(fish_capture_event_two$fish_encounter_id))
@@ -4338,6 +4338,41 @@ any(is.na(fish_capture_event_two$fish_encounter_id))
 # Check
 chk_capture_event = fish_capture_event_two %>%
   filter(is.na(fish_encounter_id))
+
+# Output
+num_cols = ncol(chk_capture_event)
+current_date = format(Sys.Date())
+out_name = paste0("data/", current_date, "_", "NoMatchCaptureEvent.xlsx")
+wb <- createWorkbook(out_name)
+addWorksheet(wb, "NoMatchCaptureEvent", gridLines = TRUE)
+writeData(wb, sheet = 1, chk_capture_event, rowNames = FALSE)
+## create and add a style to the column headers
+headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+saveWorkbook(wb, out_name, overwrite = TRUE)
+
+
+
+
+
+
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+
+
+# Add fish_encounter_id
+fish_capture_event_two = fish_capture_event_two %>%
+  left_join(fish_enc_recap_id, by = "recap_id") %>%
+  select(fish_encounter_id, fish_capture_status_id, disposition_type_id,
+         disposition_id, disposition_location_id, created_datetime,
+         created_by, modified_datetime, modified_by)
+
+
 
 #================================================================================================
 # Combine fish_capture_event data from dead and recaps
