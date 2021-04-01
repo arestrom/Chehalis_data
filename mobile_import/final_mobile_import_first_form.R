@@ -1641,8 +1641,9 @@ fish_mark = dead %>%
 
 # Correct and add species common name
 unique(fish_mark$species_fish)
+unique(fish_mark$mark_status_1)
+unique(fish_mark$mark_status_2)
 fish_mark = fish_mark %>%
-  mutate(species_fish = if_else(species_fish == "Chum", "69d1348b-7e8e-4232-981a-702eda20c9b1", species_fish)) %>%
   mutate(common_name = case_when(
     species_fish == "69d1348b-7e8e-4232-981a-702eda20c9b1" ~ "Chum",
     species_fish == "e42aa0fc-c591-4fab-8481-55b0df38dcb1" ~ "Chinook",
@@ -1664,17 +1665,63 @@ fish_mark = fish_mark %>%
     mark_status_2 == "cb1dfe91-a782-4cbf-83c9-299137a5df6e" ~ "Not present",
     TRUE ~ mark_status_2))
 
-# Pull out cases where mark status is not applicable to check for species
+# Pull out cases where mark status is not applicable to check for species: 1143 rows
 chk_mark_species = fish_mark %>%
   filter(mark_status_one == "Not applicable" | mark_status_two == "Not applicable")
-unique(chk_mark_species$common_name)
+unique(chk_mark_species$common_name)  # Filtering out by Not applicable does not get rid of any chum
 all(is.na(chk_mark_species$carcass_condition))
 any(is.na(fish_mark$mark_status_1))
 any(is.na(fish_mark$mark_status_2))
 
-# Trim to only marked fish...went from 2655 rows to 2226 rows..correct: chk_mark_species: 429 rows
+# Update blanks to NA values
+fish_mark = fish_mark %>%
+  mutate(carc_tag_1 = trimws(carc_tag_1)) %>%
+  mutate(carc_tag_1 = if_else(carc_tag_1 == "", NA_character_, carc_tag_1)) %>%
+  mutate(carc_tag_2 = trimws(carc_tag_2)) %>%
+  mutate(carc_tag_2 = if_else(carc_tag_2 == "", NA_character_, carc_tag_2))
+
+# Inspect cases where something is entered for carcass condition....indicator of mark chack
+# Were any species besides chum checked? No blanks were entered for carcass_condition
+table(fish_mark$carcass_condition, useNA = "ifany")
+chk_condition = fish_mark %>%
+  filter(!is.na(carcass_condition))
+table(chk_condition$common_name, useNA = "ifany")
+
+# Inspect how fish_mark columns were entered
+any(is.na(fish_mark$survey_id))
+unique(fish_mark$number_fish)
+
+# Trim to only marked fish...went from 2272 rows to 1129 rows..correct: chk_mark_species: 1143 rows
 fish_mark = fish_mark %>%
   filter(!mark_status_one == "Not applicable" | !mark_status_two == "Not applicable")
+
+# Inspect fish_mark again
+table(fish_mark$common_name, useNA = "ifany")
+
+# Output cases where species is not chum
+non_chum_mark = fish_mark %>%
+  filter(!common_name == "Chum")
+
+# # Am suspecting data entry error for coho and chinook in Not applicable category
+# # There are 11 coho here and 22 no match cases near bottom of script
+# num_cols = ncol(non_chum_mark)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "NonChumMarkData.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "NotChum", gridLines = TRUE)
+# writeData(wb, sheet = 1, non_chum_mark, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
+
+# Assume we can get rid of anything except chum. Leaves 1115 rows
+fish_mark = fish_mark %>%
+  filter(common_name == "Chum")
+
+# Inspect carcass_conditions remaining
+table(fish_mark$carcass_condition, useNA = "ifany")
 
 # # Pull out just unique cases for Lea to construct a rule
 # fish_mark_rule = fish_mark %>%
@@ -2016,9 +2063,9 @@ recaps_fish_mark = recaps_se %>%
   mutate(mark_status_id = case_when(
     nchar(tag_number) >= 4L &
       stri_detect_regex(tag_number, "[:digit:]") &
-      !stri_detect_regex(tag_number, "[:alpha:]") ~ "68e174c7-ea47-4084-a567-bd33b241f94e",   # Observerd
+      !stri_detect_regex(tag_number, "[:alpha:]") ~ "68e174c7-ea47-4084-a567-bd33b241f94e",   # Observed
     tag_number == "Not present" ~ "cb1dfe91-a782-4cbf-83c9-299137a5df6e",                     # Not present
-    tag_number == "not present" ~ "cb1dfe91-a782-4cbf-83c9-299137a5df6e",                     # not present
+    tag_number == "not present" ~ "cb1dfe91-a782-4cbf-83c9-299137a5df6e",                     # Not present
     tag_number == "Unknown" ~ "7118fcda-8804-4285-bc1f-5d5c33048d4e",                         # Unknown
     TRUE ~ "68e174c7-ea47-4084-a567-bd33b241f94e")) %>%                                       # Observed
   mutate(mark_placement_id = "d35aacb1-20b3-41d7-b24e-00d4941b68a8") %>%                      # Opercle
@@ -3571,20 +3618,6 @@ chk_count = chk_count %>%
 #     then to recaps_fish_capture using recaps_id
 #  4. Join new fish_encounter_id to live_redd using redd_id
 
-
-
-
-
-# Add a mini-section !!!!!!!!!!!!!!!!!!!!!!   SEE add_intent_zeros.R in data_query folder !!!!!!!!!!!!!
-
-# 1. VERY IMPORTANT: VERIFY THERE IS AT LEAST ONE ENTRY IN SURVEY_EVENT TABLE FOR EVERY SPECIES
-#    THAT WAS INTENDED FOR COUNTING IN THE SURVEY_INTENT TABLE
-# 2. FOR EVERY CASE WHERE A SURVEY_EVENT NEEDS TO BE ADDED BASED ON INTENT DATA, ADD A
-#    COUNT OF ZERO FOR EACH SPECIES IN THE FISH_ENCOUNTER OR REDD_ENCOUNTER TABLES. START
-#    WITH FISH_ENCOUNTER AND ONLY ADD ZERO TO REDD_ENCOUNTER IF REDDS_ONLY.
-
-
-
 # Prep dead data
 dead_se_id = survey_event %>%
   select(dead_id, survey_event_id) %>%
@@ -3632,6 +3665,7 @@ unique(dead_fev$data_entry_type)
 dead_tag_number = fish_mark %>%
   filter(!is.na(dead_id)) %>%
   filter(!is.na(tag_number)) %>%
+  #filter(!tag_number %in% c("Not present", "not present")) %>%
   select(dead_id, tag_number) %>%
   distinct()
 
@@ -3646,7 +3680,33 @@ dead_tag_number = dead_tag_number %>%
          fish_count, previously_counted_indicator)
 
 # Check
-unique(dead_tag_number$fish_count)
+sort(unique(dead_tag_number$fish_count))
+sort(unique(dead_tag_number$tag_number))
+any(duplicated(dead_tag_number$tag_number))
+dead_tag_number$tag_number[duplicated(dead_tag_number$tag_number)]
+
+# Since next step joins on tag_number, inspect duplicates of tag_number
+any(duplicated(recaps_fish_mark$tag_number))
+dup_tag = recaps_fish_mark$tag_number[duplicated(recaps_fish_mark$tag_number)]
+chk_tag_dup = recaps_fish_mark %>%          # 328 records in recaps_fish_mark
+  filter(tag_number %in% dup_tag)           # 326 duplicated records in chk_tag_dup
+
+# Identify non_duplicated records in recaps_fish_mark....only Not Present, not present
+chk_no_tag_dup = recaps_fish_mark %>%
+  filter(!tag_number %in% dup_tag)
+
+# # Output
+# num_cols = ncol(chk_no_tag_dup)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "RecapTagNotPresent.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "TagNotPresent", gridLines = TRUE)
+# writeData(wb, sheet = 1, chk_no_tag_dup, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
 # Join to recap data
 recap_fev = recaps_fish_mark %>%
@@ -4192,7 +4252,9 @@ unique(individual_fish$genetic_sample_number)
 unique(individual_fish$comment_text)
 
 # Correct one comment
-individual_fish$comment_text[individual_fish$comment_text == "No head, only skin and tail \r\nFork length approx 72\r\n20kuc4 B-6"] = "No head, only skin and tail. Fork length approx 72. 20kuc4 B-6"
+individual_fish$comment_text[individual_fish$comment_text ==
+                               "No head, only skin and tail \r\nFork length approx 72\r\n20kuc4 B-6"] =
+  "No head, only skin and tail. Fork length approx 72. 20kuc4 B-6"
 unique(individual_fish$comment_text)
 
 # Dump rows with no data
@@ -4325,6 +4387,10 @@ fish_enc_recap_id = fish_encounter %>%
   select(recap_id, fish_encounter_id, survey_event_id) %>%
   distinct()
 
+# Check recap_id before join...Both are integers...verified
+unique(fish_capture_event_two$recap_id)
+unique(fish_enc_recap_id$recap_id)
+
 # Add fish_encounter_id
 fish_capture_event_two = fish_capture_event_two %>%
   left_join(fish_enc_recap_id, by = "recap_id") %>%
@@ -4339,47 +4405,33 @@ any(is.na(fish_capture_event_two$fish_encounter_id))
 chk_capture_event = fish_capture_event_two %>%
   filter(is.na(fish_encounter_id))
 
-# Output
-num_cols = ncol(chk_capture_event)
-current_date = format(Sys.Date())
-out_name = paste0("data/", current_date, "_", "NoMatchCaptureEvent.xlsx")
-wb <- createWorkbook(out_name)
-addWorksheet(wb, "NoMatchCaptureEvent", gridLines = TRUE)
-writeData(wb, sheet = 1, chk_capture_event, rowNames = FALSE)
-## create and add a style to the column headers
-headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-                           fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-saveWorkbook(wb, out_name, overwrite = TRUE)
+# # Output
+# num_cols = ncol(chk_capture_event)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "NoMatchCaptureEvent.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "NoMatchCaptureEvent", gridLines = TRUE)
+# writeData(wb, sheet = 1, chk_capture_event, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
-
-
-
-
-
-
-# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-
-
-
-# Add fish_encounter_id
-fish_capture_event_two = fish_capture_event_two %>%
-  left_join(fish_enc_recap_id, by = "recap_id") %>%
-  select(fish_encounter_id, fish_capture_status_id, disposition_type_id,
-         disposition_id, disposition_location_id, created_datetime,
-         created_by, modified_datetime, modified_by)
-
-
+# # Add fish_encounter_id...needed extra fields for output below...using bind_rows below now instead of rbind
+# fish_capture_event_two = fish_capture_event_two %>%
+#   left_join(fish_enc_recap_id, by = "recap_id") %>%
+#   select(fish_encounter_id, fish_capture_status_id, disposition_type_id,
+#          disposition_id, disposition_location_id, created_datetime,
+#          created_by, modified_datetime, modified_by)
 
 #================================================================================================
 # Combine fish_capture_event data from dead and recaps
 #================================================================================================
 
 # Combine
-fish_capture_event_prep = rbind(fish_capture_event_one, fish_capture_event_two) %>%
+fish_capture_event_prep = bind_rows(fish_capture_event_one, fish_capture_event_two) %>%
+  filter(!is.na(fish_encounter_id)) %>%                  # HACK ALERT...Dumping missing fish_encounter_id rows !!!!!!!!!!!!!!!
   select(fish_encounter_id, fish_capture_status_id, disposition_type_id,
          disposition_id, disposition_location_id, created_datetime,
          created_by, modified_datetime, modified_by)
@@ -4392,9 +4444,10 @@ fish_capture_event_prep = fish_capture_event_prep %>%
          created_datetime, created_by, modified_datetime, modified_by)
 
 # ONLY THIS ONCE...correct UUID...WARNING..HACK ALERT !!!!!!!!!!!!!!!!!!!!!!!!!
-fish_capture_event_prep = fish_capture_event_prep %>%
-  mutate(fish_capture_status_id = if_else(fish_capture_status_id == "v03f32160-6426-4c41-a088-3580a7d1a0c5",
-                                          "03f32160-6426-4c41-a088-3580a7d1a0c5", fish_capture_status_id))
+unique(fish_capture_event_prep$fish_capture_status_id)
+# fish_capture_event_prep = fish_capture_event_prep %>%
+#   mutate(fish_capture_status_id = if_else(fish_capture_status_id == "v03f32160-6426-4c41-a088-3580a7d1a0c5",
+#                                           "03f32160-6426-4c41-a088-3580a7d1a0c5", fish_capture_status_id))
 
 #================================================================================================
 # Prepare fish_mark_dead...now that fish_encounter_id is available
@@ -4453,6 +4506,10 @@ fish_mark_recap = fish_mark_recap %>%
 
 # Check
 any(is.na(fish_mark_recap$fish_encounter_id))
+
+# HACK ALERT !!!!!!!!! Dumping any rows where fish_encounter_id is missing
+fish_mark_recap = fish_mark_recap %>%
+  filter(!is.na(fish_encounter_id))
 
 #================================================================================================
 # Combine fish_mark data from dead and recaps
@@ -4730,16 +4787,63 @@ any(is.na(individual_redd_prep$created_by))
 # from the survey_event table
 #================================================================================================
 
+# Get all current survey_event_ids
+se_ids = unique(survey_event_prep$survey_event_id)
 
+# Get all downstream IDs
+fe_se_ids = unique(fish_encounter_prep$survey_event_id)
+rd_se_ids = unique(redd_encounter_prep$survey_event_id)
 
+# Combine downstream_ids
+down_se_ids = unique(c(fe_se_ids, rd_se_ids))
 
+# Inspect survey_event data with no downstream survey_event_ids
+chk_down = survey_event_prep %>%
+  filter(!survey_event_id %in% down_se_ids) %>%
+  left_join(species_ids, by = "species_id")
 
+# Inspect
+table(chk_down$common_name, useNA = "ifany")
+table(chk_down$survey_design_type_id, useNA = "ifany")
 
+# Look at survey info for potential delete events
+s_id_down = unique(chk_down$survey_id)
+survey_down = survey_prep %>%
+  filter(survey_id %in% s_id_down)
 
+# Inspect values...All survey were conducted...only nine were partial
+table(survey_down$survey_completion_status_id, useNA = "ifany")
 
+# Check what the survey_intent was for these surveys
+intent_down = intent_prep %>%
+  filter(survey_id %in% s_id_down)
 
+# Check if any zero's already entered for the surveys
+survey_event_down = survey_event_prep %>%
+  filter(survey_id %in% s_id_down)
 
+# Get fish_encounter data for these surveys
+se_id_down = unique(survey_event_down$survey_event_id)
+fish_encounter_down = fish_encounter_prep %>%
+  filter(survey_event_id %in% se_id_down) %>%
+  filter(fish_count == 0L)
 
+# Looks like zeros were created for surveys that already had counts.
+# Possibly there were multiple run_year or survey_types. All intended
+# species were provided a zero if needed. So any excess can be deleted.
+# If a survey does not have downstream counts for redd or fish then
+# we should be able to safely delete.
+
+# Double-check that no survey_event_ids in se_id_down exists in redd or fish encounter tables: Both zero rows!
+no_se_id = unique(chk_down$survey_event_id)
+fish_down = fish_encounter_prep %>%
+  filter(survey_event_id %in% no_se_id)
+redd_down = redd_encounter_prep %>%
+  filter(survey_event_id %in% no_se_id)
+
+# Dump the survey_event_prep rows not needed: Went from 7045 rows to 5684 rows
+survey_event_prep = survey_event_prep %>%
+  filter(!survey_event_id %in% no_se_id)
 
 #================================================================================================
 # LOAD TO DB
@@ -4765,11 +4869,17 @@ saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
 # Load data tables
 #==========================================================================================
 
-#======== Location tables ===============
+#======== Location tables =======================================
 
-#============================================================
-# Reset gid_sequence
-#============================================================
+#=======  Insert location =================
+
+# location: 3048 rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "location")
+dbWriteTable(db_con, tbl, location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
+# Reset gid_sequence ----------------------------
 
 # Get the current max_gid from the location_coordinates table
 qry = "select max(gid) from spawning_ground.location_coordinates"
@@ -4783,86 +4893,93 @@ db_con = pg_con_prod(dbname = "FISH")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
 
+#------------------------------------------------
 
-
-
-# REWRITE ALL BELOW TO GO DIRECTLY TO THE FISH PROD spawning_ground schema !!!!!!!!!!!!!!!!!!!
-
-
-
-
-
-#=======  Insert location =================
-
-# location: 3170 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'location', location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
+#=======  Insert location_coordinates =================
 
 # Get the current max_gid from the location_coordinates table
-qry = "select max(gid) from location_coordinates"
-db_con = pg_con_local(dbname = "spawning_ground")
+qry = "select max(gid) from spawning_ground.location_coordinates"
+db_con = pg_con_prod(dbname = "FISH")
 max_gid = DBI::dbGetQuery(db_con, qry)
 DBI::dbDisconnect(db_con)
 next_gid = max_gid$max + 1
 
-# Pull out data for location_coordinates table
+# Pull out data for location_coordinates table: 3031 rows
 location_coordinates_temp = location_coordinates_prep %>%
-  mutate(gid = seq(next_gid, nrow(location_coordinates_prep) + next_gid - 1)) %>%
+  mutate(gid = seq(next_gid, nrow(location_coordinates) + next_gid - 1)) %>%
   select(location_coordinates_id, location_id, horizontal_accuracy,
          comment_text, gid, created_datetime, created_by,
          modified_datetime, modified_by)
 
 # Write coords_only data
-db_con = pg_con_local(dbname = "spawning_ground")
-st_write(obj = location_coordinates_temp, dsn = db_con, layer = "location_coordinates_temp")
+db_con = pg_con_prod(dbname = "FISH")
+st_write(obj = location_coordinates_temp, dsn = db_con, layer = "spawning_ground.location_coordinates_temp")
 DBI::dbDisconnect(db_con)
 
 # Use select into query to get data into location_coordinates
-qry = glue::glue("INSERT INTO location_coordinates ",
+qry = glue::glue("INSERT INTO spawning_ground.location_coordinates ",
                  "SELECT CAST(location_coordinates_id AS UUID), CAST(location_id AS UUID), ",
-                 "horizontal_accuracy, comment_text, gid, geometry AS geom, ",
+                 "horizontal_accuracy, comment_text, gid, geom, ",
                  "CAST(created_datetime AS timestamptz), created_by, ",
                  "CAST(modified_datetime AS timestamptz), modified_by ",
-                 "FROM location_coordinates_temp")
+                 "FROM spawning_ground.location_coordinates_temp")
 
-# Insert select to spawning_ground: 3105 rows
-db_con = pg_con_local(dbname = "spawning_ground")
+# Insert select to spawning_ground: 3031 rows
+db_con = pg_con_prod(dbname = "FISH")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
 
 # Drop temp
-db_con = pg_con_local(dbname = "spawning_ground")
-DBI::dbExecute(db_con, "DROP TABLE location_coordinates_temp")
+db_con = pg_con_prod(dbname = "FISH")
+DBI::dbExecute(db_con, "DROP TABLE spawning_ground.location_coordinates_temp")
 DBI::dbDisconnect(db_con)
 
-# media_location: 178 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'media_location', media_location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-#============================================================
-# Reset gid_sequence
-#============================================================
+# Reset gid_sequence ----------------------------
 
 # Get the current max_gid from the location_coordinates table
-qry = "select max(gid) from location_coordinates"
-db_con = pg_con_local(dbname = "spawning_ground")
+qry = "select max(gid) from spawning_ground.location_coordinates"
+db_con = pg_con_prod(dbname = "FISH")
 max_gid = DBI::dbGetQuery(db_con, qry)
 DBI::dbDisconnect(db_con)
 
 # Code to reset sequence
-qry = glue("SELECT setval('location_coordinates_gid_seq', {max_gid}, true)")
-db_con = pg_con_local(dbname = "spawning_ground")
+qry = glue("SELECT setval('spawning_ground.location_coordinates_gid_seq', {max_gid}, true)")
+db_con = pg_con_prod(dbname = "FISH")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
 
+#-------------------------------------------------
+
+# media_location: 219 rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "media_location")
+dbWriteTable(db_con, tbl, media_location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+dbDisconnect(db_con)
+
 #======== Survey level tables ===============
 
-# survey: 2044 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'survey', survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# survey: 2236 rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "survey")
+dbWriteTable(db_con, tbl, survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
+
+
+
+
+
+# STOPPED HERE. NEED TO REWRITE NEXT SET FOR FISH DB !!!!!!!!!!!!!!!!!!!
+
+
+
+
+
+
+
+
+
+
+
 
 # survey_comment: 2044 rows
 db_con = pg_con_local("spawning_ground")
