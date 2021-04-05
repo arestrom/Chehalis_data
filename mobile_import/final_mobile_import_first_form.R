@@ -35,10 +35,9 @@
 #     join the new header_id back into the header data based on the
 #     parent_form_id
 #
-#  Successfully loaded final batch from inital iform on 2021-03-  at  PM
-#  The only ones now being pulled are those with no survey_uuid.
+#  Successfully loaded final batch from inital iform on 2021-04-  at  PM
 #
-# AS 2021-03-09
+# AS 2021-04-05
 #===============================================================================
 
 # Load libraries
@@ -4958,103 +4957,100 @@ dbDisconnect(db_con)
 
 #======== Survey level tables ===============
 
-# survey: 2236 rows
+# survey:  rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey")
 dbWriteTable(db_con, tbl, survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-
-
-
-
-# STOPPED HERE. NEED TO REWRITE NEXT SET FOR FISH DB !!!!!!!!!!!!!!!!!!!
-
-
-
-
-
-
-
-
-
-
-
-
-# survey_comment: 2044 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'survey_comment', comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# survey_comment:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "survey_comment")
+dbWriteTable(db_con, tbl, comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_intent: 22749 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'survey_intent', intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# survey_intent:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "survey_intent")
+dbWriteTable(db_con, tbl, intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# waterbody_measurement: 2044 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'waterbody_measurement', waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# waterbody_measurement:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "waterbody_measurement")
+dbWriteTable(db_con, tbl, waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# mobile_survey_form: 2044 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'mobile_survey_form', mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# mobile_survey_form:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "mobile_survey_form")
+dbWriteTable(db_con, tbl, mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_passage_feature: 76 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_passage_feature', fish_passage_feature_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# fish_passage_feature:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "fish_passage_feature")
+dbWriteTable(db_con, tbl, fish_passage_feature_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# other_observation: 239 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'other_observation', other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# other_observation:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "other_observation")
+dbWriteTable(db_con, tbl, other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event: 9068 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'survey_event', survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# survey_event:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "survey_event")
+dbWriteTable(db_con, tbl, survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== fish data ===============
 
-# fish_encounter: 2136 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_encounter', fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# fish_encounter:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "fish_encounter")
+dbWriteTable(db_con, tbl, fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_capture_event: 4654 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_capture_event', fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# fish_capture_event:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "fish_capture_event")
+dbWriteTable(db_con, tbl, fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_mark: 6880 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_mark', fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# fish_mark:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "fish_mark")
+dbWriteTable(db_con, tbl, fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_fish: 2537 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'individual_fish', individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# individual_fish:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "individual_fish")
+dbWriteTable(db_con, tbl, individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_length_measurement: 2263 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'fish_length_measurement', fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# fish_length_measurement:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "fish_length_measurement")
+dbWriteTable(db_con, tbl, fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 #======== redd data ===============
 
-# redd_encounter: 11498 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'redd_encounter', redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# redd_encounter:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "redd_encounter")
+dbWriteTable(db_con, tbl, redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_redd: 7724 rows
-db_con = pg_con_local("spawning_ground")
-dbWriteTable(db_con, 'individual_redd', individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# individual_redd:  rows
+db_con = pg_con_prod("FISH")
+tbl = Id(schema = "spawning_ground", table = "individual_redd")
+dbWriteTable(db_con, tbl, individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
 # #===========================================================================================================
@@ -5075,13 +5071,13 @@ dbDisconnect(db_con)
 # se_id = se_id[!is.na(se_id)]
 # se_ids = paste0(paste0("'", se_id, "'"), collapse = ", ")
 #
-# # Pull out location IDs: 3160 rows
+# # Pull out location IDs:  rows
 # loc_ids = unique(test_location_ids$location_id)
 # loc_ids = paste0(paste0("'", loc_ids, "'"), collapse = ", ")
 #
 # # Get fish_encounter_ids
-# qry = glue("select fish_encounter_id from fish_encounter where survey_event_id in ({se_ids})")
-# db_con = pg_con_local("spawning_ground")
+# qry = glue("select spawning_ground.fish_encounter_id from fish_encounter where survey_event_id in ({se_ids})")
+# db_con = pg_con_prod("FISH")
 # fish_id = dbGetQuery(db_con, qry)
 # dbDisconnect(db_con)
 #
@@ -5090,8 +5086,8 @@ dbDisconnect(db_con)
 # fs_ids = paste0(paste0("'", fs_ids, "'"), collapse = ", ")
 #
 # # Get individual_fish IDs
-# qry = glue("select individual_fish_id from individual_fish where fish_encounter_id in ({fs_ids})")
-# db_con = pg_con_local("spawning_ground")
+# qry = glue("select spawning_ground.individual_fish_id from individual_fish where fish_encounter_id in ({fs_ids})")
+# db_con = pg_con_prod("FISH")
 # indf_id = dbGetQuery(db_con, qry)
 # dbDisconnect(db_con)
 #
@@ -5100,8 +5096,8 @@ dbDisconnect(db_con)
 # ifs_ids = paste0(paste0("'", ifs_ids, "'"), collapse = ", ")
 #
 # # Get redd_encounter_ids
-# qry = glue("select redd_encounter_id from redd_encounter where survey_event_id in ({se_ids})")
-# db_con = pg_con_local("spawning_ground")
+# qry = glue("select spawning_ground.redd_encounter_id from redd_encounter where survey_event_id in ({se_ids})")
+# db_con = pg_con_prod("FISH")
 # redd_id = dbGetQuery(db_con, qry)
 # dbDisconnect(db_con)
 #
@@ -5110,8 +5106,8 @@ dbDisconnect(db_con)
 # rd_ids = paste0(paste0("'", rd_ids, "'"), collapse = ", ")
 #
 # # Get individual_redd_ids
-# qry = glue("select individual_redd_id from individual_redd where redd_encounter_id in ({rd_ids})")
-# db_con = pg_con_local("spawning_ground")
+# qry = glue("select spawning_ground.individual_redd_id from individual_redd where redd_encounter_id in ({rd_ids})")
+# db_con = pg_con_prod("FISH")
 # iredd_id = dbGetQuery(db_con, qry)
 # dbDisconnect(db_con)
 #
@@ -5125,104 +5121,104 @@ dbDisconnect(db_con)
 #
 # #======== redd data ===============
 #
-# # individual_redd: 7724 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from individual_redd where individual_redd_id in ({ird_ids})'))
+# # individual_redd:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.individual_redd where individual_redd_id in ({ird_ids})'))
 # dbDisconnect(db_con)
 #
-# # redd_encounter: 11498 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from redd_encounter where redd_encounter_id in ({rd_ids})'))
+# # redd_encounter:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.redd_encounter where redd_encounter_id in ({rd_ids})'))
 # dbDisconnect(db_con)
 #
 # #======== fish data ===============
 #
-# # fish_length_measurement: 2263 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from fish_length_measurement where individual_fish_id in ({ifs_ids})'))
+# # fish_length_measurement:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.fish_length_measurement where individual_fish_id in ({ifs_ids})'))
 # dbDisconnect(db_con)
 #
-# # individual_fish: 2537 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from individual_fish where fish_encounter_id in ({fs_ids})'))
+# # individual_fish:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.individual_fish where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_capture_event: 4654 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from fish_capture_event where fish_encounter_id in ({fs_ids})'))
+# # fish_capture_event:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.fish_capture_event where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_mark: 6880 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from fish_mark where fish_encounter_id in ({fs_ids})'))
+# # fish_mark:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.fish_mark where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_encounter: 2136 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from fish_encounter where fish_encounter_id in ({fs_ids})'))
+# # fish_encounter:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.fish_encounter where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
 # #======== Survey event ===============
 #
-# # survey_event: 9068 rows....only deleted 2106 rows Aug 31st...must be ok since all surveys were deleted.
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from survey_event where survey_event_id in ({se_ids})'))
+# # survey_event:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.survey_event where survey_event_id in ({se_ids})'))
 # dbDisconnect(db_con)
 #
 # #======== Survey level tables ===============
 #
-# # other_observation: 239 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from other_observation where survey_id in ({s_ids})'))
+# # other_observation:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.other_observation where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_passage_feature: 76 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from fish_passage_feature where survey_id in ({s_ids})'))
+# # fish_passage_feature:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.fish_passage_feature where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # mobile_survey_form: 2044 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from mobile_survey_form where survey_id in ({s_ids})'))
+# # mobile_survey_form:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.mobile_survey_form where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey_comment: 2044 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from survey_comment where survey_id in ({s_ids})'))
+# # survey_comment:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.survey_comment where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey_intent: 22749 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from survey_intent where survey_id in ({s_ids})'))
+# # survey_intent:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.survey_intent where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # waterbody_measurement: 2044 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from waterbody_measurement where survey_id in ({s_ids})'))
+# # waterbody_measurement:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.waterbody_measurement where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey: 2044 rows
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue('delete from survey where survey_id in ({s_ids})'))
+# # survey:  rows
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue('delete from spawning_ground.survey where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
 # #======== location ===============
 #
-# # media_location: 178
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue("delete from media_location where location_id in ({loc_ids})"))
+# # media_location:
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue("delete from spawning_ground.media_location where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
 #
-# # Location coordinates: 3105
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue("delete from location_coordinates where location_id in ({loc_ids})"))
+# # Location coordinates:
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue("delete from spawning_ground.location_coordinates where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
 #
-# # Location: 3165
-# db_con = pg_con_local("spawning_ground")
-# dbExecute(db_con, glue("delete from location where location_id in ({loc_ids})"))
+# # Location:
+# db_con = pg_con_prod("FISH")
+# dbExecute(db_con, glue("delete from spawning_ground.location where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
-
+#
 
 
 
