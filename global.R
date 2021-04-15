@@ -153,6 +153,7 @@
 # 48. Do we need interface to dump redd locations with no surveys attached?
 # 49. Add selectable input for the number of months of previous redds or carcasses to display
 #     in the redd_location and fish_location tables.
+# 50  Renamed to Chehalis_data on 2021-04-15
 #
 # AS 2020-08-12
 #==============================================================
