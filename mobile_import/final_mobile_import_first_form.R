@@ -3852,7 +3852,7 @@ chk_no_tag_dup = recaps_fish_mark %>%
 #=============================================================================
 # Match recap data to dead data by tag_number where possible. If tag has no
 # match then add needed info via other means. Originally I filtered data
-# if there was no match...but lost recap data in the process. Cant do that.
+# after join...but if tag missing (as now) may lose recap data in the process.
 #=============================================================================
 
 # Join to recap data
@@ -3876,7 +3876,14 @@ re_event = survey_event %>%
 
 # Add to recap_fev
 recap_fev = recap_fev %>%
-  left_join(re_event, by = "recap_id")
+  left_join(re_event, by = "recap_id") %>%
+  mutate(survey_id = if_else(is.na(survey_id) & !is.na(re_survey_id),
+                             re_survey_id, survey_id)) %>%
+  mutate(survey_event_id = if_else(is.na(survey_event_id) & !is.na(re_survey_event_id),
+                             re_survey_event_id, survey_event_id)) %>%
+  mutate(fish_status_id = if_else(is.na(fish_status_id), "b185dc5d-6b15-4b5b-a54e-3301aec0270f",
+                                  fish_status_id))
+
 
 
 
