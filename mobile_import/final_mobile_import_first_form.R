@@ -3874,6 +3874,14 @@ re_event = survey_event %>%
   filter(!is.na(recap_id)) %>%
   distinct()
 
+# Inspect some values
+unique(recap_fev$maturity_id)
+unique(recap_fev$origin_id)
+unique(recap_fev$cwt_detection_status_id)
+unique(recap_fev$adipose_clip_status_id)
+unique(recap_fev$fish_behavior_type_id)
+unique(recap_fev$mortality_type_id)
+
 # Add to recap_fev
 recap_fev = recap_fev %>%
   left_join(re_event, by = "recap_id") %>%
@@ -3881,13 +3889,25 @@ recap_fev = recap_fev %>%
                              re_survey_id, survey_id)) %>%
   mutate(survey_event_id = if_else(is.na(survey_event_id) & !is.na(re_survey_event_id),
                              re_survey_event_id, survey_event_id)) %>%
-  mutate(fish_status_id = if_else(is.na(fish_status_id), "b185dc5d-6b15-4b5b-a54e-3301aec0270f",
-                                  fish_status_id))
-
-
-
-
-
+  mutate(fish_status_id = if_else(is.na(fish_status_id), "b185dc5d-6b15-4b5b-a54e-3301aec0270f",   # Dead
+                                  fish_status_id)) %>%
+  mutate(sex_id = if_else(is.na(sex_id), "c0f86c86-dc49-406b-805d-c21a6756de91", sex_id)) %>%      # Unknown
+  mutate(maturity_id = if_else(is.na(maturity_id), "68347504-ee22-4632-9856-a4f4366b2bd8",         # Adult
+                               maturity_id)) %>%
+  mutate(origin_id = if_else(is.na(origin_id), "2089de8c-3bd0-48fe-b31b-330a76d840d2", origin_id)) %>%
+  mutate(cwt_detection_status_id = if_else(is.na(cwt_detection_status_id),
+                                           "bd7c5765-2ca3-4ab4-80bc-ce1a61ad8115",
+                                           cwt_detection_status_id)) %>%
+  mutate(adipose_clip_status_id = if_else(is.na(adipose_clip_status_id),
+                                          "c989e267-c2cb-4d0a-842c-725f4257ace1",
+                                          adipose_clip_status_id)) %>%
+  mutate(fish_behavior_type_id = if_else(is.na(fish_behavior_type_id),
+                                         "70454429-724e-4ccf-b8a6-893cafba356a",
+                                         fish_behavior_type_id)) %>%
+  mutate(mortality_type_id = if_else(is.na(mortality_type_id), "149aefd0-0369-4f2c-b85f-4ec6c5e8679c",
+                                           mortality_type_id)) %>%
+  mutate(fish_count = 1L) %>%
+  mutate(previously_counted_indicator = 1L)
 
 # Prep live data
 live_se_id = survey_event %>%
@@ -4952,6 +4972,18 @@ any(is.na(individual_redd_prep$redd_encounter_id))
 any(is.na(individual_redd_prep$redd_shape_id))
 any(is.na(individual_redd_prep$created_datetime))
 any(is.na(individual_redd_prep$created_by))
+
+
+
+
+
+# LOOKS GOOD TO HERE NOW. CHECK AGAIN ON MONDAY THEN UPLOAD !!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+
+
 
 #================================================================================================
 # Combine all survey_event_ids from downstream tables and see if any can be eliminated
