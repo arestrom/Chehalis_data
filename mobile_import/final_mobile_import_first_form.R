@@ -530,31 +530,31 @@ table(header_data$coho_run_year, useNA = "ifany")
 table(header_data$chum_run_year, useNA = "ifany")
 table(header_data$chinook_run_year, useNA = "ifany")
 
-# More inspections
-chk_sthd_runyr = header_data %>%
-  mutate(year_month = substr(survey_date, 1, 7)) %>%
-  mutate(corrected_run_year = NA_character_) %>%
-  select(year_month, steelhead_count_type, steelhead_run_year, corrected_run_year) %>%
-  distinct() %>%
-  arrange(year_month)
-chk_chum_runyr = header_data %>%
-  mutate(year_month = substr(survey_date, 1, 7)) %>%
-  mutate(corrected_run_year = NA_character_) %>%
-  select(year_month, chum_count_type, chum_run_year, corrected_run_year) %>%
-  distinct() %>%
-  arrange(year_month)
-chk_coho_runyr = header_data %>%
-  mutate(year_month = substr(survey_date, 1, 7)) %>%
-  mutate(corrected_run_year = NA_character_) %>%
-  select(year_month, coho_count_type, coho_run_year, corrected_run_year) %>%
-  distinct() %>%
-  arrange(year_month)
-chk_chin_runyr = header_data %>%
-  mutate(year_month = substr(survey_date, 1, 7)) %>%
-  mutate(corrected_run_year = NA_character_) %>%
-  select(year_month, chinook_count_type, chinook_run_year, corrected_run_year) %>%
-  distinct() %>%
-  arrange(year_month)
+# # More inspections
+# chk_sthd_runyr = header_data %>%
+#   mutate(year_month = substr(survey_date, 1, 7)) %>%
+#   mutate(corrected_run_year = NA_character_) %>%
+#   select(year_month, steelhead_count_type, steelhead_run_year, corrected_run_year) %>%
+#   distinct() %>%
+#   arrange(year_month)
+# chk_chum_runyr = header_data %>%
+#   mutate(year_month = substr(survey_date, 1, 7)) %>%
+#   mutate(corrected_run_year = NA_character_) %>%
+#   select(year_month, chum_count_type, chum_run_year, corrected_run_year) %>%
+#   distinct() %>%
+#   arrange(year_month)
+# chk_coho_runyr = header_data %>%
+#   mutate(year_month = substr(survey_date, 1, 7)) %>%
+#   mutate(corrected_run_year = NA_character_) %>%
+#   select(year_month, coho_count_type, coho_run_year, corrected_run_year) %>%
+#   distinct() %>%
+#   arrange(year_month)
+# chk_chin_runyr = header_data %>%
+#   mutate(year_month = substr(survey_date, 1, 7)) %>%
+#   mutate(corrected_run_year = NA_character_) %>%
+#   select(year_month, chinook_count_type, chinook_run_year, corrected_run_year) %>%
+#   distinct() %>%
+#   arrange(year_month)
 
 # # Need to verify run_year assignments with Lea
 # num_cols = ncol(chk_sthd_runyr)
@@ -629,12 +629,12 @@ chk_chin_runyr = header_data %>%
 #     TRUE ~ "2020"))
 #===============================================================================
 
-# HACK FOR NOW....FILL IN BLANKS
-header_data = header_data %>%
-  mutate(chinook_run_year = if_else(is.na(chinook_run_year), substr(survey_date, 1, 4), chinook_run_year)) %>%
-  mutate(chum_run_year = if_else(is.na(chum_run_year), substr(survey_date, 1, 4), chum_run_year)) %>%
-  mutate(coho_run_year = if_else(is.na(coho_run_year), substr(survey_date, 1, 4), coho_run_year)) %>%
-  mutate(steelhead_run_year = if_else(is.na(steelhead_run_year), substr(survey_date, 1, 4), steelhead_run_year))
+# # HACK FOR NOW....FILL IN BLANKS...No blanks now
+# header_data = header_data %>%
+#   mutate(chinook_run_year = if_else(is.na(chinook_run_year), substr(survey_date, 1, 4), chinook_run_year)) %>%
+#   mutate(chum_run_year = if_else(is.na(chum_run_year), substr(survey_date, 1, 4), chum_run_year)) %>%
+#   mutate(coho_run_year = if_else(is.na(coho_run_year), substr(survey_date, 1, 4), coho_run_year)) %>%
+#   mutate(steelhead_run_year = if_else(is.na(steelhead_run_year), substr(survey_date, 1, 4), steelhead_run_year))
 
 # Check
 table(header_data$steelhead_run_year, useNA = "ifany")
@@ -1725,12 +1725,27 @@ sort(unique(dead_fe$fish_count))
 
 #============== fish_capture_event and fish_mark =============
 
+# Add the info on carcass_tagging from the header_data
+header_tag_info = header_data %>%
+  select(survey_uuid, parent_record_id, carcass_tagging) %>%
+  distinct()
+
+# Check
+any(duplicated(header_tag_info$survey_uuid))
+any(duplicated(header_tag_info$parent_record_id))
+unique(header_tag_info$carcass_tagging)
+
 # Pull out fish mark data
 fish_mark = dead %>%
   left_join(header_se, by = "parent_record_id") %>%
+  left_join(header_tag_info, by = "parent_record_id") %>%
   select(dead_id = id, parent_record_id, survey_id, created_date, created_by,
-         modified_date, modified_by, species_fish, number_fish, carcass_condition,
-         carc_tag_1, carc_tag_2, mark_status_1, mark_status_2)
+         modified_date, modified_by, species_fish, number_fish, carcass_tagging,
+         carcass_condition, carc_tag_1, carc_tag_2, mark_status_1, mark_status_2)
+
+# Verified with Lea....only keep fish_mark if carcass_tagging = "yes"?  934 rows left. Was 1143 before
+fish_mark = fish_mark %>%
+  filter(carcass_tagging == "yes")
 
 # Correct and add species common name
 unique(fish_mark$species_fish)
@@ -1758,16 +1773,25 @@ fish_mark = fish_mark %>%
     mark_status_2 == "cb1dfe91-a782-4cbf-83c9-299137a5df6e" ~ "Not present",
     TRUE ~ mark_status_2))
 
-# Pull out cases where mark status is not applicable to check for species: 1143 rows
+# Inspect
+unique(fish_mark$common_name)
+unique(fish_mark$mark_status_one)
+unique(fish_mark$mark_status_two)
+
+# Pull out cases where mark status is not applicable to check for species: 405 rows
 chk_mark_species = fish_mark %>%
   filter(mark_status_one == "Not applicable" | mark_status_two == "Not applicable")
+
 unique(chk_mark_species$common_name)  # Filtering out by Not applicable does not get rid of any chum
 all(is.na(chk_mark_species$carcass_condition))
+any(is.na(chk_mark_species$carcass_condition))
 any(is.na(fish_mark$mark_status_1))
 any(is.na(fish_mark$mark_status_2))
+table(chk_mark_species$common_name, useNA = "ifany")
 
 # Update blanks to NA values
 fish_mark = fish_mark %>%
+  filter(!(mark_status_one == "Not applicable" | mark_status_two == "Not applicable")) %>%
   mutate(carc_tag_1 = trimws(carc_tag_1)) %>%
   mutate(carc_tag_1 = if_else(carc_tag_1 == "", NA_character_, carc_tag_1)) %>%
   mutate(carc_tag_2 = trimws(carc_tag_2)) %>%
@@ -1779,10 +1803,6 @@ table(fish_mark$carcass_condition, useNA = "ifany")
 chk_condition = fish_mark %>%
   filter(!is.na(carcass_condition))
 table(chk_condition$common_name, useNA = "ifany")
-
-# Trim to only marked fish...went from 2272 rows to 1129 rows..correct: chk_mark_species: 1143 rows
-fish_mark = fish_mark %>%
-  filter(!mark_status_one == "Not applicable" | !mark_status_two == "Not applicable")
 
 # Inspect cases where species is not chum
 non_chum_mark = fish_mark %>%
@@ -1807,26 +1827,28 @@ any(is.na(fish_mark$survey_id))
 unique(fish_mark$number_fish)
 table(chk_condition$common_name, useNA = "ifany")
 
-# Keep only chum ????
-# Keep only cases where fish_count = 1  ???
-# Keep only observed or applied  ??
-# Is mark placement
+# I checked with Lea
+# 1. Keep all species, including non-chum
+# 2. Keep cases where fish_count > 1
+# 3. Keep all remaining categories...not just applied or observed.
 
+# # Output fish_mark for inspection
+# num_cols = ncol(fish_mark)
+# current_date = format(Sys.Date())
+# out_name = paste0("data/", current_date, "_", "FishMarkData.xlsx")
+# wb <- createWorkbook(out_name)
+# addWorksheet(wb, "FishMark", gridLines = TRUE)
+# writeData(wb, sheet = 1, fish_mark, rowNames = FALSE)
+# ## create and add a style to the column headers
+# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
+#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
+# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
+# saveWorkbook(wb, out_name, overwrite = TRUE)
 
-
-
-
-
-
-
-
-
-
-
-# # DONT DO THIS NOW !!!!!!!!!!!!!! Check with LEA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # # Assume we can get rid of anything except chum. Leaves 1115 rows
 # fish_mark = fish_mark %>%
 #   filter(common_name == "Chum")
+
 #=======================================================================================
 
 # Inspect fish_mark again
@@ -1930,7 +1952,7 @@ fish_mark_two = fish_mark %>%
          mark_orientation_id, mark_placement_id, mark_size_id, mark_color_id,
          mark_shape_id, tag_number = carc_tag_2, created_datetime = created_date,
          created_by, modified_datetime = modified_date, modified_by)
-# Combine
+# Combine: 1058 rows
 fish_mark = rbind(fish_mark_one, fish_mark_two) %>%
   mutate(tag_number = trimws(tag_number)) %>%
   mutate(tag_number = if_else(tag_number == "", NA_character_, tag_number))
@@ -2128,23 +2150,20 @@ chk_recaps = recaps_se %>%
 unique(recaps_se$recovery_tag_1)
 unique(recaps_se$recovery_tag_2)
 
-# ALL HAVE TAGS except two cases of recovery_tag_2 not present. Make sure and coalesce correctly !
-
+# ALL HAVE TAGS except two cases of recovery_tag_2 not present.
 
 # Join to recaps
 recaps_se = recaps_se %>%
-  mutate(tag_number_one = recovery_tag_1) %>%
-  mutate(tag_number_two = recovery_tag_2) %>%
-  # left_join(tag_info_one, by = "tag_number_one") %>%
-  # left_join(tag_info_two, by = "tag_number_two") %>%
-  # mutate(run_id = coalesce(run_id_one, run_id_two)) %>%
-  mutate(mark_type_id = coalesce(mark_type_id_one, mark_type_id_two)) %>%
-  mutate(mark_orientation_id = coalesce(mark_orientation_id_one, mark_orientation_id_two)) %>%
-  mutate(mark_size_id = coalesce(mark_size_id_one, mark_size_id_two)) %>%
-  mutate(mark_color_id = coalesce(mark_color_id_one, mark_color_id_two)) %>%
-  mutate(mark_shape_id = coalesce(mark_shape_id_one, mark_shape_id_two)) %>%
+  mutate(run_id = "dc8de7ed-c825-4f3b-93d4-87fee088ac51") %>%                       # Fall
+  mutate(mark_type_id = "89111757-5bb5-469d-9ea0-e9596064b5dc") %>%                # Opercle tag
+  mutate(mark_orientation_id = "fcc3fe36-cfa6-481a-8790-879e6616fb09") %>%         # Not applicable
+  mutate(mark_placement_id = "f0a2cdcf-012a-4468-b223-c7cd0eb2ee58") %>%           # Not applicable
+  mutate(mark_size_id = "44459930-c7d0-4b1a-8f60-71a992e574c4") %>%                # Not applicable
+  mutate(mark_color_id = "66076cfd-f4a2-4ec8-861a-346e41c626b5") %>%               # Not applicable
+  mutate(mark_shape_id = "469c9ba7-3288-404e-9c75-d9b8d9a7600b") %>%               # Not applicable
   select(recap_id, parent_record_id, survey_id, survey_design_type_id,
-         species_id, tag_number_one, tag_number_two, run_id, mark_type_id,
+         species_id, tag_number_one = recovery_tag_1,
+         tag_number_two = recovery_tag_2, run_id, mark_type_id,
          mark_orientation_id, mark_size_id, mark_color_id, mark_shape_id,
          created_date, created_by, modified_date, modified_by) %>%
   distinct()
@@ -2164,16 +2183,6 @@ recaps_se = rbind(recaps_se_one, recaps_se_two) %>%
   arrange(recap_id, parent_record_id)
 
 # Verify run values for each species
-table(recaps_se$species_id, useNA = "ifany")
-table(recaps_se$run_id, useNA = "ifany")
-
-# All recaps are chum...so set all run_ids to fall
-# Convert all chum to fall
-recaps_se = recaps_se %>%
-  mutate(run_id = if_else(species_id == "69d1348b-7e8e-4232-981a-702eda20c9b1",
-                          "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_id))
-
-# Verify again....All fall chum
 table(recaps_se$species_id, useNA = "ifany")
 table(recaps_se$run_id, useNA = "ifany")
 
@@ -2675,7 +2684,7 @@ new_redd_loc = redds %>%
 table(new_redd_loc$sgs_run, useNA = "ifany")
 any(duplicated(new_redd_loc$redd_id))
 
-# Get redd location data: 6172 records
+# Get redd location data: 6176 records
 old_redd_loc = redds %>%
   filter(redd_type == "previously_flagged") %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by,
@@ -2760,7 +2769,7 @@ old_redd_no_names = redds %>%
          prev_species_code, sgs_run, species_redd, sgs_species) %>%
   arrange(stream_name, created_date)
 
-# Pull out all old redds to see if a matching new_redd name exists: 6172
+# Pull out all old redds to see if a matching new_redd name exists: 6176
 old_redd_with_names = redds %>%
   filter(redd_type == "previously_flagged") %>%
   filter(!is.na(sgs_redd_name)) %>%
@@ -2967,6 +2976,15 @@ any(duplicated(new_redd_loc_id$new_redd_id))
 table(new_redd_loc_id$run_id, useNA = "ifany")
 table(new_redd_loc_id$sgs_species, useNA = "ifany")
 
+# Inspect missing run...Coho...update to fall
+chk_run = new_redd_loc_id %>%
+  filter(is.na(run_id))
+
+# Fill in missing run.
+new_redd_loc_id = new_redd_loc_id %>%
+  mutate(run_id = if_else(is.na(run_id),
+                               "dc8de7ed-c825-4f3b-93d4-87fee088ac51", run_id))
+
 # Inspect missing species...Chinook
 chk_species = new_redd_loc_id %>%
   filter(is.na(sgs_species))
@@ -3060,7 +3078,7 @@ dup_redd_locs = redds %>%
 # Join to redds by redd id...both old_redd_loc_id and new_redd_loc_id
 # Should give complete set of location_ids, species_ids, and run_ids for both
 # old and new redds...Started with 11498 rows...should stay the same
-# There should be ten missing locations....from no_redd_coords_or_name_new above
+# There should be nine missing locations....from no_redd_coords_or_name_new above
 redds = redds %>%
   left_join(new_redd_loc_id, by = "redd_id") %>%
   left_join(old_redd_loc_id, by = "redd_id") %>%
@@ -3831,17 +3849,38 @@ chk_no_tag_dup = recaps_fish_mark %>%
 # addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
 # saveWorkbook(wb, out_name, overwrite = TRUE)
 
+#=============================================================================
+# Match recap data to dead data by tag_number where possible. If tag has no
+# match then add needed info via other means. Originally I filtered data
+# if there was no match...but lost recap data in the process. Cant do that.
+#=============================================================================
+
 # Join to recap data
 recap_fev = recaps_fish_mark %>%
   select(recap_id, tag_number) %>%
   distinct() %>%
   left_join(dead_tag_number, by = "tag_number") %>%
-  filter(!is.na(survey_id)) %>%
+  # filter(!is.na(survey_id)) %>%
   select(recap_id, survey_id, survey_event_id, fish_status_id,
          sex_id, maturity_id, origin_id, cwt_detection_status_id,
          adipose_clip_status_id, fish_behavior_type_id, mortality_type_id,
          fish_count, previously_counted_indicator) %>%
   distinct()
+
+# Add missing info from survey_event since tag_number is missing (They forgot to enter same scale card data)
+re_event = survey_event %>%
+  select(recap_id, re_survey_id = survey_id, re_survey_event_id = survey_event_id,
+         common_name) %>%
+  filter(!is.na(recap_id)) %>%
+  distinct()
+
+# Add to recap_fev
+recap_fev = recap_fev %>%
+  left_join(re_event, by = "recap_id")
+
+
+
+
 
 # Prep live data
 live_se_id = survey_event %>%
