@@ -2720,12 +2720,12 @@ old_redd_loc = old_redd_loc %>%
 
 # Checks ================================================================
 
-# Pull out cases with missing coordinates for inspection: 27 cases
+# Pull out cases with missing coordinates for inspection: 23 cases
 no_redd_coords_new = new_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
 
-# Pull out cases with missing coordinates for inspection: 6111 cases...None had coordinates
+# Pull out cases with missing coordinates for inspection: 6115 cases...None had coordinates
 no_redd_coords_old = old_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
@@ -2852,7 +2852,7 @@ new_redd_names = new_redd_loc %>%
 new_sgs_redd_names = new_redd_names %>%
   pull(sgs_redd_name)
 
-# Filter to matching redd_names 6189
+# Filter to matching redd_names 6176
 matching_old_redd_names = old_redd_with_names %>%
   filter(sgs_redd_name %in% new_sgs_redd_names)
 
@@ -2901,7 +2901,7 @@ redd_dump_ids = no_redd_coords_or_name_new %>%
 #   select(survey_id, create_by = head_create_by,
 #          mod_by = head_mod_by)
 
-# Prep redd_location data: 2755 remaining
+# Prep redd_location data: 2749 remaining
 redd_location_prep = new_redd_loc %>%
   filter(!redd_id %in% redd_dump_ids)
 
@@ -4249,7 +4249,6 @@ ind_redd$redd_degraded[ind_redd$redd_degraded %in% c("")] = NA_character_
 ind_redd$redd_degraded[ind_redd$redd_degraded %in% c("0%")] = "0"
 ind_redd$redd_degraded[ind_redd$redd_degraded %in% c("100%")] = "100"
 
-
 # Correct some values
 ind_redd = ind_redd %>%
   mutate(redd_degraded = trimws(redd_degraded)) %>%
@@ -4973,18 +4972,6 @@ any(is.na(individual_redd_prep$redd_shape_id))
 any(is.na(individual_redd_prep$created_datetime))
 any(is.na(individual_redd_prep$created_by))
 
-
-
-
-
-# LOOKS GOOD TO HERE NOW. CHECK AGAIN ON MONDAY THEN UPLOAD !!!!!!!!!!!!!!!!!!!!!!
-
-
-
-
-
-
-
 #================================================================================================
 # Combine all survey_event_ids from downstream tables and see if any can be eliminated
 # from the survey_event table
@@ -5054,19 +5041,19 @@ survey_event_prep = survey_event_prep %>%
 #================================================================================================
 
 # Create rd file to hold copy of survey_ids and survey_event_ids in case test fails
-test_upload_ids = survey_prep %>%
+test_upload_two_ids = survey_prep %>%
   left_join(survey_event_prep, by = "survey_id") %>%
   select(survey_id, survey_event_id) %>%
   distinct()
 
 # Create rd files to hold copy of survey_ids and survey_event_ids in case test fails
-test_location_ids = location_prep %>%
+test_location_two_ids = location_prep %>%
   select(location_id) %>%
   distinct()
 
-# Output redd_encounter to rds: 724591 records
-saveRDS(object = test_upload_ids, file = "data/test_upload_ids.rds")
-saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
+# Output to rds: 6544 and 3029 respectively
+saveRDS(object = test_upload_two_ids, file = "data/test_upload_two_ids.rds")
+saveRDS(object = test_location_two_ids, file = "data/test_location_two_ids.rds")
 
 #==========================================================================================
 # Load data tables to local
@@ -5076,7 +5063,7 @@ saveRDS(object = test_location_ids, file = "data/test_location_ids.rds")
 
 #=======  Insert location =================
 
-# location: 3048 rows
+# location: 3029 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "location")
 dbWriteTable(db_con, tbl, location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5107,16 +5094,16 @@ max_gid = DBI::dbGetQuery(db_con, qry)
 DBI::dbDisconnect(db_con)
 next_gid = max_gid$max + 1
 
-# Pull out data for location_coordinates table: 3031 rows
+# Pull out data for location_coordinates table: 3016 rows
 location_coordinates_temp = location_coordinates_prep %>%
-  mutate(gid = seq(next_gid, nrow(location_coordinates) + next_gid - 1)) %>%
+  mutate(gid = seq(next_gid, nrow(location_coordinates_prep) + next_gid - 1)) %>%
   select(location_coordinates_id, location_id, horizontal_accuracy,
-         comment_text, gid, created_datetime, created_by,
+         comment_text, gid, geom = geometry, created_datetime, created_by,
          modified_datetime, modified_by)
 
 # Write coords_only data
 db_con = pg_con_local(dbname = "FISH")
-st_write(obj = location_coordinates_temp, dsn = db_con, layer = "spawning_ground.location_coordinates_temp")
+st_write(obj = location_coordinates_temp, dsn = db_con, layer = "location_coordinates_temp")
 DBI::dbDisconnect(db_con)
 
 # Use select into query to get data into location_coordinates
@@ -5125,16 +5112,16 @@ qry = glue::glue("INSERT INTO spawning_ground.location_coordinates ",
                  "horizontal_accuracy, comment_text, gid, geom, ",
                  "CAST(created_datetime AS timestamptz), created_by, ",
                  "CAST(modified_datetime AS timestamptz), modified_by ",
-                 "FROM spawning_ground.location_coordinates_temp")
+                 "FROM public.location_coordinates_temp")
 
-# Insert select to spawning_ground: 3031 rows
+# Insert select to spawning_ground: 3016 rows
 db_con = pg_con_local(dbname = "FISH")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
 
 # Drop temp
 db_con = pg_con_local(dbname = "FISH")
-DBI::dbExecute(db_con, "DROP TABLE spawning_ground.location_coordinates_temp")
+DBI::dbExecute(db_con, "DROP TABLE public.location_coordinates_temp")
 DBI::dbDisconnect(db_con)
 
 # Reset gid_sequence ----------------------------
@@ -5161,43 +5148,43 @@ dbDisconnect(db_con)
 
 #======== Survey level tables ===============
 
-# survey:  rows
+# survey:  2236 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey")
 dbWriteTable(db_con, tbl, survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_comment:  rows
+# survey_comment: 2236 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey_comment")
 dbWriteTable(db_con, tbl, comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_intent:  rows
+# survey_intent: 14691 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey_intent")
 dbWriteTable(db_con, tbl, intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# waterbody_measurement:  rows
+# waterbody_measurement: 1363 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "waterbody_measurement")
 dbWriteTable(db_con, tbl, waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# mobile_survey_form:  rows
+# mobile_survey_form: 2236 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "mobile_survey_form")
 dbWriteTable(db_con, tbl, mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_passage_feature:  rows
+# fish_passage_feature: 141 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_passage_feature")
 dbWriteTable(db_con, tbl, fish_passage_feature_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# other_observation:  rows
+# other_observation: 141 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "other_observation")
 dbWriteTable(db_con, tbl, other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5205,7 +5192,7 @@ dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event:  rows
+# survey_event: 5683 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey_event")
 dbWriteTable(db_con, tbl, survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5213,31 +5200,32 @@ dbDisconnect(db_con)
 
 #======== fish data ===============
 
-# fish_encounter:  rows
+# fish_encounter: 7076 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_encounter")
 dbWriteTable(db_con, tbl, fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_capture_event:  rows
+# fish_capture_event: 861 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_capture_event")
 dbWriteTable(db_con, tbl, fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_mark:  rows
+# fish_mark: 1390 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_mark")
 dbWriteTable(db_con, tbl, fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_fish:  rows
+# individual_fish: 1105 rows
+individual_fish_prep$spawn_condition_type_id[individual_fish_prep$spawn_condition_type_id == "d8129c5a-8005-4ef6-90cb-5950325ac0e"] = "d8129c5a-8005-4ef6-90cb-5950325ac0e1"
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "individual_fish")
 dbWriteTable(db_con, tbl, individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_length_measurement:  rows
+# fish_length_measurement: 818 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_length_measurement")
 dbWriteTable(db_con, tbl, fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5245,13 +5233,13 @@ dbDisconnect(db_con)
 
 #======== redd data ===============
 
-# redd_encounter:  rows
+# redd_encounter: 8934 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "redd_encounter")
 dbWriteTable(db_con, tbl, redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_redd:  rows
+# individual_redd: 5251 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "individual_redd")
 dbWriteTable(db_con, tbl, individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5431,7 +5419,7 @@ dbDisconnect(db_con)
 
 #=======  Insert location =================
 
-# location: 3048 rows
+# location: 3029 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "location")
 dbWriteTable(db_con, tbl, location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5462,16 +5450,16 @@ max_gid = DBI::dbGetQuery(db_con, qry)
 DBI::dbDisconnect(db_con)
 next_gid = max_gid$max + 1
 
-# Pull out data for location_coordinates table: 3031 rows
+# Pull out data for location_coordinates table: 3016 rows
 location_coordinates_temp = location_coordinates_prep %>%
-  mutate(gid = seq(next_gid, nrow(location_coordinates) + next_gid - 1)) %>%
+  mutate(gid = seq(next_gid, nrow(location_coordinates_prep) + next_gid - 1)) %>%
   select(location_coordinates_id, location_id, horizontal_accuracy,
-         comment_text, gid, created_datetime, created_by,
+         comment_text, gid, geom = geometry, created_datetime, created_by,
          modified_datetime, modified_by)
 
 # Write coords_only data
 db_con = pg_con_prod(dbname = "FISH")
-st_write(obj = location_coordinates_temp, dsn = db_con, layer = "spawning_ground.location_coordinates_temp")
+st_write(obj = location_coordinates_temp, dsn = db_con, layer = "location_coordinates_temp")
 DBI::dbDisconnect(db_con)
 
 # Use select into query to get data into location_coordinates
@@ -5480,16 +5468,16 @@ qry = glue::glue("INSERT INTO spawning_ground.location_coordinates ",
                  "horizontal_accuracy, comment_text, gid, geom, ",
                  "CAST(created_datetime AS timestamptz), created_by, ",
                  "CAST(modified_datetime AS timestamptz), modified_by ",
-                 "FROM spawning_ground.location_coordinates_temp")
+                 "FROM public.location_coordinates_temp")
 
-# Insert select to spawning_ground: 3031 rows
+# Insert select to spawning_ground: 3016 rows
 db_con = pg_con_prod(dbname = "FISH")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
 
 # Drop temp
 db_con = pg_con_prod(dbname = "FISH")
-DBI::dbExecute(db_con, "DROP TABLE spawning_ground.location_coordinates_temp")
+DBI::dbExecute(db_con, "DROP TABLE public.location_coordinates_temp")
 DBI::dbDisconnect(db_con)
 
 # Reset gid_sequence ----------------------------
@@ -5516,43 +5504,43 @@ dbDisconnect(db_con)
 
 #======== Survey level tables ===============
 
-# survey:  rows
+# survey:  2236 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey")
 dbWriteTable(db_con, tbl, survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_comment:  rows
+# survey_comment: 2236 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey_comment")
 dbWriteTable(db_con, tbl, comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_intent:  rows
+# survey_intent: 14691 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey_intent")
 dbWriteTable(db_con, tbl, intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# waterbody_measurement:  rows
+# waterbody_measurement: 1363 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "waterbody_measurement")
 dbWriteTable(db_con, tbl, waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# mobile_survey_form:  rows
+# mobile_survey_form: 2236 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "mobile_survey_form")
 dbWriteTable(db_con, tbl, mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_passage_feature:  rows
+# fish_passage_feature: 141 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_passage_feature")
 dbWriteTable(db_con, tbl, fish_passage_feature_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# other_observation:  rows
+# other_observation: 141 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "other_observation")
 dbWriteTable(db_con, tbl, other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5560,7 +5548,7 @@ dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event:  rows
+# survey_event: 5683 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey_event")
 dbWriteTable(db_con, tbl, survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5568,31 +5556,32 @@ dbDisconnect(db_con)
 
 #======== fish data ===============
 
-# fish_encounter:  rows
+# fish_encounter: 7076 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_encounter")
 dbWriteTable(db_con, tbl, fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_capture_event:  rows
+# fish_capture_event: 861 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_capture_event")
 dbWriteTable(db_con, tbl, fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_mark:  rows
+# fish_mark: 1390 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_mark")
 dbWriteTable(db_con, tbl, fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_fish:  rows
+# individual_fish: 1105 rows
+individual_fish_prep$spawn_condition_type_id[individual_fish_prep$spawn_condition_type_id == "d8129c5a-8005-4ef6-90cb-5950325ac0e"] = "d8129c5a-8005-4ef6-90cb-5950325ac0e1"
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "individual_fish")
 dbWriteTable(db_con, tbl, individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_length_measurement:  rows
+# fish_length_measurement: 818 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_length_measurement")
 dbWriteTable(db_con, tbl, fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5600,13 +5589,13 @@ dbDisconnect(db_con)
 
 #======== redd data ===============
 
-# redd_encounter:  rows
+# redd_encounter: 8934 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "redd_encounter")
 dbWriteTable(db_con, tbl, redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_redd:  rows
+# individual_redd: 5251 rows
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "individual_redd")
 dbWriteTable(db_con, tbl, individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
