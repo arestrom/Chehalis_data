@@ -5,29 +5,27 @@
 #  1. Look for split surveys !!!! Hopefully none.
 #
 # ToDo:
-#  1.
-#  2. Add survey_type, origin, and run to each entry in survey that has a
+#  1. Add survey_type, origin, and run to each entry in survey that has a
 #     survey_intent and species entered. Use "Unknown" for both origin
 #     and survey type...Based on directions from Lea. I will separate
 #     origin into categories based on species and date for Kim and Curt
 #     when exporting to Curts format.
-#  3. Harmonize cwt_detection_method for any cases where there are more
+#  2. Harmonize cwt_detection_method for any cases where there are more
 #     than one combination of species and cwt_detection_method for a
 #     given species. In that case assign to method = electronic if
 #     present?
-#  4. Make sure redd_name is transferred to all entries of old redds
-#  5. Change old redd run designations to Unknown to be consistent
+#  3. Make sure redd_name is transferred to all entries of old redds
+#  4. Change old redd run designations to Unknown to be consistent
 #     with new redds, live, dead, etc, and only end up with one
 #     survey_event table entry.
-#  6.
-#  7. Need a zero for each case where a species was intended but
+#  4. Need a zero for each case where a species was intended but
 #     none were encountered. Needed for Curt Holt script to work correctly.
 #     See: intent_zeros.R in \data_query\test_queries\
-#  8. Carefully inspect code where species are assigned to previous redds
+#  5. Carefully inspect code where species are assigned to previous redds
 #     based on what was assigned initally to the new redd that shares
 #     the same ReddID. In the iform there are now cases where those
 #     redd_species have been assigned incorrectly.
-#  9. Several not observable surveys were entered where the header_id
+#  6. Several not observable surveys were entered where the header_id
 #     was copied from another already existing survey. These all need
 #     to be given new unique header_ids. Maybe just pull out the
 #     second instance for each case, then assign a new id, verify
@@ -35,9 +33,9 @@
 #     join the new header_id back into the header data based on the
 #     parent_form_id
 #
-#  Successfully loaded final batch from inital iform on 2021-04-  at  PM
+#  Successfully loaded final batch from inital iform on 2021-04-26 at ~ 5:30 PM
 #
-# AS 2021-04-22
+# AS 2021-04-26
 #===============================================================================
 
 # Load libraries
@@ -4499,10 +4497,10 @@ individual_fish_prep = individual_fish %>%
          genetic_sample_number, otolith_sample_number, comment_text,
          created_datetime, created_by, modified_datetime, modified_by)
 
-# # HACK ALERT...UPDATE ONE INCORRECT UUID
-# individual_fish_prep = individual_fish_prep %>%
-#   mutate(spawn_condition_type_id = if_else(spawn_condition_type_id == "d8129c5a-8005-4ef6-90cb-5950325ac0e",
-#                                            "d8129c5a-8005-4ef6-90cb-5950325ac0e1", spawn_condition_type_id))
+# HACK ALERT...UPDATE ONE INCORRECT UUID....probably error in the form.
+individual_fish_prep = individual_fish_prep %>%
+  mutate(spawn_condition_type_id = if_else(spawn_condition_type_id == "d8129c5a-8005-4ef6-90cb-5950325ac0e",
+                                           "d8129c5a-8005-4ef6-90cb-5950325ac0e1", spawn_condition_type_id))
 
 # Check for dup ids...could be comments
 any(duplicated(individual_fish_prep$individual_fish_id))
@@ -5219,7 +5217,6 @@ dbWriteTable(db_con, tbl, fish_mark_prep, row.names = FALSE, append = TRUE, copy
 dbDisconnect(db_con)
 
 # individual_fish: 1105 rows
-individual_fish_prep$spawn_condition_type_id[individual_fish_prep$spawn_condition_type_id == "d8129c5a-8005-4ef6-90cb-5950325ac0e"] = "d8129c5a-8005-4ef6-90cb-5950325ac0e1"
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "individual_fish")
 dbWriteTable(db_con, tbl, individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5575,7 +5572,6 @@ dbWriteTable(db_con, tbl, fish_mark_prep, row.names = FALSE, append = TRUE, copy
 dbDisconnect(db_con)
 
 # individual_fish: 1105 rows
-individual_fish_prep$spawn_condition_type_id[individual_fish_prep$spawn_condition_type_id == "d8129c5a-8005-4ef6-90cb-5950325ac0e"] = "d8129c5a-8005-4ef6-90cb-5950325ac0e1"
 db_con = pg_con_prod("FISH")
 tbl = Id(schema = "spawning_ground", table = "individual_fish")
 dbWriteTable(db_con, tbl, individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
