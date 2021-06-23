@@ -38,9 +38,9 @@
 #     join the new header_id back into the header data based on the
 #     parent_form_id
 #
-#  Successfully.....??????
+#  Successfully uploaded to local on 2021-06-23 at 13:31
 #
-# AS 2021-06-22
+# AS 2021-06-23
 #===============================================================================
 
 # Load libraries
@@ -2639,19 +2639,6 @@ strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
 
-
-
-
-
-
-# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-
-
-
-
 # Process dates
 redds = redds %>%
   mutate(created_date = as.POSIXct(iformr::idate_time(created_date), tz = "America/Los_Angeles")) %>%
@@ -2704,7 +2691,7 @@ redds = redds %>%
   mutate(sgs_redd_name = if_else(sgs_redd_name %in% c("", "6RD", "6RD "),
                                  NA_character_, sgs_redd_name))
 
-# Get redd location data: 2762 records
+# Get redd location data: 5625 records
 new_redd_loc = redds %>%
   filter(redd_type == "first_time_redd_encountered") %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by,
@@ -2754,29 +2741,29 @@ old_redd_loc = old_redd_loc %>%
 
 # Checks ================================================================
 
-# Pull out cases with missing coordinates for inspection: 23 cases
+# Pull out cases with missing coordinates for inspection: 93 cases
 no_redd_coords_new = new_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
 
-# Pull out cases with missing coordinates for inspection: 6115 cases...None had coordinates
+# Pull out cases with missing coordinates for inspection: 14729 cases...None had coordinates
 no_redd_coords_old = old_redd_loc %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121)
 
-# Pull out cases with missing redd_names for inspection: 807 cases
+# Pull out cases with missing redd_names for inspection: 1387 cases
 no_redd_name_new = new_redd_loc %>%
   mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
   filter(is.na(sgs_redd_name) | sgs_redd_name == "")
 
-# Pull out cases with missing coordinates for inspection: 9 cases
+# Pull out cases with missing coordinates for inspection: 19 cases
 no_redd_coords_or_name_new = new_redd_loc %>%
   mutate(sgs_redd_name = trimws(sgs_redd_name)) %>%
   filter(is.na(redd_latitude) | is.na(redd_longitude) |
            redd_latitude < 45 | redd_longitude > -121) %>%
   filter(is.na(sgs_redd_name) | sgs_redd_name == "")
 
-# Pull out cases where redd_name is missing: 807 cases...all new redds
+# Pull out cases where redd_name is missing: 1387 cases...all new redds
 no_redd_name = redds %>%
   filter(is.na(sgs_redd_name)) %>%
   select(redd_id, parent_record_id, survey_id, created_date, created_by, created_location,
@@ -2803,7 +2790,7 @@ old_redd_no_names = redds %>%
          prev_species_code, sgs_run, species_redd, sgs_species) %>%
   arrange(stream_name, created_date)
 
-# Pull out all old redds to see if a matching new_redd name exists: 6176
+# Pull out all old redds to see if a matching new_redd name exists: 14807
 old_redd_with_names = redds %>%
   filter(redd_type == "previously_flagged") %>%
   filter(!is.na(sgs_redd_name)) %>%
@@ -2886,7 +2873,7 @@ new_redd_names = new_redd_loc %>%
 new_sgs_redd_names = new_redd_names %>%
   pull(sgs_redd_name)
 
-# Filter to matching redd_names 6176
+# Filter to matching redd_names 14807
 matching_old_redd_names = old_redd_with_names %>%
   filter(sgs_redd_name %in% new_sgs_redd_names)
 
@@ -2969,7 +2956,7 @@ unique(new_redd_name_dups$sgs_redd_name)
 
 # VERIFIED: NO DUPS and NO MISSING REDD NAMES (no_match_to_old_redd_names above)
 
-# Create and organize needed fields: 2755 records
+# Create and organize needed fields: 5606 records
 redd_location_prep = redd_location_prep %>%
   mutate(location_id = remisc::get_uuid(nrow(redd_location_prep))) %>%
   mutate(location_type_id = "d5edb1c0-f645-4e82-92af-26f5637b2de0") %>%      # Redd encounter
@@ -3023,10 +3010,10 @@ new_redd_loc_id = new_redd_loc_id %>%
 chk_species = new_redd_loc_id %>%
   filter(is.na(sgs_species))
 
-# # Fill in missing species...All species present this time
-# new_redd_loc_id = new_redd_loc_id %>%
-#   mutate(sgs_species = if_else(is.na(sgs_species),
-#                                "e42aa0fc-c591-4fab-8481-55b0df38dcb1", sgs_species))
+# Fill in missing species
+new_redd_loc_id = new_redd_loc_id %>%
+  mutate(sgs_species = if_else(is.na(sgs_species),
+                               "e42aa0fc-c591-4fab-8481-55b0df38dcb1", sgs_species))
 
 # Check again for missing species and run
 table(new_redd_loc_id$run_id, useNA = "ifany")
@@ -3056,9 +3043,17 @@ old_redd_loc_id = old_redd_with_names %>%
 new_redd_loc_id_trim = new_redd_loc_id %>%
   filter(!is.na(sgs_redd_name))
 
+# TEMPORARY HACK TILL I HEAR FROM LEA !!!! Get rid of one dup new redd name
+new_redd_loc_id_trim = new_redd_loc_id_trim %>%
+  filter(!new_redd_id == 1431)
+
 # Check
 any(duplicated(old_redd_loc_id$redd_id))
 any(duplicated(new_redd_loc_id_trim$sgs_redd_name))
+
+# Identify dup...waiting on Lea
+chk_dup_new = new_redd_loc_id_trim %>%
+  filter(duplicated(sgs_redd_name))
 
 # Join location_id to old_redds
 old_redd_loc_id = old_redd_loc_id %>%
@@ -3111,8 +3106,8 @@ dup_redd_locs = redds %>%
 
 # Join to redds by redd id...both old_redd_loc_id and new_redd_loc_id
 # Should give complete set of location_ids, species_ids, and run_ids for both
-# old and new redds...Started with 11498 rows...should stay the same
-# There should be nine missing locations....from no_redd_coords_or_name_new above
+# old and new redds...Started with 20432 rows...should stay the same
+# There should be 19 missing locations....from no_redd_coords_or_name_new above
 redds = redds %>%
   left_join(new_redd_loc_id, by = "redd_id") %>%
   left_join(old_redd_loc_id, by = "redd_id") %>%
@@ -3351,7 +3346,7 @@ get_run_id = function() {
   return(run_ids)
 }
 
-# Stack the sev tables: 27384 rows
+# Stack the sev tables: 67488 rows
 survey_event = bind_rows(intent_sev, dead_sev, recaps_sev,
                          live_sev, redds_sev) %>%
   select(count_type, dead_id, live_id, recap_id, redd_id,
@@ -3472,7 +3467,7 @@ table(chk_na_run$species_id, useNA = "ifany")
 unique(survey_event$run_id)
 table(survey_event$run_id, useNA = "ifany")
 
-# Add run definitions where needed...27384 rows
+# Add run definitions where needed...67488 rows
 survey_event = survey_event %>%
   left_join(run_year_info, by = "survey_id") %>%
   mutate(run_year = case_when(
@@ -3523,7 +3518,7 @@ survey_event = survey_event %>%
          n_seq_intent, del_row_intent, n_seq_run) %>%
   arrange(survey_event_id)
 
-# Pull out just the table data: 7045 rows
+# Pull out just the table data: 16834 rows
 survey_event_prep = survey_event %>%
   mutate(comment_text = NA_character_) %>%
   mutate(estimated_percent_fish_seen = NA_integer_) %>%
@@ -4028,11 +4023,13 @@ chk_fish_count = fish_encounter %>%
 intent_zero = survey_event %>%
   filter(subsource == "x_intent" & n_seq_intent == 1L)
 
-# Verify all are from survey_intent. None are actual: Good...and none need to be added to redd_encounter!
+# Verify all are from survey_intent. None are actual: Good...three need to be added to redd_encounter!
 unique(intent_zero$count_type)
+table(intent_zero$count_type, useNA = "ifany")
 
 # Pull out data needed for intent_fev
 intent_fev = intent_zero %>%
+  filter(!count_type == "bredd") %>%
   mutate(fish_location_id = NA_character_) %>%
   mutate(fish_status_id = if_else(count_type == "alive",
                                   "6a200904-8a57-4dd5-8c82-2353f91186ac",           # Live
@@ -4074,14 +4071,9 @@ fish_encounter = bind_rows(fish_encounter, intent_fev) %>%
 
 #===============================================================================================
 
-# Generate fish_encounter_id
+# Generate fish_encounter_id...20693 rows
 fish_encounter = fish_encounter %>%
-  group_by(survey_event_id, fish_location_id, fish_status_id,
-           sex_id, maturity_id, origin_id, cwt_detection_status_id,
-           adipose_clip_status_id, fish_behavior_type_id,
-           mortality_type_id, fish_count, previously_counted_indicator) %>%
-  mutate(fish_encounter_id = remisc::get_uuid(1L)) %>%
-  ungroup() %>%
+  mutate(fish_encounter_id = remisc::get_uuid(nrow(fish_encounter))) %>%
   select(dead_id, recap_id, live_id, redd_id, fish_encounter_id, survey_event_id,
          survey_id, fish_location_id, fish_status_id, sex_id, maturity_id,
          origin_id, cwt_detection_status_id, adipose_clip_status_id,
@@ -4192,15 +4184,62 @@ unique(redd_enc$redd_count)
 chk_redd_count = redd_enc %>%
   filter(is.na(redd_count))
 
-# # Update redd_count HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# redd_enc$redd_count[redd_enc$redd_id == 7947L] = 1
+# Update redd_count HACK WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+redd_enc$redd_count[redd_enc$redd_id == 7947L] = 1
 
-# Generate redd_encounter_id
-redd_encounter = redd_enc %>%
-  group_by(survey_event_id, redd_location_id, redd_status_id,
-           redd_encounter_datetime, redd_count) %>%
-  mutate(redd_encounter_id = remisc::get_uuid(1L)) %>%
+# Verify the columns again
+unique(redd_enc$survey_event_id[!nchar(redd_enc$survey_event_id) == 36L])
+unique(redd_enc$redd_location_id[!nchar(redd_enc$redd_location_id) == 36L])
+unique(redd_enc$redd_status_id[!nchar(redd_enc$redd_status_id) == 36L])
+unique(redd_enc$redd_count)
+
+#===============================================================================================
+# Section to add zeros from survey_intent where needed.
+#===============================================================================================
+
+# Pull out data needed for intent_fev
+intent_rev = intent_zero %>%
+  filter(count_type == "bredd") %>%
+  left_join(survey_trailing, by = "survey_event_id") %>%
+  mutate(redd_location_id = NA_character_) %>%
+  mutate(redd_status_id = "59cea5af-5ecc-470f-be20-1c55a3535ab8") %>%               # Not applicable
+  mutate(redd_encounter_datetime = as.POSIXct(NA)) %>%
+  mutate(redd_count = 0L) %>%
+  mutate(redd_time_stamp = NA_character_) %>%
+  mutate(redd_type = NA_character_) %>%
+  mutate(sgs_redd_name = NA_character_) %>%
+  select(redd_id, survey_id, survey_event_id, created_date = created_datetime,
+         created_by, modified_date = modified_datetime, modified_by,
+         redd_location_id, redd_time_stamp, redd_encounter_datetime,
+         redd_type, redd_status_id, sgs_redd_name, redd_count)
+
+# Check
+any(duplicated(intent_rev$survey_event_id))      # Correct...none
+any(duplicated(intent_rev$survey_id))            # Correct
+
+# Check n_species....None: Good !
+chk_n_species = intent_rev %>%
+  group_by(survey_id) %>%
+  mutate(n_seq = row_number()) %>%
   ungroup() %>%
+  filter(n_seq > 4L)
+
+# Any duplicated redd_enc and redd_ids...none, so keep all rows in redd_encounter
+any(duplicated(redd_enc$redd_id))
+
+# Add to redd_enc...20435 rows
+redd_encounter = bind_rows(redd_enc, intent_rev) %>%
+  select(redd_id, survey_id, survey_event_id, created_date, created_by,
+         modified_date, modified_by, redd_location_id, redd_time_stamp,
+         redd_encounter_datetime, redd_type, redd_status_id, sgs_redd_name,
+         redd_count, redd_length, redd_width, redd_degraded, dewatered,
+         dewater_text, si_redd, percent_si, si_by, si_text, sgs_redd_status,
+         new_redd_count, encounter_comments, survey_date, observers,
+         stream_name)
+
+# Generate redd_encounter_id...20435 rows
+redd_encounter = redd_encounter %>%
+  mutate(redd_encounter_id = remisc::get_uuid(nrow(redd_encounter))) %>%
   select(redd_id, redd_encounter_id, survey_id, survey_event_id,
          created_date, modified_date, redd_location_id,
          redd_time_stamp, redd_encounter_datetime,
@@ -4214,7 +4253,7 @@ redd_encounter = redd_enc %>%
 # Check for dups..this would be ok....But none this time...created_datetime is unique
 # This matches with redd_id...so probably what I want anyway.
 any(duplicated(redd_encounter$redd_encounter_id))
-any(duplicated(redd_encounter$redd_id))
+any(duplicated(redd_encounter$redd_id))   # Only the three NAs that were added from intent_rev
 
 # Pull out redd_encounter table....one entry for each in individual redd.
 redd_encounter_prep = redd_encounter %>%
@@ -4233,6 +4272,7 @@ sort(unique(redd_encounter_prep$redd_count))
 
 # Get the individual_redd data
 ind_redd = redd_encounter %>%
+  filter(!is.na(redd_id)) %>%
   select(redd_id, redd_encounter_id, survey_id, redd_count,
          redd_length, redd_width, redd_degraded, dewatered,
          dewater_text, si_redd, percent_si, si_by, created_date,
@@ -4319,6 +4359,9 @@ ind_redd = ind_redd %>%
                                is.na(comment_text),
                              "dump", "keep")) %>%
   filter(dump_rows == "keep")
+
+# See if any redd_encounter_ids are duplicated to validate next step. No dups. Ok
+any(duplicated(ind_redd$redd_encounter_id))
 
 # Generate individual_redd_id
 individual_redd = ind_redd %>%
@@ -4733,9 +4776,9 @@ fish_mark_recap = fish_mark_recap %>%
 # Check
 any(is.na(fish_mark_recap$fish_encounter_id))
 
-# HACK ALERT !!!!!!!!! Dumping any rows where fish_encounter_id is missing
-fish_mark_recap = fish_mark_recap %>%
-  filter(!is.na(fish_encounter_id))
+# # HACK ALERT !!!!!!!!! Dumping any rows where fish_encounter_id is missing
+# fish_mark_recap = fish_mark_recap %>%
+#   filter(!is.na(fish_encounter_id))
 
 #================================================================================================
 # Combine fish_mark data from dead and recaps
@@ -5037,7 +5080,7 @@ s_id_down = unique(chk_down$survey_id)
 survey_down = survey_prep %>%
   filter(survey_id %in% s_id_down)
 
-# Inspect values...All survey were conducted...only nine were partial
+# Inspect values...All survey were conducted...only five were partial
 table(survey_down$survey_completion_status_id, useNA = "ifany")
 
 # Check what the survey_intent was for these surveys
@@ -5067,29 +5110,30 @@ fish_down = fish_encounter_prep %>%
 redd_down = redd_encounter_prep %>%
   filter(survey_event_id %in% no_se_id)
 
-# Dump the survey_event_prep rows not needed: Went from 7045 rows to 5684 rows
+# Dump the survey_event_prep rows not needed: Went from 16834 rows to 13879 rows
 survey_event_prep = survey_event_prep %>%
   filter(!survey_event_id %in% no_se_id)
 
 #================================================================================================
 # LOAD TO DB
-#  1. Load directly to FISH...this is now where all editing by field staff occurs.
+#  1. Load directly to local, do table diff to identify staff edits, the use ids to move from
+#     local to prod
 #================================================================================================
 
 # Create rd file to hold copy of survey_ids and survey_event_ids in case test fails
-test_upload_two_ids = survey_prep %>%
+cumulative_upload_ids = survey_prep %>%
   left_join(survey_event_prep, by = "survey_id") %>%
   select(survey_id, survey_event_id) %>%
   distinct()
 
 # Create rd files to hold copy of survey_ids and survey_event_ids in case test fails
-test_location_two_ids = location_prep %>%
+cumulative_location_ids = location_prep %>%
   select(location_id) %>%
   distinct()
 
-# Output to rds: 6544 and 3029 respectively
-saveRDS(object = test_upload_two_ids, file = "data/test_upload_two_ids.rds")
-saveRDS(object = test_location_two_ids, file = "data/test_location_two_ids.rds")
+# Output to rds: 14741 and 6188 respectively
+saveRDS(object = cumulative_upload_ids, file = "data/cumulative_upload_ids.rds")
+saveRDS(object = cumulative_location_ids, file = "data/cumulative_location_ids.rds")
 
 #==========================================================================================
 # Load data tables to local
@@ -5099,7 +5143,7 @@ saveRDS(object = test_location_two_ids, file = "data/test_location_two_ids.rds")
 
 #=======  Insert location =================
 
-# location: 3029 rows
+# location: 6188 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "location")
 dbWriteTable(db_con, tbl, location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5150,7 +5194,7 @@ qry = glue::glue("INSERT INTO spawning_ground.location_coordinates ",
                  "CAST(modified_datetime AS timestamptz), modified_by ",
                  "FROM public.location_coordinates_temp")
 
-# Insert select to spawning_ground: 3016 rows
+# Insert select to spawning_ground: 6115 rows
 db_con = pg_con_local(dbname = "FISH")
 DBI::dbExecute(db_con, qry)
 DBI::dbDisconnect(db_con)
@@ -5176,7 +5220,7 @@ DBI::dbDisconnect(db_con)
 
 #-------------------------------------------------
 
-# media_location: 219 rows
+# media_location: 396 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "media_location")
 dbWriteTable(db_con, tbl, media_location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5184,43 +5228,43 @@ dbDisconnect(db_con)
 
 #======== Survey level tables ===============
 
-# survey:  2236 rows
+# survey:  4273 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey")
 dbWriteTable(db_con, tbl, survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_comment: 2236 rows
+# survey_comment: 4273 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey_comment")
 dbWriteTable(db_con, tbl, comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# survey_intent: 14691 rows
+# survey_intent: 37391 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey_intent")
 dbWriteTable(db_con, tbl, intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# waterbody_measurement: 1363 rows
+# waterbody_measurement: 3400 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "waterbody_measurement")
 dbWriteTable(db_con, tbl, waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# mobile_survey_form: 2236 rows
+# mobile_survey_form: 4273 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "mobile_survey_form")
 dbWriteTable(db_con, tbl, mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_passage_feature: 141 rows
+# fish_passage_feature: 216 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_passage_feature")
 dbWriteTable(db_con, tbl, fish_passage_feature_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# other_observation: 141 rows
+# other_observation: 380 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "other_observation")
 dbWriteTable(db_con, tbl, other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5228,7 +5272,7 @@ dbDisconnect(db_con)
 
 #======== Survey event ===============
 
-# survey_event: 5683 rows
+# survey_event: 13879 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "survey_event")
 dbWriteTable(db_con, tbl, survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5236,31 +5280,31 @@ dbDisconnect(db_con)
 
 #======== fish data ===============
 
-# fish_encounter: 7076 rows
+# fish_encounter: 20693 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_encounter")
 dbWriteTable(db_con, tbl, fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_capture_event: 861 rows
+# fish_capture_event: 5527 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_capture_event")
 dbWriteTable(db_con, tbl, fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_mark: 1390 rows
+# fish_mark: 8238 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_mark")
 dbWriteTable(db_con, tbl, fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_fish: 1105 rows
+# individual_fish: 3642 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "individual_fish")
 dbWriteTable(db_con, tbl, individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_length_measurement: 818 rows
+# fish_length_measurement: 3081 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_length_measurement")
 dbWriteTable(db_con, tbl, fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5268,13 +5312,13 @@ dbDisconnect(db_con)
 
 #======== redd data ===============
 
-# redd_encounter: 8934 rows
+# redd_encounter: 20435 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "redd_encounter")
 dbWriteTable(db_con, tbl, redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_redd: 5251 rows
+# individual_redd: 12974 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "individual_redd")
 dbWriteTable(db_con, tbl, individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
