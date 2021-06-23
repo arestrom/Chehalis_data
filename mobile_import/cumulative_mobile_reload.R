@@ -1,8 +1,13 @@
 #===============================================================================
-# Verify queries work
+# Reload all data for initial form from IFB
 #
 # Notes:
-#  1. Look for split surveys !!!! Hopefully none.
+#  1. Data were incorrectly uploaded to SG on both occasions using the
+#     mobile_import scripts. Errors are in the fish and redd encounter
+#     portions of the code. Rows of data were truncated to distinct.
+#     This orphaned individual data in some cases, and left counts of
+#     one in the encounter tables with multiple cases in the individual
+#     tables in some cases.
 #
 # ToDo:
 #  1. Add survey_type, origin, and run to each entry in survey that has a
@@ -33,9 +38,9 @@
 #     join the new header_id back into the header data based on the
 #     parent_form_id
 #
-#  Successfully loaded final batch from inital iform on 2021-04-26 at ~ 5:30 PM
+#  Successfully.....??????
 #
-# AS 2021-04-26
+# AS 2021-06-22
 #===============================================================================
 
 # Load libraries
@@ -199,14 +204,14 @@ recaps_page_id
 # Functions from mobile_import_global.R
 #============================================
 
-# Get new survey data...updated to use FISH prod
+# Get new survey data...only use local...will copy data from local if all ok
 get_new_surveys = function(profile_id, parent_form_page_id, access_token) {
   # Define query for new mobile surveys
   qry = glue("select distinct ms.survey_id, ms.parent_form_survey_id ",
              "from spawning_ground.mobile_survey_form as ms ",
              "order by parent_form_survey_id desc")
   # Checkout connection
-  con = pg_con_prod("FISH")
+  con = pg_con_local("FISH")
   #con = poolCheckout(pool)
   existing_surveys = DBI::dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -216,7 +221,11 @@ get_new_surveys = function(profile_id, parent_form_page_id, access_token) {
                   "stream_name_text, new_stream_name, reach, ",
                   "reach_text, new_reach, gps_loc_lower, ",
                   "gps_loc_upper")
-  start_id = max(existing_surveys$parent_form_survey_id)
+  if ( nrow(existing_surveys) > 0L ) {
+    start_id = max(existing_surveys$parent_form_survey_id)
+  } else {
+    start_id = 0L
+  }
   # Get list of all survey_ids and parent_form iform ids on server
   field_string <- paste0("id:<(>\"", start_id, "\"),", fields)
   # Loop through all survey records
@@ -253,7 +262,7 @@ get_mobile_streams = function() {
              "from spawning_ground.waterbody_lut as wb ",
              "left join spawning_ground.stream as st on wb.waterbody_id = st.waterbody_id ",
              "order by wb.waterbody_display_name")
-  con = pg_con_prod("FISH")
+  con = pg_con_local("FISH")
   #con = poolCheckout(pool)
   streams = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -271,7 +280,7 @@ get_mobile_river_miles = function() {
              "left join spawning_ground.wria_lut as wr on loc.wria_id = wr.wria_id ",
              "where wr.wria_code in ('22', '23')")
   # Checkout connection
-  con = pg_con_prod("FISH")
+  con = pg_con_local("FISH")
   #con = poolCheckout(pool)
   river_mile_data = DBI::dbGetQuery(con, qry) %>%
     filter(!is.na(llid) & !is.na(river_mile))
@@ -306,7 +315,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Get new survey_data: currently 2236 records
+# Get new survey_data: currently 4273 records
 new_survey_data = get_new_survey_data(profile_id, parent_form_page_id, access_token)
 
 # Reactive to process gps data
@@ -328,7 +337,7 @@ get_core_survey_data = function(new_survey_data) {
            waterbody_id, stream_geometry_id)
 }
 
-# Run: 2236 records
+# Run: 4273 records
 core_survey_data = get_core_survey_data(new_survey_data)
 
 # Reactive for missing streams
@@ -503,7 +512,7 @@ while (is.null(access_token)) {
     client_secret_name = "r6production_secret")
 }
 
-# Test...currently 2236 records....approx 4.8 seconds
+# Test...currently 4273 records....approx 7.8 seconds
 # Get start_id
 # Pull out start_id
 start_id = min(new_survey_data$parent_form_survey_id) - 1
@@ -527,6 +536,10 @@ table(header_data$steelhead_run_year, useNA = "ifany")
 table(header_data$coho_run_year, useNA = "ifany")
 table(header_data$chum_run_year, useNA = "ifany")
 table(header_data$chinook_run_year, useNA = "ifany")
+
+# Inspect NA case
+chk_run_na = header_data %>%
+  filter(is.na(steelhead_run_year))
 
 # # More inspections
 # chk_sthd_runyr = header_data %>%
@@ -627,12 +640,12 @@ table(header_data$chinook_run_year, useNA = "ifany")
 #     TRUE ~ "2020"))
 #===============================================================================
 
-# # HACK FOR NOW....FILL IN BLANKS...No blanks now
-# header_data = header_data %>%
-#   mutate(chinook_run_year = if_else(is.na(chinook_run_year), substr(survey_date, 1, 4), chinook_run_year)) %>%
-#   mutate(chum_run_year = if_else(is.na(chum_run_year), substr(survey_date, 1, 4), chum_run_year)) %>%
-#   mutate(coho_run_year = if_else(is.na(coho_run_year), substr(survey_date, 1, 4), coho_run_year)) %>%
-#   mutate(steelhead_run_year = if_else(is.na(steelhead_run_year), substr(survey_date, 1, 4), steelhead_run_year))
+# HACK FOR NOW....FILL IN BLANKS...No blanks now
+header_data = header_data %>%
+  mutate(chinook_run_year = if_else(is.na(chinook_run_year), substr(survey_date, 1, 4), chinook_run_year)) %>%
+  mutate(chum_run_year = if_else(is.na(chum_run_year), substr(survey_date, 1, 4), chum_run_year)) %>%
+  mutate(coho_run_year = if_else(is.na(coho_run_year), substr(survey_date, 1, 4), coho_run_year)) %>%
+  mutate(steelhead_run_year = if_else(is.na(steelhead_run_year), substr(survey_date, 1, 4), steelhead_run_year))
 
 # Check
 table(header_data$steelhead_run_year, useNA = "ifany")
@@ -725,9 +738,19 @@ dup_head_id = header_data %>%
   group_by(survey_uuid) %>%
   mutate(n_seq = row_number()) %>%
   ungroup() %>%
-  filter(n_seq > 1L) %>%
+  filter(n_seq > 1L & !is.na(survey_uuid)) %>%
   select(parent_record_id, survey_uuid,
          created_datetime, created_by)
+
+# Pull out cases where header_id is NA....Phil had Lea omit this field...need to replace
+na_head_id = header_data %>%
+  arrange(parent_record_id, created_by) %>%
+  filter(is.na(survey_uuid)) %>%
+  select(parent_record_id, survey_uuid,
+         created_datetime, created_by)
+
+# Combine
+dup_head_id = rbind(dup_head_id, na_head_id)
 
 # Check
 any(duplicated(header_data$parent_record_id))
@@ -999,7 +1022,7 @@ get_mobile_intent = function() {
   qry = glue("select species_id as target_species, ",
              "common_name as target_species_name ",
              "from spawning_ground.species_lut")
-  con = pg_con_prod("FISH")
+  con = pg_con_local("FISH")
   #con = poolCheckout(pool)
   intent = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -1084,7 +1107,7 @@ species_ids = get_mobile_intent() %>%
 get_mobile_count_type = function() {
   qry = glue("select count_type_id, count_type_code as count_categories ",
              "from spawning_ground.count_type_lut")
-  con = pg_con_prod("FISH")
+  con = pg_con_local("FISH")
   #con = poolCheckout(pool)
   count_type = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -1220,7 +1243,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 280 records
+# Test...currently 582 records
 strt = Sys.time()
 other_obs = get_other_obs(profile_id, other_obs_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -1250,7 +1273,7 @@ get_other_pictures = function(profile_id, other_pics_page_id, start_id, access_t
   return(other_pics)
 }
 
-# Test...currently 221 records
+# Test...currently 399 records
 strt = Sys.time()
 other_pictures = get_other_pictures(profile_id, other_pics_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -1547,7 +1570,7 @@ while (is.null(access_token)) {
 start_id = min(header_data$parent_record_id) - 1
 #start_id = 1
 
-# Test...currently 2272 records
+# Test...currently 4926 records
 strt = Sys.time()
 dead = get_dead(profile_id, dead_fish_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -1581,7 +1604,7 @@ dead_se = dead %>%
 get_run_type = function() {
   qry = glue("select run_id as run_type, run_short_description as run ",
              "from spawning_ground.run_lut")
-  con = pg_con_prod("FISH")
+  con = pg_con_local("FISH")
   #con = poolCheckout(pool)
   run_types = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -1776,7 +1799,7 @@ unique(fish_mark$common_name)
 unique(fish_mark$mark_status_one)
 unique(fish_mark$mark_status_two)
 
-# Pull out cases where mark status is not applicable to check for species: 405 rows
+# Pull out cases where mark status is not applicable to check for species: 620 rows
 chk_mark_species = fish_mark %>%
   filter(mark_status_one == "Not applicable" | mark_status_two == "Not applicable")
 
@@ -1795,7 +1818,7 @@ fish_mark = fish_mark %>%
   mutate(carc_tag_2 = trimws(carc_tag_2)) %>%
   mutate(carc_tag_2 = if_else(carc_tag_2 == "", NA_character_, carc_tag_2))
 
-# Inspect cases where something is entered for carcass condition....indicator of mark chack
+# Inspect cases where something is entered for carcass condition....indicator of mark check
 # Were any species besides chum checked? No blanks were entered for carcass_condition
 table(fish_mark$carcass_condition, useNA = "ifany")
 chk_condition = fish_mark %>%
@@ -2070,7 +2093,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 164 records
+# Test...currently 1378 records
 strt = Sys.time()
 recaps = get_carcass_recoveries(profile_id, recaps_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -2262,7 +2285,7 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 1127 records: Checked that I got first and last parent_record_id
+# Test...currently 1983 records: Checked that I got first and last parent_record_id
 strt = Sys.time()
 live = get_live(profile_id, live_fish_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
@@ -2611,10 +2634,23 @@ while (is.null(access_token)) {
 # Set start_id as the minimum parent_record_id minus one
 start_id = min(header_data$parent_record_id) - 1
 
-# Test...currently 8934 records: 25 secs
+# Test...currently 20432 records: 51 secs
 strt = Sys.time()
 redds = get_redds(profile_id, redds_page_id, start_id, access_token)
 nd = Sys.time(); nd - strt
+
+
+
+
+
+
+# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+
+
 
 # Process dates
 redds = redds %>%
@@ -3307,7 +3343,7 @@ intent_sev = intent_prep %>%
 get_run_id = function() {
   qry = glue("select run_id, run_short_description as run ",
              "from spawning_ground.run_lut")
-  con = pg_con_prod("FISH")
+  con = pg_con_local("FISH")
   #con = poolCheckout(pool)
   run_ids = dbGetQuery(con, qry)
   DBI::dbDisconnect(con)
@@ -5416,189 +5452,189 @@ dbDisconnect(db_con)
 
 #======== Location tables =======================================
 
-#=======  Insert location =================
-
-# location: 3029 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "location")
-dbWriteTable(db_con, tbl, location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# Reset gid_sequence ----------------------------
-
-# Get the current max_gid from the location_coordinates table
-qry = "select max(gid) from spawning_ground.location_coordinates"
-db_con = pg_con_prod(dbname = "FISH")
-max_gid = DBI::dbGetQuery(db_con, qry)
-DBI::dbDisconnect(db_con)
-
-# Code to reset sequence
-qry = glue("SELECT setval('spawning_ground.location_coordinates_gid_seq', {max_gid}, true)")
-db_con = pg_con_prod(dbname = "FISH")
-DBI::dbExecute(db_con, qry)
-DBI::dbDisconnect(db_con)
-
-#------------------------------------------------
-
-#=======  Insert location_coordinates =================
-
-# Get the current max_gid from the location_coordinates table
-qry = "select max(gid) from spawning_ground.location_coordinates"
-db_con = pg_con_prod(dbname = "FISH")
-max_gid = DBI::dbGetQuery(db_con, qry)
-DBI::dbDisconnect(db_con)
-next_gid = max_gid$max + 1
-
-# Pull out data for location_coordinates table: 3016 rows
-location_coordinates_temp = location_coordinates_prep %>%
-  mutate(gid = seq(next_gid, nrow(location_coordinates_prep) + next_gid - 1)) %>%
-  select(location_coordinates_id, location_id, horizontal_accuracy,
-         comment_text, gid, geom = geometry, created_datetime, created_by,
-         modified_datetime, modified_by)
-
-# Write coords_only data
-db_con = pg_con_prod(dbname = "FISH")
-st_write(obj = location_coordinates_temp, dsn = db_con, layer = "location_coordinates_temp")
-DBI::dbDisconnect(db_con)
-
-# Use select into query to get data into location_coordinates
-qry = glue::glue("INSERT INTO spawning_ground.location_coordinates ",
-                 "SELECT CAST(location_coordinates_id AS UUID), CAST(location_id AS UUID), ",
-                 "horizontal_accuracy, comment_text, gid, geom, ",
-                 "CAST(created_datetime AS timestamptz), created_by, ",
-                 "CAST(modified_datetime AS timestamptz), modified_by ",
-                 "FROM public.location_coordinates_temp")
-
-# Insert select to spawning_ground: 3016 rows
-db_con = pg_con_prod(dbname = "FISH")
-DBI::dbExecute(db_con, qry)
-DBI::dbDisconnect(db_con)
-
-# Drop temp
-db_con = pg_con_prod(dbname = "FISH")
-DBI::dbExecute(db_con, "DROP TABLE public.location_coordinates_temp")
-DBI::dbDisconnect(db_con)
-
-# Reset gid_sequence ----------------------------
-
-# Get the current max_gid from the location_coordinates table
-qry = "select max(gid) from spawning_ground.location_coordinates"
-db_con = pg_con_prod(dbname = "FISH")
-max_gid = DBI::dbGetQuery(db_con, qry)
-DBI::dbDisconnect(db_con)
-
-# Code to reset sequence
-qry = glue("SELECT setval('spawning_ground.location_coordinates_gid_seq', {max_gid}, true)")
-db_con = pg_con_prod(dbname = "FISH")
-DBI::dbExecute(db_con, qry)
-DBI::dbDisconnect(db_con)
-
-#-------------------------------------------------
-
-# media_location: 219 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "media_location")
-dbWriteTable(db_con, tbl, media_location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-#======== Survey level tables ===============
-
-# survey:  2236 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "survey")
-dbWriteTable(db_con, tbl, survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# survey_comment: 2236 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "survey_comment")
-dbWriteTable(db_con, tbl, comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# survey_intent: 14691 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "survey_intent")
-dbWriteTable(db_con, tbl, intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# waterbody_measurement: 1363 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "waterbody_measurement")
-dbWriteTable(db_con, tbl, waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# mobile_survey_form: 2236 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "mobile_survey_form")
-dbWriteTable(db_con, tbl, mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# fish_passage_feature: 141 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "fish_passage_feature")
-dbWriteTable(db_con, tbl, fish_passage_feature_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# other_observation: 141 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "other_observation")
-dbWriteTable(db_con, tbl, other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-#======== Survey event ===============
-
-# survey_event: 5683 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "survey_event")
-dbWriteTable(db_con, tbl, survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-#======== fish data ===============
-
-# fish_encounter: 7076 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "fish_encounter")
-dbWriteTable(db_con, tbl, fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# fish_capture_event: 861 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "fish_capture_event")
-dbWriteTable(db_con, tbl, fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# fish_mark: 1390 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "fish_mark")
-dbWriteTable(db_con, tbl, fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# individual_fish: 1105 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "individual_fish")
-dbWriteTable(db_con, tbl, individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# fish_length_measurement: 818 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "fish_length_measurement")
-dbWriteTable(db_con, tbl, fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-#======== redd data ===============
-
-# redd_encounter: 8934 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "redd_encounter")
-dbWriteTable(db_con, tbl, redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
-# individual_redd: 5251 rows
-db_con = pg_con_prod("FISH")
-tbl = Id(schema = "spawning_ground", table = "individual_redd")
-dbWriteTable(db_con, tbl, individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
-dbDisconnect(db_con)
-
+# #=======  Insert location =================
+#
+# # location: 3029 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "location")
+# dbWriteTable(db_con, tbl, location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # Reset gid_sequence ----------------------------
+#
+# # Get the current max_gid from the location_coordinates table
+# qry = "select max(gid) from spawning_ground.location_coordinates"
+# db_con = pg_con_prod(dbname = "FISH")
+# max_gid = DBI::dbGetQuery(db_con, qry)
+# DBI::dbDisconnect(db_con)
+#
+# # Code to reset sequence
+# qry = glue("SELECT setval('spawning_ground.location_coordinates_gid_seq', {max_gid}, true)")
+# db_con = pg_con_prod(dbname = "FISH")
+# DBI::dbExecute(db_con, qry)
+# DBI::dbDisconnect(db_con)
+#
+# #------------------------------------------------
+#
+# #=======  Insert location_coordinates =================
+#
+# # Get the current max_gid from the location_coordinates table
+# qry = "select max(gid) from spawning_ground.location_coordinates"
+# db_con = pg_con_prod(dbname = "FISH")
+# max_gid = DBI::dbGetQuery(db_con, qry)
+# DBI::dbDisconnect(db_con)
+# next_gid = max_gid$max + 1
+#
+# # Pull out data for location_coordinates table: 3016 rows
+# location_coordinates_temp = location_coordinates_prep %>%
+#   mutate(gid = seq(next_gid, nrow(location_coordinates_prep) + next_gid - 1)) %>%
+#   select(location_coordinates_id, location_id, horizontal_accuracy,
+#          comment_text, gid, geom = geometry, created_datetime, created_by,
+#          modified_datetime, modified_by)
+#
+# # Write coords_only data
+# db_con = pg_con_prod(dbname = "FISH")
+# st_write(obj = location_coordinates_temp, dsn = db_con, layer = "location_coordinates_temp")
+# DBI::dbDisconnect(db_con)
+#
+# # Use select into query to get data into location_coordinates
+# qry = glue::glue("INSERT INTO spawning_ground.location_coordinates ",
+#                  "SELECT CAST(location_coordinates_id AS UUID), CAST(location_id AS UUID), ",
+#                  "horizontal_accuracy, comment_text, gid, geom, ",
+#                  "CAST(created_datetime AS timestamptz), created_by, ",
+#                  "CAST(modified_datetime AS timestamptz), modified_by ",
+#                  "FROM public.location_coordinates_temp")
+#
+# # Insert select to spawning_ground: 3016 rows
+# db_con = pg_con_prod(dbname = "FISH")
+# DBI::dbExecute(db_con, qry)
+# DBI::dbDisconnect(db_con)
+#
+# # Drop temp
+# db_con = pg_con_prod(dbname = "FISH")
+# DBI::dbExecute(db_con, "DROP TABLE public.location_coordinates_temp")
+# DBI::dbDisconnect(db_con)
+#
+# # Reset gid_sequence ----------------------------
+#
+# # Get the current max_gid from the location_coordinates table
+# qry = "select max(gid) from spawning_ground.location_coordinates"
+# db_con = pg_con_prod(dbname = "FISH")
+# max_gid = DBI::dbGetQuery(db_con, qry)
+# DBI::dbDisconnect(db_con)
+#
+# # Code to reset sequence
+# qry = glue("SELECT setval('spawning_ground.location_coordinates_gid_seq', {max_gid}, true)")
+# db_con = pg_con_prod(dbname = "FISH")
+# DBI::dbExecute(db_con, qry)
+# DBI::dbDisconnect(db_con)
+#
+# #-------------------------------------------------
+#
+# # media_location: 219 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "media_location")
+# dbWriteTable(db_con, tbl, media_location_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# #======== Survey level tables ===============
+#
+# # survey:  2236 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "survey")
+# dbWriteTable(db_con, tbl, survey_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # survey_comment: 2236 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "survey_comment")
+# dbWriteTable(db_con, tbl, comment_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # survey_intent: 14691 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "survey_intent")
+# dbWriteTable(db_con, tbl, intent_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # waterbody_measurement: 1363 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "waterbody_measurement")
+# dbWriteTable(db_con, tbl, waterbody_meas_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # mobile_survey_form: 2236 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "mobile_survey_form")
+# dbWriteTable(db_con, tbl, mobile_survey_form_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # fish_passage_feature: 141 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "fish_passage_feature")
+# dbWriteTable(db_con, tbl, fish_passage_feature_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # other_observation: 141 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "other_observation")
+# dbWriteTable(db_con, tbl, other_observation_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# #======== Survey event ===============
+#
+# # survey_event: 5683 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "survey_event")
+# dbWriteTable(db_con, tbl, survey_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# #======== fish data ===============
+#
+# # fish_encounter: 7076 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "fish_encounter")
+# dbWriteTable(db_con, tbl, fish_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # fish_capture_event: 861 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "fish_capture_event")
+# dbWriteTable(db_con, tbl, fish_capture_event_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # fish_mark: 1390 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "fish_mark")
+# dbWriteTable(db_con, tbl, fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # individual_fish: 1105 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "individual_fish")
+# dbWriteTable(db_con, tbl, individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # fish_length_measurement: 818 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "fish_length_measurement")
+# dbWriteTable(db_con, tbl, fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# #======== redd data ===============
+#
+# # redd_encounter: 8934 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "redd_encounter")
+# dbWriteTable(db_con, tbl, redd_encounter_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
+# # individual_redd: 5251 rows
+# db_con = pg_con_prod("FISH")
+# tbl = Id(schema = "spawning_ground", table = "individual_redd")
+# dbWriteTable(db_con, tbl, individual_redd_prep, row.names = FALSE, append = TRUE, copy = TRUE)
+# dbDisconnect(db_con)
+#
 
 
 

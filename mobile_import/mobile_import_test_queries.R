@@ -3664,6 +3664,8 @@ fish_encounter$fish_count[fish_encounter$redd_id == 4905L & is.na(fish_encounter
 fish_encounter$fish_count[fish_encounter$redd_id == 28538L & is.na(fish_encounter$fish_count)] = 1L
 fish_encounter$fish_count[fish_encounter$redd_id == 465L & is.na(fish_encounter$fish_count)] = 1L
 
+# SECTION BELOW IS WRONG ! Should not set to distinct. Each encounter is unique =====================
+
 # Generate fish_encounter_id
 fish_encounter = fish_encounter %>%
   group_by(survey_event_id, fish_location_id, fish_status_id,
@@ -3689,6 +3691,8 @@ fish_encounter_prep = fish_encounter %>%
          fish_encounter_datetime, fish_count,
          previously_counted_indicator) %>%
   distinct()
+
+# END of wrong section ===============================================================================
 
 # Add trailing fields using data from header
 survey_trailing = survey_event_prep %>%
