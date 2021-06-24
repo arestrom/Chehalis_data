@@ -38,7 +38,7 @@
 #     join the new header_id back into the header data based on the
 #     parent_form_id
 #
-#  Successfully uploaded to local on 2021-06-23 at 13:31
+#  Successfully uploaded to local on 2021-06-23 at 16:54
 #
 # AS 2021-06-23
 #===============================================================================
@@ -1591,6 +1591,10 @@ header_se = header_data %>%
          steelhead_run_year, chum_run_year, chinook_run_year,
          head_created_by = created_by, head_mod_by = modified_by)
 
+# Check if test scale_card_number is present
+chk_scale = dead %>%
+  filter(scale_card_number == "A-74573")
+
 #============ survey_event ==========================
 
 # Pull out survey_event data. Calculate cwt_detection method later. Chum = NA, blank = unknown, other = uuid
@@ -1991,19 +1995,24 @@ any(is.na(fish_mark$created_by))
 
 #============ individual_fish =============================================
 
+# Check if test scale_card_number is present
+chk_scale = dead %>%
+  filter(scale_card_number == "A-74573")
+
 # Pull out individual_fish data
 dead_ind = dead %>%
   left_join(header_se, by = "parent_record_id") %>%
-  filter(number_fish == 1L) %>%
+  #filter(number_fish == 1L) %>%
   select(dead_id = id, parent_record_id, survey_id, fish_condition_type_id = fish_condition,
-         length_measurement_cm, spawn_condition_type_id = spawn_condition,
+         number_fish, length_measurement_cm, spawn_condition_type_id = spawn_condition,
          cwt_snout_sample_number = cwt_label, genetic_sample_number = dna_number,
          scale_sample_card_number = scale_card_number,
          scale_sample_position_number = scale_card_position_number, encounter_comments,
          created_date, created_by, modified_date, modified_by) %>%
   mutate(fish_condition_type_id = trimws(fish_condition_type_id)) %>%
-  mutate(fish_condition_type_id = if_else(fish_condition_type_id == "",
-                                          NA_character_, fish_condition_type_id)) %>%
+  mutate(fish_condition_type_id = if_else(is.na(fish_condition_type_id) | fish_condition_type_id == "",
+                                          'bb5ca007-06ff-4e26-b5ea-46638a18f8cb',    # No data
+                                          fish_condition_type_id)) %>%
   mutate(length_measurement_cm = as.numeric(length_measurement_cm)) %>%
   mutate(spawn_condition_type_id = trimws(spawn_condition_type_id)) %>%
   mutate(spawn_condition_type_id = if_else(is.na(spawn_condition_type_id) |
@@ -2025,16 +2034,44 @@ dead_ind = dead %>%
   mutate(encounter_comments = trimws(encounter_comments)) %>%
   mutate(encounter_comments = if_else(encounter_comments == "",
                                       NA_character_, encounter_comments)) %>%
-  mutate(all_na = if_else(is.na(fish_condition_type_id) |
-                            fish_condition_type_id == "0cd8f278-1c3e-4ad4-b7c7-9afebc8e2358" &
+  mutate(all_na = if_else((is.na(fish_condition_type_id) |
+                            fish_condition_type_id == "0cd8f278-1c3e-4ad4-b7c7-9afebc8e2358") &
                             ( is.na(length_measurement_cm) &
                                 is.na(spawn_condition_type_id) &
                                 is.na(cwt_snout_sample_number) &
                                 is.na(genetic_sample_number) &
                                 is.na(scale_sample_card_number) &
                                 is.na(scale_sample_position_number) ),
-                          "yes", "no")) %>%
-  filter(all_na == "no") %>%
+                          "yes", "no"))
+
+# Inspect any rows that will be deleted...None would be deleted
+chk_ind_delete = dead_ind %>%
+  filter(all_na == "yes")
+
+# Check which rows can be deleted...125 rows
+chk_core_ind_delete = dead_ind %>%
+  mutate(core_na = if_else(is.na(length_measurement_cm) &
+                             is.na(cwt_snout_sample_number) &
+                             is.na(genetic_sample_number) &
+                             is.na(scale_sample_card_number) &
+                             is.na(scale_sample_position_number),
+                           "yes", "no")) %>%
+  filter(core_na == "yes") %>%
+  mutate(cond_del = if_else(spawn_condition_type_id == 'e89d8979-ce87-4c0e-8ed7-9e07b831c963' &
+                              fish_condition_type_id %in% c('0cd8f278-1c3e-4ad4-b7c7-9afebc8e2358',
+                                                            'bb5ca007-06ff-4e26-b5ea-46638a18f8cb'),
+                            "yes", "no")) %>%
+  filter(core_na == "yes" & cond_del == "yes")
+
+# Check if dead_ids are all unique in dead_ind...then I can just delete by id
+any(duplicated(dead_ind$dead_id))
+
+# Pull out ids to use for deleting rows
+dead_ind_delete_ids = chk_core_ind_delete$dead_id
+
+# Pull out data with individal fish data
+dead_ind = dead_ind %>%
+  filter(!dead_id %in% dead_ind_delete_ids) %>%
   mutate(fish_trauma_type_id = "92aecee2-4a55-4b0f-ace6-8648d5da560a") %>%         # No data
   mutate(gill_condition_type_id = "33aea984-7639-491b-9663-c641ee78a90a") %>%      # No data
   mutate(cwt_result_type_id = "3b5e368f-11ce-4bb3-8c8f-70c08dde2f7e") %>%          # Not applicable
@@ -2053,6 +2090,10 @@ any(is.na(dead_ind$spawn_condition_type_id))
 any(is.na(dead_ind$cwt_result_type_id))
 any(is.na(dead_ind$created_date))
 any(is.na(dead_ind$created_by))
+
+# Check if test scale_card_number is present
+chk_scale = dead_ind %>%
+  filter(scale_sample_card_number == "A-74573")
 
 #======================================================================================================================
 # Import from carcass recoveries subform
@@ -4586,6 +4627,10 @@ individual_fish_prep = individual_fish_prep %>%
 # Check for dup ids...could be comments
 any(duplicated(individual_fish_prep$individual_fish_id))
 
+# Check if test scale_card_number is present
+chk_scale = individual_fish_prep %>%
+  filter(scale_sample_card_number == "A-74573")
+
 #================================================================================================
 # Prepare fish_length_measurement table
 #================================================================================================
@@ -5298,13 +5343,13 @@ tbl = Id(schema = "spawning_ground", table = "fish_mark")
 dbWriteTable(db_con, tbl, fish_mark_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# individual_fish: 3642 rows
+# individual_fish: 4714 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "individual_fish")
 dbWriteTable(db_con, tbl, individual_fish_prep, row.names = FALSE, append = TRUE, copy = TRUE)
 dbDisconnect(db_con)
 
-# fish_length_measurement: 3081 rows
+# fish_length_measurement: 3616 rows
 db_con = pg_con_local("FISH")
 tbl = Id(schema = "spawning_ground", table = "fish_length_measurement")
 dbWriteTable(db_con, tbl, fish_length_measurement_prep, row.names = FALSE, append = TRUE, copy = TRUE)
@@ -5329,8 +5374,8 @@ dbDisconnect(db_con)
 # #===========================================================================================================
 #
 # # Get IDs
-# test_upload_ids = readRDS("data/test_upload_ids.rds")
-# test_location_ids = readRDS("data/test_location_ids.rds")
+# test_upload_ids = readRDS("data/cumulative_upload_ids.rds")
+# test_location_ids = readRDS("data/cumulative_location_ids.rds")
 #
 # # Pull out survey IDs
 # s_id = unique(test_upload_ids$survey_id)
@@ -5347,7 +5392,9 @@ dbDisconnect(db_con)
 # loc_ids = paste0(paste0("'", loc_ids, "'"), collapse = ", ")
 #
 # # Get fish_encounter_ids
-# qry = glue("select spawning_ground.fish_encounter_id from fish_encounter where survey_event_id in ({se_ids})")
+# qry = glue("select fish_encounter_id ",
+#            "from spawning_ground.fish_encounter ",
+#            "where survey_event_id in ({se_ids})")
 # db_con = pg_con_local("FISH")
 # fish_id = dbGetQuery(db_con, qry)
 # dbDisconnect(db_con)
@@ -5357,7 +5404,9 @@ dbDisconnect(db_con)
 # fs_ids = paste0(paste0("'", fs_ids, "'"), collapse = ", ")
 #
 # # Get individual_fish IDs
-# qry = glue("select spawning_ground.individual_fish_id from individual_fish where fish_encounter_id in ({fs_ids})")
+# qry = glue("select individual_fish_id ",
+#            "from spawning_ground.individual_fish ",
+#            "where fish_encounter_id in ({fs_ids})")
 # db_con = pg_con_local("FISH")
 # indf_id = dbGetQuery(db_con, qry)
 # dbDisconnect(db_con)
@@ -5367,7 +5416,9 @@ dbDisconnect(db_con)
 # ifs_ids = paste0(paste0("'", ifs_ids, "'"), collapse = ", ")
 #
 # # Get redd_encounter_ids
-# qry = glue("select spawning_ground.redd_encounter_id from redd_encounter where survey_event_id in ({se_ids})")
+# qry = glue("select redd_encounter_id ",
+#            "from spawning_ground.redd_encounter ",
+#            "where survey_event_id in ({se_ids})")
 # db_con = pg_con_local("FISH")
 # redd_id = dbGetQuery(db_con, qry)
 # dbDisconnect(db_con)
@@ -5377,7 +5428,9 @@ dbDisconnect(db_con)
 # rd_ids = paste0(paste0("'", rd_ids, "'"), collapse = ", ")
 #
 # # Get individual_redd_ids
-# qry = glue("select spawning_ground.individual_redd_id from individual_redd where redd_encounter_id in ({rd_ids})")
+# qry = glue("select individual_redd_id ",
+#            "from spawning_ground.individual_redd ",
+#            "where redd_encounter_id in ({rd_ids})")
 # db_con = pg_con_local("FISH")
 # iredd_id = dbGetQuery(db_con, qry)
 # dbDisconnect(db_con)
@@ -5392,104 +5445,104 @@ dbDisconnect(db_con)
 #
 # #======== redd data ===============
 #
-# # individual_redd:  rows
+# # individual_redd: 12974 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.individual_redd where individual_redd_id in ({ird_ids})'))
 # dbDisconnect(db_con)
 #
-# # redd_encounter:  rows
+# # redd_encounter: 20435 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.redd_encounter where redd_encounter_id in ({rd_ids})'))
 # dbDisconnect(db_con)
 #
 # #======== fish data ===============
 #
-# # fish_length_measurement:  rows
+# # fish_length_measurement: 3081 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.fish_length_measurement where individual_fish_id in ({ifs_ids})'))
 # dbDisconnect(db_con)
 #
-# # individual_fish:  rows
+# # individual_fish: 3642 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.individual_fish where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_capture_event:  rows
+# # fish_capture_event: 5527 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.fish_capture_event where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_mark:  rows
+# # fish_mark: 8238 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.fish_mark where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_encounter:  rows
+# # fish_encounter: 20693 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.fish_encounter where fish_encounter_id in ({fs_ids})'))
 # dbDisconnect(db_con)
 #
 # #======== Survey event ===============
 #
-# # survey_event:  rows
+# # survey_event: 13879 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.survey_event where survey_event_id in ({se_ids})'))
 # dbDisconnect(db_con)
 #
 # #======== Survey level tables ===============
 #
-# # other_observation:  rows
+# # other_observation: 380 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.other_observation where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # fish_passage_feature:  rows
+# # fish_passage_feature: 216 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.fish_passage_feature where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # mobile_survey_form:  rows
+# # mobile_survey_form: 4273 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.mobile_survey_form where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey_comment:  rows
+# # survey_comment: 4273 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.survey_comment where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey_intent:  rows
+# # survey_intent: 37391 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.survey_intent where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # waterbody_measurement:  rows
+# # waterbody_measurement: 3400 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.waterbody_measurement where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
-# # survey:  rows
+# # survey: 4273 rows
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue('delete from spawning_ground.survey where survey_id in ({s_ids})'))
 # dbDisconnect(db_con)
 #
 # #======== location ===============
 #
-# # media_location:
+# # media_location: 396
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue("delete from spawning_ground.media_location where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
 #
-# # Location coordinates:
+# # Location coordinates: 6115
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue("delete from spawning_ground.location_coordinates where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
 #
-# # Location:
+# # Location: 6188
 # db_con = pg_con_local("FISH")
 # dbExecute(db_con, glue("delete from spawning_ground.location where location_id in ({loc_ids})"))
 # dbDisconnect(db_con)
-#
+
 #==========================================================================================
 # Load data tables to prod...only after successful load to local
 #==========================================================================================
