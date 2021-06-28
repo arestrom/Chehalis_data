@@ -158,19 +158,8 @@ if (!identical(compare_counts$prod_spawn, compare_counts$local_spawn)) {
     filter(!prod_spawn == local_spawn)
 }
 
-
-# # Output edits
-# num_cols = ncol(chk_redd_count)
-# current_date = format(Sys.Date())
-# out_name = paste0("data/", current_date, "_", "MultipleIndivReddCounts.xlsx")
-# wb <- createWorkbook(out_name)
-# addWorksheet(wb, "MultIndReddCounts", gridLines = TRUE)
-# writeData(wb, sheet = 1, chk_redd_count, rowNames = FALSE)
-# ## create and add a style to the column headers
-# headerStyle <- createStyle(fontSize = 12, fontColour = "#070707", halign = "left",
-#                            fgFill = "#C8C8C8", border="TopBottom", borderColour = "#070707")
-# addStyle(wb, sheet = 1, headerStyle, rows = 1, cols = 1:num_cols, gridExpand = TRUE)
-# saveWorkbook(wb, out_name, overwrite = TRUE)
+# STOPPED HERE....Initial uploaded data is now in local instance, in FISH_Chehalis DB
+# Data from that location needs to be compared to mobile data in FISH prod.
 
 
 
