@@ -2,15 +2,31 @@
 # Look for cases where IFB data in SG was edited by Amy, Lea, or Nick
 #
 # Notes:
-#  1. Data were incorrectly uploaded to SG on both occasions using the
-#     mobile_import scripts. Errors are in the fish and redd encounter
-#     portions of the code. Rows of data were truncated to distinct.
-#     This orphaned individual data in some cases, and left counts of
-#     one in the encounter tables with multiple cases in the individual
-#     tables in some cases.
-#  2. This script is intended to find case where data was edited by
+#  1. Data were incorrectly uploaded to SG on two occasions using the
+#     origina mobile_import scripts. Errors are in the fish and redd
+#     encounter portions of the code. Rows of data were truncated to
+#     distinct. This orphaned individual data in some cases, and left
+#     counts of one in the encounter tables with multiple cases in the
+#     individual tables in some cases.
+#  2. This script is intended to find cases where data was edited by
 #     Amy, Nick, or Lea, so at to identify what was done and enable
 #     recreating the edits.
+#  3. Using the created_by and created_datetime fields is not useful
+#     because too many fields were edited directly in IFB before and
+#     after the uploads. And these time-stamps are preserved on both
+#     the IFB and SG sides. See below.
+#  4. A cumulative upload of all IFB data was done to the FISH local
+#     SG database on 2021-06-23 after deleting the previously uploaded
+#     mobile data. A new local DB FISH_Chehalis was then created to
+#     hold data previously uploaded to FISH on prod so that original
+#     and corrected cumulative upload could be compared to identify
+#     where edits had occurred, or new data entered. The initially
+#     uploaded IFB data to SG on prod was then deleted and a fresh,
+#     corrected, upload was done to SG on prod by copying the data
+#     from local over to prod. So all IDs and row numbers are now
+#     identical between FISH on prod and FISH on local. To identify
+#     differences the comparisons below are between FISH on prod and
+#     the local FISH_Chehalis.
 #
 # ToDo:
 #  1.
@@ -51,6 +67,18 @@ pg_host <- function(host_label) {
 }
 
 # Function to connect to postgres
+pg_con_local = function(dbname, port = '5432') {
+  con <- DBI::dbConnect(
+    RPostgres::Postgres(),
+    host = "localhost",
+    dbname = dbname,
+    user = pg_user("pg_user"),
+    password = pg_pw("pg_pwd_local"),
+    port = port)
+  con
+}
+
+# Function to connect to postgres
 pg_con_prod = function(dbname, port = '5432') {
   con <- DBI::dbConnect(
     RPostgres::Postgres(),
@@ -82,59 +110,58 @@ db_table_counts = function(dsn = "prod_fish_spawn", schema = "spawning_ground") 
   dtx
 }
 
-#===================================================================================================
-# Look for edits made since July 13th 2020 in all tables
-# Result: Too many edits were made directly in IFB after surveys.
-#         So a better strategy is to compare tables from
-#         local to prod using an anti-join to uncover diffs.
-#===================================================================================================
+# #===================================================================================================
+# # Look for edits made since July 13th 2020 in all tables
+# # Result: Too many edits were made directly in IFB after surveys.
+# #         So a better strategy is to compare tables from
+# #         local to prod using an anti-join to uncover diffs.
+# #===================================================================================================
+#
+# # Globals
+# start_date = as.Date("2020-07-13")
+#
+# # Survey
+#
+# # Query
+# qry = glue("select s.survey_datetime as survey_date, sm.survey_method_code as survey_method, ",
+#            "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+#            "sc.completion_status_description as completed_survey, ",
+#            "ic.incomplete_survey_description as incomplete_type, ",
+#            "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+#            "s.observer_last_name as observer, s.data_submitter_last_name as submitter, ",
+#            "s.created_datetime as create_time, s.created_by as create_by, ",
+#            "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+#            "from spawning_ground.survey as s ",
+#            "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+#            "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+#            "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+#            "left join spawning_ground.survey_completion_status_lut as sc on s.survey_completion_status_id = sc.survey_completion_status_id ",
+#            "left join spawning_ground.incomplete_survey_type_lut as ic on s.incomplete_survey_type_id = ic.incomplete_survey_type_id ",
+#            "where date(s.modified_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+#            "and date(s.modified_datetime) > date(s.created_datetime + interval '1 day') ",
+#            "and s.modified_by in ('vanbunwv', 'edwarare', 'ronnelmr')")
+#
+# # Run query
+# con = pg_con_prod("FISH")
+# survey_edits = DBI::dbGetQuery(con, qry)
+# DBI::dbDisconnect(con)
+#
+# # Adjust times
+# survey_edits = survey_edits %>%
+#   mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+#   mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+#   mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+#   mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+#   mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+#   mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+#   mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+#   mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+#   mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+#   mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
 
-# Globals
-start_date = as.Date("2020-07-13")
-
-# Survey
-
-# Query
-qry = glue("select s.survey_datetime as survey_date, sm.survey_method_code as survey_method, ",
-           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
-           "sc.completion_status_description as completed_survey, ",
-           "ic.incomplete_survey_description as incomplete_type, ",
-           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
-           "s.observer_last_name as observer, s.data_submitter_last_name as submitter, ",
-           "s.created_datetime as create_time, s.created_by as create_by, ",
-           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
-           "from spawning_ground.survey as s ",
-           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
-           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
-           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
-           "left join spawning_ground.survey_completion_status_lut as sc on s.survey_completion_status_id = sc.survey_completion_status_id ",
-           "left join spawning_ground.incomplete_survey_type_lut as ic on s.incomplete_survey_type_id = ic.incomplete_survey_type_id ",
-           "where date(s.modified_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
-           "and date(s.modified_datetime) > date(s.created_datetime + interval '1 day') ",
-           "and s.modified_by in ('vanbunwv', 'edwarare', 'ronnelmr')")
-
-# Run query
-con = pg_con_prod("FISH")
-survey_edits = DBI::dbGetQuery(con, qry)
-DBI::dbDisconnect(con)
-
-# Adjust times
-survey_edits = survey_edits %>%
-  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
-  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
-  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
-  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
-  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
-  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
-  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
-  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
-  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
-  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
-
-#==============================================================================
-# Identify differences between local and prod....Result...only fake surveys
-# I am removing these manually.....After editing in front-end all identical!
-#==============================================================================
+#================================================================================
+# Identify differences between FISH local and FISH prod....Result: all identical!
+#================================================================================
 
 # Get table names and row counts in sink db
 source_row_counts = db_table_counts(dsn = "prod_fish_spawn", schema = "spawning_ground")
@@ -158,9 +185,124 @@ if (!identical(compare_counts$prod_spawn, compare_counts$local_spawn)) {
     filter(!prod_spawn == local_spawn)
 }
 
-# STOPPED HERE....Initial uploaded data is now in local instance, in FISH_Chehalis DB
-# Data from that location needs to be compared to mobile data in FISH prod.
+#================================================================================
+# Identify differences between original and cumulative uploads. See diff_counts.
+#================================================================================
 
+# Get table names and row counts in sink db
+source_row_counts = db_table_counts(dsn = "prod_fish_spawn", schema = "spawning_ground")
+
+# Get table names and row counts in source db
+sink_row_counts = db_table_counts(dsn = "local_fish_chehalis", schema = "spawning_ground")
+
+# Combine to a dataframe
+compare_counts = source_row_counts %>%
+  full_join(sink_row_counts, by = "table") %>%
+  filter(!table == "spatial_ref_sys") %>%
+  select(table, prod_spawn = row_count.x, local_spawn = row_count.y)
+
+# Verify that table names and row counts in source and sink db's are identical
+identical(compare_counts$prod_spawn, compare_counts$local_spawn)
+
+# Pull out cases that differ
+diff_counts = NULL
+if (!identical(compare_counts$prod_spawn, compare_counts$local_spawn)) {
+  diff_counts = compare_counts %>%
+    filter(!prod_spawn == local_spawn)
+}
+
+# Add a diff value: Result: looks like 7 surveys were added manually to SG
+diff_counts = diff_counts %>%
+  mutate(n_diff = local_spawn - prod_spawn)
+
+#================================================================================
+# Identify diffs in survey level data
+#================================================================================
+
+# Survey from FISH prod ===============================
+
+# First mobile entry was on 2019-08-07....also first IFB survey_id = 36
+start_date = as.Date("2019-08-07")
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "sc.completion_status_description as completed_survey, ",
+           "ic.incomplete_survey_description as incomplete_type, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, s.data_submitter_last_name as submitter, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "inner join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "left join spawning_ground.survey_completion_status_lut as sc on s.survey_completion_status_id = sc.survey_completion_status_id ",
+           "left join spawning_ground.incomplete_survey_type_lut as ic on s.incomplete_survey_type_id = ic.incomplete_survey_type_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "order by msf.parent_form_survey_id")
+
+# Run query
+con = pg_con_prod("FISH")
+survey_new = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+survey_new = survey_new %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
+
+# Survey from FISH_Chehalis local ======================================
+
+# NEED TO INCLUDE NEW SURVEYS WITHOUT mobile_survey_form_id entry ....do left join
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "sc.completion_status_description as completed_survey, ",
+           "ic.incomplete_survey_description as incomplete_type, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, s.data_submitter_last_name as submitter, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "left join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "left join spawning_ground.survey_completion_status_lut as sc on s.survey_completion_status_id = sc.survey_completion_status_id ",
+           "left join spawning_ground.incomplete_survey_type_lut as ic on s.incomplete_survey_type_id = ic.incomplete_survey_type_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "order by msf.parent_form_survey_id")
+
+# Run query
+con = pg_con_local("FISH_Chehalis")
+survey_old = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+survey_old = survey_old %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
 
 
 
