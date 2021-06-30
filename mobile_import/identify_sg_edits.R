@@ -723,7 +723,423 @@ edit_fish = fish_old %>%
                              "clip_status", "fish_behavior", "mortality_type", "fish_count",
                              "prev_counted"))
 
-# STOPPED HERE !!!!!!!!!!!!!!!!!!!!!!!!!
+#================================================================================
+# Identify diffs in fish_capture_event data
+#================================================================================
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, sp.common_name as species, ",
+           "fs.fish_status_description as fish_status, ",
+           "fc.fish_capture_status_code as fish_capture_status, dtyp.disposition_type_code as disposition_type, ",
+           "ds.disposition_code as disposition, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "inner join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "inner join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+           "inner join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+           "inner join spawning_ground.fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
+           "inner join spawning_ground.fish_status_lut as fs on fe.fish_status_id = fs.fish_status_id ",
+           "inner join spawning_ground.fish_capture_event as fce on fe.fish_encounter_id = fce.fish_encounter_id ",
+           "inner join spawning_ground.fish_capture_status_lut as fc on fce.fish_capture_status_id = fc.fish_capture_status_id ",
+           "inner join spawning_ground.disposition_type_lut as dtyp on fce.disposition_type_id = dtyp.disposition_type_id ",
+           "inner join spawning_ground.disposition_lut as ds on fce.disposition_id = ds.disposition_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "order by msf.parent_form_survey_id")
+
+# Run query. Result: Correct number of rows: 4273 returned. See cumulative_mobile_reload.R.
+con = pg_con_prod("FISH")
+capture_new = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+capture_new = capture_new %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
+
+# Survey from FISH_Chehalis local ======================================
+
+# Added wria_lut and left join on mobile_survey_form to ensure all surveys (possibly manually entered) included
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, sp.common_name as species, ",
+           "fs.fish_status_description as fish_status, ",
+           "fc.fish_capture_status_code as fish_capture_status, dtyp.disposition_type_code as disposition_type, ",
+           "ds.disposition_code as disposition, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "left join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "inner join spawning_ground.wria_lut as wr on locl.wria_id = wr.wria_id ",
+           "inner join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+           "inner join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+           "inner join spawning_ground.fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
+           "inner join spawning_ground.fish_status_lut as fs on fe.fish_status_id = fs.fish_status_id ",
+           "inner join spawning_ground.fish_capture_event as fce on fe.fish_encounter_id = fce.fish_encounter_id ",
+           "inner join spawning_ground.fish_capture_status_lut as fc on fce.fish_capture_status_id = fc.fish_capture_status_id ",
+           "inner join spawning_ground.disposition_type_lut as dtyp on fce.disposition_type_id = dtyp.disposition_type_id ",
+           "inner join spawning_ground.disposition_lut as ds on fce.disposition_id = ds.disposition_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "and wr.wria_code in ('22', '23') ",
+           "order by msf.parent_form_survey_id")
+
+# Run query. Result: Correct number of rows: 4273 returned. See cumulative_mobile_reload.R.
+con = pg_con_prod("FISH")
+capture_old = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+capture_old = capture_old %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
+
+
+# Identify those that don't match....All match
+edit_capture = capture_old %>%
+  anti_join(capture_new, by = c("survey_date", "parent_id", "survey_method", "rm_upper", "rm_lower",
+                               "species", "fish_status", "fish_capture_status", "disposition_type",
+                               "disposition"))
+
+#================================================================================
+# Identify diffs in fish_capture_event data
+#================================================================================
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, sp.common_name as species, ",
+           "fs.fish_status_description as fish_status, ",
+           "fc.fish_capture_status_code as fish_capture_status, dtyp.disposition_type_code as disposition_type, ",
+           "ds.disposition_code as disposition, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "inner join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "inner join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+           "inner join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+           "inner join spawning_ground.fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
+           "inner join spawning_ground.fish_status_lut as fs on fe.fish_status_id = fs.fish_status_id ",
+           "inner join spawning_ground.fish_capture_event as fce on fe.fish_encounter_id = fce.fish_encounter_id ",
+           "inner join spawning_ground.fish_capture_status_lut as fc on fce.fish_capture_status_id = fc.fish_capture_status_id ",
+           "inner join spawning_ground.disposition_type_lut as dtyp on fce.disposition_type_id = dtyp.disposition_type_id ",
+           "inner join spawning_ground.disposition_lut as ds on fce.disposition_id = ds.disposition_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "order by msf.parent_form_survey_id")
+
+# Run query. Result: Correct number of rows: 4273 returned. See cumulative_mobile_reload.R.
+con = pg_con_prod("FISH")
+capture_new = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+capture_new = capture_new %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
+
+# Survey from FISH_Chehalis local ======================================
+
+# Added wria_lut and left join on mobile_survey_form to ensure all surveys (possibly manually entered) included
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, sp.common_name as species, ",
+           "fs.fish_status_description as fish_status, ",
+           "fc.fish_capture_status_code as fish_capture_status, dtyp.disposition_type_code as disposition_type, ",
+           "ds.disposition_code as disposition, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "left join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "inner join spawning_ground.wria_lut as wr on locl.wria_id = wr.wria_id ",
+           "inner join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+           "inner join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+           "inner join spawning_ground.fish_encounter as fe on se.survey_event_id = fe.survey_event_id ",
+           "inner join spawning_ground.fish_status_lut as fs on fe.fish_status_id = fs.fish_status_id ",
+           "inner join spawning_ground.fish_capture_event as fce on fe.fish_encounter_id = fce.fish_encounter_id ",
+           "inner join spawning_ground.fish_capture_status_lut as fc on fce.fish_capture_status_id = fc.fish_capture_status_id ",
+           "inner join spawning_ground.disposition_type_lut as dtyp on fce.disposition_type_id = dtyp.disposition_type_id ",
+           "inner join spawning_ground.disposition_lut as ds on fce.disposition_id = ds.disposition_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "and wr.wria_code in ('22', '23') ",
+           "order by msf.parent_form_survey_id")
+
+# Run query. Result: Correct number of rows: 4273 returned. See cumulative_mobile_reload.R.
+con = pg_con_prod("FISH")
+capture_old = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+capture_old = capture_old %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
+
+
+# Identify those that don't match....All match
+edit_capture = capture_old %>%
+  anti_join(capture_new, by = c("survey_date", "parent_id", "survey_method", "rm_upper", "rm_lower",
+                                "species", "fish_status", "fish_capture_status", "disposition_type",
+                                "disposition"))
+
+#================================================================================
+# Identify diffs in redd_encounter data
+#================================================================================
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, sp.common_name as species, ",
+           "rs.redd_status_short_description as redd_status, rd.redd_encounter_datetime as redd_time, ",
+           "rd.redd_count, rd.comment_text as redd_comment, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "inner join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "inner join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+           "inner join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+           "inner join spawning_ground.redd_encounter as rd on se.survey_event_id = rd.survey_event_id ",
+           "inner join spawning_ground.redd_status_lut as rs on rd.redd_status_id = rs.redd_status_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "order by msf.parent_form_survey_id")
+
+# Run query. Result: Correct number of rows: 4273 returned. See cumulative_mobile_reload.R.
+con = pg_con_prod("FISH")
+redd_new = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+redd_new = redd_new %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
+
+# Survey from FISH_Chehalis local ======================================
+
+# Added wria_lut and left join on mobile_survey_form to ensure all surveys (possibly manually entered) included
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, sp.common_name as species, ",
+           "rs.redd_status_short_description as redd_status, rd.redd_encounter_datetime as redd_time, ",
+           "rd.redd_count, rd.comment_text as redd_comment, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "left join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "inner join spawning_ground.wria_lut as wr on locl.wria_id = wr.wria_id ",
+           "inner join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+           "inner join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+           "inner join spawning_ground.redd_encounter as rd on se.survey_event_id = rd.survey_event_id ",
+           "inner join spawning_ground.redd_status_lut as rs on rd.redd_status_id = rs.redd_status_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "and wr.wria_code in ('22', '23') ",
+           "order by msf.parent_form_survey_id")
+
+# Run query. Result: Correct number of rows: 4273 returned. See cumulative_mobile_reload.R.
+con = pg_con_prod("FISH")
+redd_old = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+redd_old = redd_old %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
+
+
+# Identify those that don't match....All match
+edit_redd = redd_old %>%
+  anti_join(redd_new, by = c("survey_date", "parent_id", "survey_method", "rm_upper", "rm_lower",
+                             "species", "redd_status", "redd_time", "redd_count", "redd_comment"))
+
+#================================================================================
+# Identify diffs in individual_redd data
+#================================================================================
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, sp.common_name as species, ",
+           "rs.redd_shape_description as redd_shape, dw.dewatered_type_description as dewatered_type, ",
+           "ir.percent_redd_visible, ir.redd_length_measure_meter as redd_length, ",
+           "ir.redd_width_measure_meter as redd_width, ir.redd_depth_measure_meter as redd_depth, ",
+           "ir.tailspill_height_measure_meter as tailspill_height, ir.percent_redd_superimposed as pct_superimposed, ",
+           "ir.percent_redd_degraded as pct_degraded, ir.superimposed_redd_name, ",
+           "ir.comment_text as ind_redd_comment, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "inner join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "inner join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+           "inner join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+           "inner join spawning_ground.redd_encounter as rd on se.survey_event_id = rd.survey_event_id ",
+           "inner join spawning_ground.individual_redd as ir on rd.redd_encounter_id = ir.redd_encounter_id ",
+           "inner join spawning_ground.redd_shape_lut as rs on ir.redd_shape_id = rs.redd_shape_id ",
+           "inner join spawning_ground.redd_dewatered_type_lut as dw on ir.redd_dewatered_type_id = dw.redd_dewatered_type_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "order by msf.parent_form_survey_id")
+
+# Run query. Result: Correct number of rows: 4273 returned. See cumulative_mobile_reload.R.
+con = pg_con_prod("FISH")
+ind_redd_new = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+ind_redd_new = ind_redd_new %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
+
+# Survey from FISH_Chehalis local ======================================
+
+# Added wria_lut and left join on mobile_survey_form to ensure all surveys (possibly manually entered) included
+
+# Query
+qry = glue("select s.survey_datetime as survey_date, msf.parent_form_survey_id as parent_id, ",
+           "sm.survey_method_code as survey_method, ",
+           "locu.river_mile_measure as rm_upper, locl.river_mile_measure as rm_lower, ",
+           "s.survey_start_datetime as survey_start, s.survey_end_datetime as survey_end, ",
+           "s.observer_last_name as observer, sp.common_name as species, ",
+           "rs.redd_shape_description as redd_shape, dw.dewatered_type_description as dewatered_type, ",
+           "ir.percent_redd_visible, ir.redd_length_measure_meter as redd_length, ",
+           "ir.redd_width_measure_meter as redd_width, ir.redd_depth_measure_meter as redd_depth, ",
+           "ir.tailspill_height_measure_meter as tailspill_height, ir.percent_redd_superimposed as pct_superimposed, ",
+           "ir.percent_redd_degraded as pct_degraded, ir.superimposed_redd_name, ",
+           "ir.comment_text as ind_redd_comment, ",
+           "s.created_datetime as create_time, s.created_by as create_by, ",
+           "s.modified_datetime as mod_time, s.modified_by as mod_by ",
+           "from spawning_ground.survey as s ",
+           "left join spawning_ground.mobile_survey_form as msf on s.survey_id = msf.survey_id ",
+           "inner join spawning_ground.survey_method_lut as sm on s.survey_method_id = sm.survey_method_id ",
+           "inner join spawning_ground.location as locu on s.upper_end_point_id = locu.location_id ",
+           "inner join spawning_ground.location as locl on s.lower_end_point_id = locl.location_id ",
+           "inner join spawning_ground.wria_lut as wr on locl.wria_id = wr.wria_id ",
+           "inner join spawning_ground.survey_event as se on s.survey_id = se.survey_id ",
+           "inner join spawning_ground.species_lut as sp on se.species_id = sp.species_id ",
+           "inner join spawning_ground.redd_encounter as rd on se.survey_event_id = rd.survey_event_id ",
+           "inner join spawning_ground.individual_redd as ir on rd.redd_encounter_id = ir.redd_encounter_id ",
+           "inner join spawning_ground.redd_shape_lut as rs on ir.redd_shape_id = rs.redd_shape_id ",
+           "inner join spawning_ground.redd_dewatered_type_lut as dw on ir.redd_dewatered_type_id = dw.redd_dewatered_type_id ",
+           "where date(s.created_datetime::timestamp at time zone 'America/Los_Angeles') >= '{start_date}' ",
+           "and wr.wria_code in ('22', '23') ",
+           "order by msf.parent_form_survey_id")
+
+# Run query. Result: Correct number of rows: 4273 returned. See cumulative_mobile_reload.R.
+con = pg_con_prod("FISH")
+ind_redd_old = DBI::dbGetQuery(con, qry)
+DBI::dbDisconnect(con)
+
+# Adjust times
+ind_redd_old = ind_redd_old %>%
+  mutate(survey_date = with_tz(survey_date, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_date = format(survey_date, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_start = with_tz(survey_start, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_start = format(survey_start, "%m/%d/%Y %H:%M")) %>%
+  mutate(survey_end = with_tz(survey_end, tzone = "America/Los_Angeles")) %>%
+  mutate(survey_end = format(survey_end, "%m/%d/%Y %H:%M")) %>%
+  mutate(create_time = with_tz(create_time, tzone = "America/Los_Angeles")) %>%
+  mutate(create_time = format(create_time, "%m/%d/%Y %H:%M")) %>%
+  mutate(mod_time = with_tz(mod_time, tzone = "America/Los_Angeles")) %>%
+  mutate(mod_time = format(mod_time, "%m/%d/%Y %H:%M"))
+
+
+# Identify those that don't match....All match
+identical(ind_redd_new, ind_redd_old)
+
+
 
 
 
